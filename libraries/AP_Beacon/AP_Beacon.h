@@ -14,6 +14,10 @@
  */
 #pragma once
 
+#include "AP_Beacon_config.h"
+
+#if AP_BEACON_ENABLED
+
 #include <AP_Common/AP_Common.h>
 #include <AP_Param/AP_Param.h>
 #include <AP_Math/AP_Math.h>
@@ -41,6 +45,8 @@ public:
         AP_BeaconType_Pozyx  = 1,
         AP_BeaconType_Marvelmind = 2,
         AP_BeaconType_Nooploop  = 3,
+        AP_BeaconType_LinkPG   = 4,
+
         AP_BeaconType_SITL   = 10
     };
 
@@ -102,6 +108,8 @@ public:
 
     static const struct AP_Param::GroupInfo var_info[];
 
+    static const struct AP_Param::GroupInfo *_backend_var_info;
+
     // a method for vehicles to call to make onboard log messages:
     void log();
 
@@ -148,3 +156,5 @@ private:
 namespace AP {
     AP_Beacon *beacon();
 };
+
+#endif  // AP_BEACON_ENABLED

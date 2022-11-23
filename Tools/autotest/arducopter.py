@@ -2329,22 +2329,6 @@ class AutoTestCopter(AutoTest):
         # complete by "customising" the commandline here:
         self.customise_SITL_commandline([])
 
-        self.context_push()
-
-        ex = None
-
-        try:
-            self.fly_autotune_switch_body()
-        except Exception as e:
-            self.print_exception_caught(e)
-            ex = e
-
-        self.context_pop()
-
-        if ex is not None:
-            raise ex
-
-    def fly_autotune_switch_body(self):
         self.set_parameters({
             "RC8_OPTION": 17,
             "ATC_RAT_RLL_FLTT": 20,
@@ -6681,18 +6665,18 @@ class AutoTestCopter(AutoTest):
             self.takeoff(10, mode="LOITER")
             self.set_rc(2, 1400)
             west_loc = mavutil.location(-35.362919, 149.165055, 0, 0)
-            self.wait_location(west_loc, accuracy=7)
+            self.wait_location(west_loc, accuracy=1)
             self.reach_heading_manual(0)
             north_loc = mavutil.location(-35.362881, 149.165103, 0, 0)
-            self.wait_location(north_loc, accuracy=7)
+            self.wait_location(north_loc, accuracy=1)
             self.set_rc(2, 1500)
             self.set_rc(1, 1600)
             east_loc = mavutil.location(-35.362986, 149.165227, 0, 0)
-            self.wait_location(east_loc, accuracy=7)
+            self.wait_location(east_loc, accuracy=1)
             self.set_rc(1, 1500)
             self.set_rc(2, 1600)
             south_loc = mavutil.location(-35.363025, 149.165182, 0, 0)
-            self.wait_location(south_loc, accuracy=7)
+            self.wait_location(south_loc, accuracy=1)
             self.set_rc(2, 1500)
             self.do_RTL()
 

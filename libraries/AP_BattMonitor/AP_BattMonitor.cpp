@@ -325,11 +325,9 @@ AP_BattMonitor::init()
                 drivers[instance] = new AP_BattMonitor_Torqeedo(*this, state[instance], _params[instance]);
                 break;
 #endif
-#if HAL_APC_ENABLED
             case Type::APC:
                 drivers[instance] = new AP_BattMonitor_APC(*this, state[instance], _params[instance]);
                 break;
-#endif
 
             case Type::NONE:
             default:

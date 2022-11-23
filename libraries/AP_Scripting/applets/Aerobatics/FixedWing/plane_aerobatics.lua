@@ -34,6 +34,8 @@ AEROM_DEBUG = bind_add_param('DEBUG', 16, 0)
 AEROM_THR_MIN = bind_add_param('THR_MIN', 17, 0)
 AEROM_THR_BOOST = bind_add_param('THR_BOOST', 18, 50)
 AEROM_YAW_ACCEL = bind_add_param('YAW_ACCEL', 19, 1500)
+AEROM_LKAHD = bind_add_param('LKAHD', 20, 0.5)
+AEROM_PATH_SCALE = bind_add_param('PATH_SCALE', 21, 1.0)
 
 -- cope with old param values
 if AEROM_ANG_ACCEL:get() < 100 and AEROM_ANG_ACCEL:get() > 0 then
@@ -85,6 +87,10 @@ function constrain(v, vmin, vmax)
       v = vmax
    end
    return v
+end
+
+function sq(x)
+   return x*x
 end
 
 if TRIK_ENABLE:get() > 0 then
@@ -328,7 +334,16 @@ function vectors_to_quat_rotation(vector1, vector2)
    return q
 end
 
-
+--[[
+   get path rate from two tangents and delta time
+--]]
+function tangents_to_rate(t1, t2, dt)
+   local q_delta = vectors_to_quat_rotation(t1, t2)
+   local rate_rads = Vector3f()
+   q_delta:to_axis_angle(rate_rads)
+   rate_rads = rate_rads:scale(1.0/dt)
+   return rate_rads
+end
 
 --[[
    trajectory building blocks. We have two types of building blocks,
@@ -440,6 +455,41 @@ function roll_angle_exit(_angle)
 end
 
 --[[
+   implement a sequence of rolls, specified as a list of {proportion, roll_angle} pairs
+--]]
+function roll_sequence(_seq)
+   local self = {}
+   local seq = _seq
+   local total = 0.0
+   local end_t = {}
+   local start_t = {}
+   local start_ang = {}
+   local angle = 0.0
+   for i = 1, #seq do
+      total = total + seq[i][1]
+   end
+   local t = 0.0
+   for i = 1, #seq do
+      start_t[i] = t
+      start_ang[i] = angle
+      angle = angle + seq[i][2]
+      t = t + seq[i][1]/total
+      end_t[i] = t
+   end
+   function self.get_roll(t)
+      for i = 1, #seq do
+         if t <= end_t[i] then
+            local t2 = (t - start_t[i])/(seq[i][1]/total)
+            return start_ang[i] + t2 * seq[i][2]
+         end
+      end
+      -- we've gone past the end
+      return start_ang[#seq] + seq[#seq][2]
+   end
+   return self
+end
+
+--[[
   all path components inherit from PathComponent
 --]]
 function PathComponent()
@@ -461,6 +511,15 @@ function PathComponent()
       return self.thr_boost or false
    end
    return self
+end
+
+--[[
+   return a quaternion for a roll, pitch, yaw (321 euler sequence) attitude
+--]]
+function qorient(roll_deg, pitch_deg, yaw_deg)
+   local q = Quaternion()
+   q:from_euler(math.rad(roll_deg), math.rad(pitch_deg), math.rad(yaw_deg))
+   return q
 end
 
 --[[
@@ -733,6 +792,11 @@ function path_composer(_name, _subpaths)
       end
       speed = end_speed[i]
 
+      if sp.set_orient ~= nil then
+         -- override orientation at this point in the sequence
+         orientation = sp.set_orient
+      end
+
       if sp.roll_ref ~= nil then
          local q = Quaternion()
          q:from_axis_angle(makeVector3f(1,0,0), math.rad(sp.roll_ref))
@@ -842,6 +906,9 @@ function make_paths(name, paths)
       end
       if paths[i].roll_ref then
          p[i].roll_ref = paths[i].roll_ref
+      end
+      if paths[i].set_orient then
+         p[i].set_orient = paths[i].set_orient
       end
       p[i].thr_boost = paths[i].thr_boost
    end
@@ -1022,11 +1089,26 @@ function barrel_roll(radius, length, num_spirals, arg4)
    local gamma_deg = math.deg(math.atan((length/num_spirals)/(2*math.pi*radius)))
    local speed = target_groundspeed()
    local bank = math.deg(math.atan((speed*speed) / (radius * GRAVITY_MSS)))
+   local radius2 = radius/(1.0 - math.cos(math.rad(90-gamma_deg)))
 
    return make_paths("barrel_roll", {
-         { path_horizontal_arc(-radius, 90-gamma_deg, 0), roll_angle_entry_exit(-bank) },
+         { path_horizontal_arc(-radius2, 90-gamma_deg, 0), roll_angle_entry_exit(-bank) },
          { path_cylinder(radius, length, num_spirals),    roll_angle(0) },
-         { path_horizontal_arc(radius, 90-gamma_deg, 0),  roll_angle_entry_exit(bank) },
+         { path_horizontal_arc(radius2, 90-gamma_deg, 0),  roll_angle_entry_exit(bank) },
+   })
+end
+
+function side_step(displacement, length, arg3, arg4)
+   local speed = target_groundspeed()
+   local radius = (displacement*displacement + length*length)/(4*displacement)
+   local angle = math.deg(2*math.atan(displacement, length))
+   local sign = sgn(displacement)
+   local bank = math.deg(math.atan((speed*speed) / (radius * GRAVITY_MSS)))
+   displacement = math.abs(displacement)
+
+   return make_paths("side_step",{
+      {path_horizontal_arc(sign*radius, angle, 0), roll_angle_entry_exit(sign*bank)},
+      {path_horizontal_arc(-sign*radius, angle, 0) , roll_angle_entry_exit(-sign*bank)},
    })
 end
 
@@ -1155,28 +1237,39 @@ function vertical_aerobatic_box(total_length, total_width, r, bank_angle)
    })
 end
 
-function multi_point_roll(length, N, arg3, arg4)
-   local paths = {}
-   local len_roll = length * (N-1) / (N*4-1)
-   local len_hold = length / (N*4-1)
-   local ang = 360 / N
-   for i = 1, N do
-      paths[#paths+1] = { path_straight(len_roll), roll_angle(ang) }
-      paths[#paths+1] = { path_straight(len_hold), roll_angle(0) }
+--[[
+   a multi-point roll
+     - length = total length of straight flight
+     - N = number of points of roll for full 360
+     - hold_frac = proportion of each segment to hold attitude, will use 0.2 if 0
+     - num_points = number of points of the N point roll to do, will use N if 0
+
+   Note that num_points can be greater than N, for example do 6 points
+   of a 4 point roll, resulting in inverted flight
+--]]
+function multi_point_roll(length, N, hold_frac, num_points)
+   if hold_frac <= 0 then
+      hold_frac = 0.2
    end
-   return make_paths("multi_point_roll", paths)
-end
-
-function two_point_roll(length, arg2, arg3, arg4)
-   return multi_point_roll(length, 2)
-end
-
-function four_point_roll(length, arg2, arg3, arg4)
-   return multi_point_roll(length, 4)
+   if num_points <= 0 then
+      num_points = N
+   end
+   --[[
+      construct a roll sequence to use over the full length
+   --]]
+   local seq = {}
+   local roll_frac = 1.0 - hold_frac
+   for i = 1, num_points do
+      seq[#seq+1] = { roll_frac, 360 / N }
+      if i < num_points then
+         seq[#seq+1] = { hold_frac, 0 }
+      end
+   end
+   return make_paths("multi_point_roll", {{ path_straight(length), roll_sequence(seq) }})
 end
 
 function eight_point_roll(length, arg2, arg3, arg4)
-   return multi_point_roll(length, 8)
+   return multi_point_roll(length, 8, 0.5)
 end
 
 function procedure_turn(radius, bank_angle, step_out, arg4)
@@ -1200,22 +1293,12 @@ end
 function p23_1(radius, height, width, arg4) -- top hat
    return make_paths("p23_1", {
             { path_vertical_arc(radius, 90),              roll_angle(0) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(0) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(90) },
-            { path_straight((height-2*radius)/9),         roll_angle(0) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(90) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(0) },            
+            { path_straight((height-2*radius)),           roll_sequence({{2,0}, {2, 90}, {1, 0}, {2, 90}, {2, 0}}) },
             { path_vertical_arc(-radius, 90),             roll_angle(0) },
-            { path_straight((width-2*radius)/3),          roll_angle(0) },
-            { path_straight((width-2*radius)/3),          roll_angle(180) },
-            { path_straight((width-2*radius)/3),          roll_angle(0) },
+            { path_straight((width-2*radius)),            roll_sequence({{1,0}, {1, 180}, {1, 0}}) },
             { path_vertical_arc(-radius, 90),             roll_angle(0) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(0) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(90) },
-            { path_straight((height-2*radius)/9),         roll_angle(0) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(90) },
-            { path_straight((height-2*radius)*2/9),       roll_angle(0) },            
-            { path_vertical_arc(radius, 90),              roll_angle(0) },                        
+            { path_straight((height-2*radius)),           roll_sequence({{2,0}, {2, 90}, {1, 0}, {2, 90}, {2, 0}}) },
+            { path_vertical_arc(radius, 90),              roll_angle(0) },
       })
 end
 
@@ -1477,6 +1560,16 @@ function fai_f3a_box_l_r()
    })
 end
 
+function funny_loop(radius, arg2, arg3, arg4)
+   return make_paths("funny_loop", {
+            { path_horizontal_arc(radius, 90),                  roll_angle(180) },
+            { path_vertical_arc(radius, 90),                    roll_angle(0),   set_orient=qorient(0,90,90)},
+            { path_horizontal_arc(radius, 180),                 roll_angle(360), set_orient=qorient(0,-90,-90) },
+            { path_vertical_arc(radius, 90),                    roll_angle(0),   set_orient=qorient(0,0,-90) },
+            { path_horizontal_arc(radius, 90),                  roll_angle(-180) },
+      })
+end
+
 --[[
    NZ clubman schedule
 --]]
@@ -1501,7 +1594,7 @@ function nz_clubman()                               -- positioned for a flight l
           { straight_align,           { -180, 0 } },
           { half_reverse_cuban_eight, { 90 } },
           { straight_align,           { -120, 0 } },
-          { two_point_roll,           { 240 },         message="Two Point Roll"},
+          { multi_point_roll,         { 240, 2, 0.5 }, message="Two Point Roll"},
           { straight_align,           { 150, 0 } },
           { half_reverse_cuban_eight, { 90 } },
           { straight_align,           { 106, 0 } },
@@ -1748,6 +1841,19 @@ function rotate_path(path_f, t, orientation, offset)
    local speed = path_f.get_speed(t)
    local thr_boost = path_f.get_throttle_boost(t)
    local point = quat_earth_to_body(orientation, point)
+
+   local scale = AEROM_PATH_SCALE:get()
+   point = point:scale(math.abs(scale))
+   if scale < 0 then
+      -- we need to mirror the path
+      point:y(-point:y())
+      roll_correction = -roll_correction
+      angle = -angle
+      -- compensate path orientation for the mirroring
+      local orient = orientation:inverse()
+      point = quat_body_to_earth((orient * orient), point)
+   end
+
    return point+offset, math.rad(angle+roll_correction), speed, thr_boost
 end
 
@@ -1876,13 +1982,12 @@ function do_path()
       local speed = target_groundspeed()
       path_var.target_speed = speed
 
-      path_var.length = path.get_length()
+      path_var.length = path.get_length() * math.abs(AEROM_PATH_SCALE:get())
 
       path_var.total_rate_rads_ef = makeVector3f(0.0, 0.0, 0.0)
 
       --assuming constant velocity
       path_var.total_time = path_var.length/speed
-      path_var.last_pos = path.get_pos(0) --position at t0
 
       --deliberately only want yaw component, because the maneuver should be performed relative to the earth, not relative to the initial orientation
       path_var.initial_ori = Quaternion()
@@ -2073,17 +2178,9 @@ function do_path()
    end
 
    --[[
-      get the quaternion rotation between tangent1_ef and tangent2_ef
-   --]]
-   local q_delta = vectors_to_quat_rotation(tangent1_ef, tangent2_ef)
-
-   --[[
       work out body frame path rate, this is based on two adjacent tangents on the path
    --]]
-   local path_rate_ef_rads = Vector3f()
-   q_delta:to_axis_angle(path_rate_ef_rads)
-   path_rate_ef_rads = path_rate_ef_rads:scale(1.0/actual_dt)
-
+   local path_rate_ef_rads = tangents_to_rate(tangent1_ef, tangent2_ef, actual_dt)
    if Vec3IsNaN(path_rate_ef_rads) then
       gcs:send_text(0,string.format("path_rate_ef_rads: NaN"))
       path_rate_ef_rads = makeVector3f(0,0,0)
@@ -2127,6 +2224,32 @@ function do_path()
    err_angle_rate_bf_dps:y(0)
    err_angle_rate_bf_dps:z(0)
 
+   --[[
+      implement lookahead for path rates
+   --]]
+   if AEROM_LKAHD:get() > 0 then
+      local lookahead = AEROM_LKAHD:get()
+      local lookahead_vt = lookahead / path_var.total_time
+      p2 = rotate_path(path,
+                       constrain(path_var.path_t+lookahead_vt, 0, 1),
+                       path_var.initial_ori, path_var.initial_ef_pos)
+      local tangent3_ef = p2 - p1
+      local lk_ef_rads = tangents_to_rate(tangent2_ef, tangent3_ef, 0.5*(lookahead+(1.0/LOOP_RATE)))
+
+      -- scale for airspeed
+      lk_ef_rads = lk_ef_rads:scale(sq(vel_length/path_var.target_speed))
+
+      local lookahead_bf_rads = quat_earth_to_body(ahrs_quat, lk_ef_rads)
+      local lookahead_bf_dps = lookahead_bf_rads:scale(math.deg(1))
+      logger.write('AELK','Py,Ly,Pz,Lz', 'ffff',
+                   path_rate_bf_dps:y(),
+                   lookahead_bf_dps:y(),
+                   path_rate_bf_dps:z(),
+                   lookahead_bf_dps:z())
+      path_rate_bf_dps:y(lookahead_bf_dps:y())
+      path_rate_bf_dps:z(lookahead_bf_dps:z())
+   end
+   
    --[[
       calculate an additional yaw rate to get us to the right angle of sideslip for knifeedge
    --]]
@@ -2275,16 +2398,17 @@ command_table[18]= PathFunction(downline_45, "Downline-45")
 command_table[19]= PathFunction(stall_turn, "Stall Turn")
 command_table[20]= PathFunction(procedure_turn, "Procedure Turn")
 command_table[21]= PathFunction(derry_turn, "Derry Turn")
-command_table[22]= PathFunction(two_point_roll, "Two Point Roll")
+-- 22 was Two Point Roll - use multi point roll instead
 command_table[23]= PathFunction(half_climbing_circle, "Half Climbing Circle")
 command_table[24]= PathFunction(crossbox_humpty, "Crossbox Humpty")
 command_table[25]= PathFunction(laydown_humpty, "Laydown Humpty")
-command_table[26] = PathFunction(barrel_roll, "Barrel Roll")
+command_table[26]= PathFunction(barrel_roll, "Barrel Roll")
 command_table[27]= PathFunction(straight_flight, "Straight Hold")
-command_table[28] = PathFunction(partial_circle, "Partial Circle")
-command_table[29]= PathFunction(four_point_roll, "Four Point Roll")
-command_table[30]= PathFunction(eight_point_roll, "Eight Point Roll")
+command_table[28]= PathFunction(partial_circle, "Partial Circle")
+-- 29 was Four Point Roll - use multi point roll instead
+-- 30 was Eight Point Roll - use multi point roll instead
 command_table[31]= PathFunction(multi_point_roll, "Multi Point Roll")
+command_table[32]= PathFunction(side_step, "Side Step")
 command_table[200] = PathFunction(test_all_paths, "Test Suite")
 command_table[201] = PathFunction(nz_clubman, "NZ Clubman")
 command_table[202] = PathFunction(f3a_p23_l_r, "FAI F3A P23 L to R")
@@ -2328,6 +2452,7 @@ load_table["barrel_roll"] = barrel_roll
 load_table["straight_hold"] = straight_hold
 load_table["partial_circle"] = partial_circle
 load_table["multi_point_roll"] = multi_point_roll
+load_table["side_step"] = side_step
 load_table["p23_1a"] = p23_1a
 load_table["p23_1"] = p23_1
 load_table["p23_13a"] = p23_13a
@@ -2335,6 +2460,7 @@ load_table["p23_14"] = p23_14
 load_table["p23_15"] = p23_15
 load_table["p23_16"] = p23_16
 load_table["p23_17"] = p23_17
+load_table["funny_loop"] = funny_loop
 
 
 --[[
@@ -2567,4 +2693,5 @@ function update()
    return update, 1000.0/LOOP_RATE
 end
 
+gcs:send_text(0, string.format("Loaded plane_aerobatics.lua"))
 return update()
