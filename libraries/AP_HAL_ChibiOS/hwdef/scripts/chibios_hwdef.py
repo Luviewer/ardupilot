@@ -785,6 +785,20 @@ def get_flash_page_offset_kb(sector):
         offset += pages[i]
     return offset
 
+def load_file_with_include(fname):
+    '''load a file as an array of lines, processing any include lines'''
+    lines = open(fname,'r').readlines()
+    ret = []
+    for line in lines:
+        if line.startswith("include"):
+            a = shlex.split(line)
+            if len(a) > 1 and a[0] == "include":
+                fname2 = os.path.relpath(os.path.join(os.path.dirname(fname), a[1]))
+                ret.extend(load_file_with_include(fname2))
+                continue
+        ret.append(line)
+    return ret
+
 def get_storage_flash_page():
     '''get STORAGE_FLASH_PAGE either from this hwdef or from hwdef.dat
        in the same directory if this is a bootloader
@@ -796,7 +810,7 @@ def get_storage_flash_page():
         hwdefdat = args.hwdef[0].replace("-bl", "")
         if os.path.exists(hwdefdat):
             ret = None
-            lines = open(hwdefdat,'r').readlines()
+            lines = load_file_with_include(hwdefdat)
             for line in lines:
                 result = re.match(r'STORAGE_FLASH_PAGE\s*([0-9]+)', line)
                 if result:
@@ -1851,8 +1865,7 @@ def write_I2C_config(f):
 ''')
         return
     if 'I2C_ORDER' not in config:
-        print("Missing I2C_ORDER config")
-        return
+        error("Missing I2C_ORDER config")
     i2c_list = config['I2C_ORDER']
     f.write('// I2C configuration\n')
     if len(i2c_list) == 0:
@@ -2942,6 +2955,29 @@ def add_apperiph_defaults(f):
 #ifndef AP_COMPASS_DIAGONALS_ENABLED
 #define AP_COMPASS_DIAGONALS_ENABLED 0
 #endif
+
+// disable various battery monitor backends:
+#ifndef AP_BATTMON_SYNTHETIC_CURRENT_ENABLED
+#define AP_BATTMON_SYNTHETIC_CURRENT_ENABLED 0
+#endif
+
+#ifndef AP_BATT_MONITOR_MAX_INSTANCES
+#define AP_BATT_MONITOR_MAX_INSTANCES 1
+#endif
+
+#ifndef RANGEFINDER_MAX_INSTANCES
+#define RANGEFINDER_MAX_INSTANCES 1
+#endif
+
+// by default AP_Periphs don't use INS:
+#ifndef AP_INERTIALSENSOR_ENABLED
+#define AP_INERTIALSENSOR_ENABLED 0
+#endif
+
+// no fence by default in AP_Periph:
+#ifndef AP_FENCE_ENABLED
+#define AP_FENCE_ENABLED 0
+#endif
 ''')
 
 def add_bootloader_defaults(f):
@@ -2965,6 +3001,11 @@ def add_bootloader_defaults(f):
 #define HAL_GCS_ENABLED 0
 #endif
 
+// by default bootloaders don't use INS:
+#ifndef AP_INERTIALSENSOR_ENABLED
+#define AP_INERTIALSENSOR_ENABLED 0
+#endif
+
 #define HAL_MAX_CAN_PROTOCOL_DRIVERS 0
 ''')
 
@@ -2983,6 +3024,11 @@ def add_iomcu_firmware_defaults(f):
 // IOMCUs *definitely* don't use the FFT library:
 #ifndef HAL_GYROFFT_ENABLED
 #define HAL_GYROFFT_ENABLED 0
+#endif
+
+// by default IOMCUs don't use INS:
+#ifndef AP_INERTIALSENSOR_ENABLED
+#define AP_INERTIALSENSOR_ENABLED 0
 #endif
 ''')
 

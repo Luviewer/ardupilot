@@ -12,6 +12,7 @@
 #include <AP_Arming/AP_Arming.h>
 #include <AP_VisualOdom/AP_VisualOdom.h>
 #include <AP_Notify/AP_Notify.h>
+#include <AP_OpticalFlow/AP_OpticalFlow.h>
 
 #include "MissionItemProtocol_Waypoints.h"
 #include "MissionItemProtocol_Rally.h"
@@ -259,7 +260,7 @@ void GCS::update_sensor_status_flags()
     }
 #endif
 
-#if !defined(HAL_BUILD_AP_PERIPH) && AP_FENCE_ENABLED
+#if AP_FENCE_ENABLED
     const AC_Fence *fence = AP::fence();
     if (fence != nullptr) {
         if (fence->sys_status_enabled()) {
@@ -354,4 +355,16 @@ bool GCS::out_of_time() const
 void gcs_out_of_space_to_send(mavlink_channel_t chan)
 {
     gcs().chan(chan)->out_of_space_to_send();
+}
+
+/*
+  check there is enough space for a message
+ */
+bool GCS_MAVLINK::check_payload_size(uint16_t max_payload_len)
+{
+    if (txspace() < unsigned(packet_overhead()+max_payload_len)) {
+        gcs_out_of_space_to_send(chan);
+        return false;
+    }
+    return true;
 }

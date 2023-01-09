@@ -60,7 +60,14 @@ const AP_Param::GroupInfo AP_ExternalAHRS::var_info[] = {
     // @Units: Hz
     // @User: Standard
     AP_GROUPINFO("_RATE", 2, AP_ExternalAHRS, rate, 50),
-    
+
+    // @Param: _OPTIONS
+    // @DisplayName: External AHRS options
+    // @Description: External AHRS options bitmask
+    // @Bitmask: 0:Vector Nav use uncompensated values for accel gyro and mag.
+    // @User: Standard
+    AP_GROUPINFO("_OPTIONS", 3, AP_ExternalAHRS, options, 0),
+
     AP_GROUPEND
 };
 
@@ -86,6 +93,11 @@ void AP_ExternalAHRS::init(void)
         GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Unsupported ExternalAHRS type %u", unsigned(devtype));
         break;
     }
+}
+
+bool AP_ExternalAHRS::enabled() const
+{
+    return DevType(devtype) != DevType::None;
 }
 
 // get serial port number for the uart, or -1 if not applicable
@@ -206,6 +218,15 @@ void AP_ExternalAHRS::update(void)
     if (backend) {
         backend->update();
     }
+}
+
+// Get model/type name
+const char* AP_ExternalAHRS::get_name() const
+{
+    if (backend) {
+        return backend->get_name();
+    }
+    return nullptr;
 }
 
 namespace AP {

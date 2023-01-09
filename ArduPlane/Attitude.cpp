@@ -721,7 +721,9 @@ void Plane::calc_nav_yaw_coordinated(float speed_scaler)
         // user is doing an AUTOTUNE with yaw rate control
         const float rudd_expo = rudder_in_expo(true);
         const float yaw_rate = (rudd_expo/SERVO_MAX) * g.acro_yaw_rate;
-        commanded_rudder = yawController.get_rate_out(yaw_rate,  speed_scaler, false);
+        // add in the corrdinated turn yaw rate to make it easier to fly while tuning the yaw rate controller
+        const float coordination_yaw_rate = degrees(GRAVITY_MSS * tanf(radians(nav_roll_cd*0.01f))/MAX(aparm.airspeed_min,smoothed_airspeed));
+        commanded_rudder = yawController.get_rate_out(yaw_rate+coordination_yaw_rate,  speed_scaler, false);
         using_rate_controller = true;
     } else {
         if (control_mode == &mode_stabilize && rudder_in != 0) {
@@ -861,8 +863,7 @@ void Plane::calc_nav_roll()
 
         float bank_limit = degrees(atanf(guided_state.target_heading_accel_limit/GRAVITY_MSS)) * 1e2f;
 
-        g2.guidedHeading.update_error(error); // push error into AC_PID , possible improvement is to use update_all instead.?
-        g2.guidedHeading.set_dt(delta);
+        g2.guidedHeading.update_error(error, delta); // push error into AC_PID , possible improvement is to use update_all instead.?
 
         float i = g2.guidedHeading.get_i(); // get integrator TODO
         if (((is_negative(error) && !guided_state.target_heading_limit_low) || (is_positive(error) && !guided_state.target_heading_limit_high))) {

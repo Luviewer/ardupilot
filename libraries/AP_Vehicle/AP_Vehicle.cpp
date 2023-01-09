@@ -272,6 +272,16 @@ void AP_Vehicle::setup()
 
     custom_rotations.init();
 
+#if HAL_WITH_ESC_TELEM && HAL_GYROFFT_ENABLED
+    for (uint8_t i = 0; i<ESC_TELEM_MAX_ESCS; i++) {
+        esc_noise[i].set_cutoff_frequency(2);
+    }
+#endif
+
+    // invalidate count in case an enable parameter changed during
+    // initialisation
+    AP_Param::invalidate_count();
+
     gcs().send_text(MAV_SEVERITY_INFO, "ArduPilot Ready");
 }
 
@@ -383,6 +393,9 @@ const AP_Scheduler::Task AP_Vehicle::scheduler_tasks[] = {
 #endif
 #if HAL_INS_ACCELCAL_ENABLED
     SCHED_TASK(one_Hz_update,                                                         1, 100, 252),
+#endif
+#if HAL_WITH_ESC_TELEM && HAL_GYROFFT_ENABLED
+    SCHED_TASK(check_motor_noise,      5,     50, 252),
 #endif
     SCHED_TASK(update_arming,          1,     50, 253),
 };
@@ -567,9 +580,21 @@ void AP_Vehicle::update_dynamic_notch(AP_InertialSensor::HarmonicNotch &notch)
                 float notches[INS_MAX_NOTCHES];
                 const uint8_t peaks = gyro_fft.get_weighted_noise_center_frequencies_hz(notch.num_dynamic_notches, notches);
 
-                notch.update_frequencies_hz(peaks, notches);
+                if (peaks > 0) {
+                    for (uint8_t i = 0; i < peaks; i++) {
+                        notches[i] =  MAX(ref_freq, notches[i]);
+                    }
+                    notch.update_frequencies_hz(peaks, notches);
+                } else {    // since FFT can be used post-filter it is better to disable the notch when there is no data
+                    notch.set_inactive(true);
+                }
             } else {
-                notch.update_freq_hz(gyro_fft.get_weighted_noise_center_freq_hz());
+                float center_freq = gyro_fft.get_weighted_noise_center_freq_hz();
+                if (!is_zero(center_freq)) {
+                    notch.update_freq_hz(MAX(ref_freq, center_freq));
+                } else {    // since FFT can be used post-filter it is better to disable the notch when there is no data
+                    notch.set_inactive(true);
+                }
             }
             break;
 #endif
@@ -738,6 +763,35 @@ void AP_Vehicle::one_Hz_update(void)
         }
 #endif
     }
+}
+
+void AP_Vehicle::check_motor_noise()
+{
+#if HAL_GYROFFT_ENABLED && HAL_WITH_ESC_TELEM
+    if (!hal.util->get_soft_armed() || !gyro_fft.check_esc_noise() || !gyro_fft.using_post_filter_samples() || ins.has_fft_notch()) {
+        return;
+    }
+
+    float esc_data[ESC_TELEM_MAX_ESCS];
+    const uint8_t numf = AP::esc_telem().get_motor_frequencies_hz(ESC_TELEM_MAX_ESCS, esc_data);
+    bool output_error = false;
+
+    for (uint8_t i = 0; i<numf; i++) {
+        if (is_zero(esc_data[i])) {
+            continue;
+        }
+        float energy = gyro_fft.has_noise_at_frequency_hz(esc_data[i]);
+        energy = esc_noise[i].apply(energy, 0.2f);
+        if (energy > 40.0f && AP_HAL::millis() - last_motor_noise_ms > 5000) {
+            gcs().send_text(MAV_SEVERITY_WARNING, "Noise %.fdB on motor %u at %.fHz", energy, i+1, esc_data[i]);
+            output_error = true;
+        }
+    }
+
+    if (output_error) {
+        last_motor_noise_ms = AP_HAL::millis();
+    }
+#endif
 }
 
 AP_Vehicle *AP_Vehicle::_singleton = nullptr;

@@ -41,13 +41,13 @@ the ground track.
 | 18 | Downline-45              | radius | height loss |             |            | No         |
 | 19 | Stall Turn(experimental) | radius | height      | direction   |            | Yes        |
 | 20 | Procedure Turn           | radius | bank angle  | step-out    |            | Yes        |
-| 21 | Derry Turn               | radius | bank angle  |             |            | No         |
 | 23 | Half Climbing Circle     | radius | height      | bank angle  |            | Yes        |
-| 24 | Crossbox Humpty          | radius | height      |             |            | Yes        |
 | 25 | Laydown Humpty           | radius | height      |             |            | Yes        |
-| 25 | Barrel Roll              | radius | length      | num spirals |            | No         |
-| 26 | Straight Hold            | length | bank angle  |             |            | No         |
+| 26 | Barrel Roll              | radius | length      | num spirals |            | No         |
+| 27 | Straight Hold            | length | bank angle  |             |            | No         |
+| 28 | Partial Circle           | radius | bank angle  | arc angle   |            | No         |
 | 31 | Multi Point Roll         | length | num points  | hold frac   | pts to do  | No         |
+| 32 | Side Step                | width  | length      |             |            | No         |
 
 Some notes about maneuver arguments (arg1 - arg4):
 These are parameters each maneuver requires to execute. For example the length of a roll or radius of a loop (in meters), the number of rolls, the height of the maneuver, etc.
@@ -58,35 +58,26 @@ Length = 100, num points = 4, hold fraction = 0.5, pts to do = 2.
 Remember, the model is now exiting inverted so the next maneuver must be planned to start from this position.
 
 Note: In the script you will find other (specialised) manouvers which do not appear in the 
-'command table'. These tend to be specialised manouvers which may expect an inverted entry,a very high entry (270m), or 
-finish inverted and will not end well if started upright at a low altitude! These 
+'command table'. These are not intended to be used for 'tricks on a switch'. These 
 manouvers are used in some of the schedules defined below. 
+=======
+| 26 | Barrel Roll              | radius | length      | num spirals |            | No         |
+| 27 | Straight Hold            | length | bank angle  |             |            | No         |
+| 28 | Partial Circle           | radius | bank angle  | arc angle   |            | No         |
+| 31 | Multi Point Roll         | length | num points  | hold frac   | pts to do  | No         |
+| 32 | Side Step                | width  | length      |             |            | No         |
+>>>>>>> upstream/master
 
+Some are explained in the README.md file for the Schedules examples.
 
-## Available Schedules (pre-defined sequences of manouvers)
+Length = 100, num points = 4, hold fraction = 0.5, pts to do = 2.
 
-The following table gives the available pre-defined schedules. Each schedule has
-an ID number which is used in the AUTO mission or in the TRIKn_ID
-parameters (described below). Entry ground track orientation is maintained throughout the schedule (except for tricks which 
-modify it during the trick, like rolling circles and figure eights)
+See the Schedules subdirectory for a wide variety of pre-defined
+full aerobatic schedules you can use and instructions for how to
+install them. They can be used either in AUTO missions (See below) or as
+"tricks on a switch".
 
-| ID  | Name
-| --  | ------------------------
-| 200 | Test Suite (dont fly!)
-| 201 | NZ Clubman Schedule
-| 202 | FAI F3A P-23 (left to right)
-| 203 | FAI F3C Scale Example (left to right)
-| 204 | AirShow
-
-Note: ID's 202-203 are best flown with a mission start point 150m out from the pilot, with the prior and subsequent mission waypoints in a straight line with the model starting the script flying down wind. ID 201 is best started in the same manner, but the model positioned 100m out from the pilot.
-
-## Adding Schedules
-
-Schedules can be added to those above by creating a text file in the /scripts directory or the root directory on the SD card where the plane_aerobatics.lua script is stored.
-An example for the "Airshow" schedule is included as trick72.txt and would be executed as TRIK_ID = 72 via switch or in an AUTO mission command. The schedule will display its "name" when started, and as each trick begins the "message" will sent to the GCS to indicate its start.
-
-Note, that the "straight_align" command is not a trick, but rather a command as to when the next trick is to begin. Its parameter is meters from the
-schedules initial entry point. Positive numbers are meters away from that point in the entry direction on the ground track, while negative numbers are in the opposite direction on the track line. If the aircraft is already past that point in the desired direction along the track, the trick will begin immediately.
+In addition, new tricks can be created and loaded from within these schedules files. See the "Airshow.txt" schedule for an example.
 
 ## Loading the script
 
@@ -96,7 +87,7 @@ APM/SCRIPTS directory. You can use MAVFtp to do this.
 Then set
 
  - SCR_ENABLE = 1
- - SCR_HEAP_SIZE = 250000
+ - SCR_HEAP_SIZE = 300000
  - SCR_VM_I_COUNT = 200000
 
 You will need to refresh parameters after setting SCR_ENABLE. Then
@@ -206,4 +197,5 @@ tracking. Some of the key parameters are:
  - AEROM_THR_MIN : minumum throttle percentage for all aerobatic maneuvers
  - AEROM_THR_BOOST: minumum throttle percentage for maneuvers marked as throttle boost
  - AEROM_YAW_ACCEL: maximum yaw acceleration in degrees per second per second. Lower to soften yaw control
+ - AEROM_BOX_WIDTH: the length of the aerobatic box whose center is defined by the start of a schedule
  - AEROM_PATH_SCALE: scale factor for all maneuvers. A value above 1.0 will increase the size of the maneuvers. A value below 1.0 will decrease the size. A negative value will mirror the maneuvers, allowing a sequence designed for left-to-right to be flown right-to-left.

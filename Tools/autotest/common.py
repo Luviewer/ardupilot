@@ -1897,7 +1897,7 @@ class AutoTest(ABC):
             0,  # p7
         )
 
-    def reboot_sitl_mav(self, required_bootcount=None):
+    def reboot_sitl_mav(self, required_bootcount=None, force=False):
         """Reboot SITL instance using mavlink and wait for it to reconnect."""
         # we must make sure that stats have been reset - otherwise
         # when we reboot we'll reset statistics again and lose our
@@ -1929,6 +1929,9 @@ class AutoTest(ABC):
             # receiving an ACK from the process turns out to be really
             # quite difficult.  So just send it and hope for the best.
             self.progress("Sending reboot command")
+            p6 = 0
+            if force:
+                p6 = 20190226  # magic force-reboot value
             self.send_cmd(
                 mavutil.mavlink.MAV_CMD_PREFLIGHT_REBOOT_SHUTDOWN,
                 1,
@@ -1936,7 +1939,7 @@ class AutoTest(ABC):
                 0,
                 0,
                 0,
-                0,
+                p6,
                 0)
             do_context = True
         if do_context:
@@ -1971,12 +1974,12 @@ class AutoTest(ABC):
                                        0,
                                        0)
 
-    def reboot_sitl(self, required_bootcount=None):
+    def reboot_sitl(self, required_bootcount=None, force=False):
         """Reboot SITL instance and wait for it to reconnect."""
-        if self.armed():
+        if self.armed() and not force:
             raise NotAchievedException("Reboot attempted while armed")
         self.progress("Rebooting SITL")
-        self.reboot_sitl_mav(required_bootcount=required_bootcount)
+        self.reboot_sitl_mav(required_bootcount=required_bootcount, force=force)
         self.do_heartbeats(force=True)
         self.assert_simstate_location_is_at_startup_location()
 
@@ -2954,6 +2957,9 @@ class AutoTest(ABC):
         '''test sending of HIGH_LATENCY2'''
 
         # set airspeed sensor type to DLVR for air temperature message testing
+        if not self.is_plane():
+            # Plane does not have enable parameter
+            self.set_parameter("ARSPD_ENABLE", 1)
         self.set_parameter("ARSPD_BUS", 2)
         self.set_parameter("ARSPD_TYPE", 7)
         self.reboot_sitl()
@@ -3848,7 +3854,7 @@ class AutoTest(ABC):
                 raise ValueError("count %u not handled" % count)
         self.progress("Files same")
 
-    def assert_not_receive_message(self, message, timeout=1, mav=None):
+    def assert_not_receive_message(self, message, timeout=1, mav=None, condition=None):
         '''this is like assert_not_receiving_message but uses sim time not
         wallclock time'''
         self.progress("making sure we're not getting %s messages" % message)
@@ -3857,7 +3863,7 @@ class AutoTest(ABC):
 
         tstart = self.get_sim_time_cached()
         while True:
-            m = mav.recv_match(type=message, blocking=True, timeout=0.1)
+            m = mav.recv_match(type=message, blocking=True, timeout=0.1, condition=condition)
             if m is not None:
                 self.progress("Received: %s" % self.dump_message_verbose(m))
                 raise PreconditionFailedException("Receiving %s messages" % message)
@@ -5514,6 +5520,9 @@ class AutoTest(ABC):
             0
         )
 
+    def assert_mode(self, mode):
+        self.wait_mode(mode, timeout=0)
+
     def change_mode(self, mode, timeout=60):
         '''change vehicle flightmode'''
         self.wait_heartbeat()
@@ -5767,6 +5776,15 @@ class AutoTest(ABC):
         self.progress(r % (seconds_to_wait,))
         while tstart + seconds_to_wait > tnow:
             tnow = self.get_sim_time(drain_mav=False)
+
+    def send_terrain_check_message(self):
+        here = self.mav.location()
+        self.mav.mav.terrain_check_send(int(here.lat * 1e7), int(here.lng * 1e7))
+
+    def get_terrain_height(self, verbose=False):
+        self.send_terrain_check_message()
+        m = self.assert_receive_message('TERRAIN_REPORT', very_verbose=True)
+        return m.terrain_height
 
     def get_altitude(self, relative=False, timeout=30, altitude_source=None):
         '''returns vehicles altitude in metres, possibly relative-to-home'''
@@ -6107,6 +6125,7 @@ class AutoTest(ABC):
                                 maximum,
                                 current_value_getter,
                                 validator=None,
+                                value_averager=None,
                                 timeout=30,
                                 print_diagnostics_as_target_not_range=False,
                                 **kwargs):
@@ -6165,28 +6184,45 @@ class AutoTest(ABC):
                          achieved_duration_bit)
                     )
                 else:
-                    self.progress(
-                        "%s=%0.2f (%s between %s and %s)%s" %
-                        (value_name,
-                         last_value,
-                         want_or_got,
-                         str(minimum),
-                         str(maximum),
-                         achieved_duration_bit)
-                    )
+                    if type(last_value) is float:
+                        self.progress(
+                            "%s=%0.2f (%s between %s and %s)%s" %
+                            (value_name,
+                             last_value,
+                             want_or_got,
+                             str(minimum),
+                             str(maximum),
+                             achieved_duration_bit)
+                        )
+                    else:
+                        self.progress(
+                            "%s=%s (%s between %s and %s)%s" %
+                            (value_name,
+                             last_value,
+                             want_or_got,
+                             str(minimum),
+                             str(maximum),
+                             achieved_duration_bit)
+                        )
                 last_print_time = self.get_sim_time_cached()
             if is_value_valid:
-                sum_of_achieved_values += last_value
-                count_of_achieved_values += 1.0
+                if value_averager is not None:
+                    average = value_averager.add_value(last_value)
+                else:
+                    sum_of_achieved_values += last_value
+                    count_of_achieved_values += 1.0
+                    average = sum_of_achieved_values / count_of_achieved_values
                 if achieving_duration_start is None:
                     achieving_duration_start = self.get_sim_time_cached()
                 if self.get_sim_time_cached() - achieving_duration_start >= minimum_duration:
-                    self.progress("Attained %s=%f" % (value_name, sum_of_achieved_values / count_of_achieved_values))
+                    self.progress("Attained %s=%s" % (value_name, average))
                     return True
             else:
                 achieving_duration_start = None
                 sum_of_achieved_values = 0.0
                 count_of_achieved_values = 0
+                if value_averager is not None:
+                    value_averager.reset()
         if print_diagnostics_as_target_not_range:
             raise AutoTestTimeoutException(
                 "Failed to attain %s want %s, reached %s" %
@@ -6595,7 +6631,7 @@ class AutoTest(ABC):
         if seq != wpnum:
             raise NotAchievedException("Incorrect current wp")
 
-    def wait_current_waypoint(self, wpnum, timeout=60):
+    def wait_current_waypoint(self, wpnum, timeout=70):
         tstart = self.get_sim_time()
         while True:
             if self.get_sim_time() - tstart > timeout:
@@ -7073,8 +7109,12 @@ Also, ignores heartbeats not from our target system'''
     def installed_script_path(self, scriptname):
         return os.path.join("scripts", os.path.basename(scriptname))
 
-    def install_script(self, source, scriptname):
-        dest = self.installed_script_path(scriptname)
+    def install_script(self, source, scriptname, install_name=None):
+        if install_name is not None:
+            dest = self.installed_script_path(install_name)
+        else:
+            dest = self.installed_script_path(scriptname)
+
         destdir = os.path.dirname(dest)
         if not os.path.exists(destdir):
             os.mkdir(destdir)
@@ -7089,9 +7129,9 @@ Also, ignores heartbeats not from our target system'''
         source = self.script_test_source_path(scriptname)
         self.install_script(source, scriptname)
 
-    def install_applet_script(self, scriptname):
+    def install_applet_script(self, scriptname, install_name=None):
         source = self.script_applet_source_path(scriptname)
-        self.install_script(source, scriptname)
+        self.install_script(source, scriptname, install_name=install_name)
 
     def remove_example_script(self, scriptname):
         dest = self.installed_script_path(os.path.basename(scriptname))
@@ -9371,7 +9411,9 @@ Also, ignores heartbeats not from our target system'''
         if ex is not None:
             raise ex
 
-    def send_poll_message(self, message_id, target_sysid=None, target_compid=None, quiet=False):
+    def send_poll_message(self, message_id, target_sysid=None, target_compid=None, quiet=False, mav=None):
+        if mav is None:
+            mav = self.mav
         if type(message_id) == str:
             message_id = eval("mavutil.mavlink.MAVLINK_MSG_ID_%s" % message_id)
         self.send_cmd(mavutil.mavlink.MAV_CMD_REQUEST_MESSAGE,
@@ -9384,24 +9426,30 @@ Also, ignores heartbeats not from our target system'''
                       0,
                       target_sysid=target_sysid,
                       target_compid=target_compid,
-                      quiet=quiet)
+                      quiet=quiet,
+                      mav=mav)
 
-    def poll_message(self, message_id, timeout=10, quiet=False):
+    def poll_message(self, message_id, timeout=10, quiet=False, mav=None):
+        if mav is None:
+            mav = self.mav
         if type(message_id) == str:
             message_id = eval("mavutil.mavlink.MAVLINK_MSG_ID_%s" % message_id)
         tstart = self.get_sim_time() # required for timeout in run_cmd_get_ack to work
-        self.send_poll_message(message_id, quiet=quiet)
+        self.send_poll_message(message_id, quiet=quiet, mav=mav)
         self.run_cmd_get_ack(
             mavutil.mavlink.MAV_CMD_REQUEST_MESSAGE,
             mavutil.mavlink.MAV_RESULT_ACCEPTED,
             timeout,
             quiet=quiet,
+            mav=mav
         )
         while True:
             if self.get_sim_time_cached() - tstart > timeout:
                 raise NotAchievedException("Did not receive polled message")
-            m = self.mav.recv_match(blocking=True,
-                                    timeout=0.1)
+            m = mav.recv_match(blocking=True,
+                               timeout=0.1)
+            if self.mav != mav:
+                self.drain_mav()
             if m is None:
                 continue
             if m.id != message_id:
@@ -11881,7 +11929,7 @@ switch value'''
             raise NotAchievedException("Did not get BATTERY_STATUS message")
         battery_status_current_a = batt.current_battery * 0.01 # cA -> A
         self.progress("BATTERY_STATUS current==%f frsky==%f" % (battery_status_current_a, current_a))
-        if self.compare_number_percent(battery_status_current_a, current_a, 10):
+        if self.compare_number_percent(round(battery_status_current_a * 10), round(current_a * 10), 10):
             return True
         return False
 

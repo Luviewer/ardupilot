@@ -196,7 +196,6 @@ private:
     AP_Int8  _land_pitch_max;
     AP_Float _maxSinkRate_approach;
     AP_Int32 _options;
-    AP_Int8  _land_pitch_trim;
     AP_Float _flare_holdoff_hgt;
     AP_Float _hgt_dem_tconst;
 
@@ -401,8 +400,9 @@ private:
     // Time since last update of main TECS loop (seconds)
     float _DT;
 
-    // counter for demanded sink rate on land final
-    uint8_t _flare_counter;
+    // true when class variables used for flare control have been initialised
+    // on flare entry
+    bool _flare_initialised;
 
     // slew height demand lag filter value when transition to land
     float hgt_dem_lag_filter_slew;

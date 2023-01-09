@@ -1045,7 +1045,7 @@ uint16_t GCS_MAVLINK::get_reschedule_interval_ms(const deferred_message_bucket_t
         // we are sending requests for waypoints, penalize streams:
         interval_ms *= 4;
     }
-    if (ftp.replies && AP_HAL::millis() - ftp.last_send_ms < 500) {
+    if (AP_HAL::millis() - ftp.last_send_ms < 500) {
         // we are sending ftp replies
         interval_ms *= 4;
     }
@@ -1222,7 +1222,6 @@ void GCS_MAVLINK::update_send()
         AP::logger().handle_log_send();
     }
 #endif
-    send_ftp_replies();
 
     if (!deferred_messages_initialised) {
         initialise_message_intervals_from_streamrates();
@@ -1829,7 +1828,7 @@ void GCS_MAVLINK::send_rc_channels_raw() const
 
 void GCS_MAVLINK::send_raw_imu()
 {
-#if HAL_INS_ENABLED
+#if AP_INERTIALSENSOR_ENABLED
     const AP_InertialSensor &ins = AP::ins();
     const Compass &compass = AP::compass();
 
@@ -1861,7 +1860,7 @@ void GCS_MAVLINK::send_raw_imu()
 
 void GCS_MAVLINK::send_scaled_imu(uint8_t instance, void (*send_fn)(mavlink_channel_t chan, uint32_t time_ms, int16_t xacc, int16_t yacc, int16_t zacc, int16_t xgyro, int16_t ygyro, int16_t zgyro, int16_t xmag, int16_t ymag, int16_t zmag, int16_t temperature))
 {
-#if HAL_INS_ENABLED
+#if AP_INERTIALSENSOR_ENABLED
     const AP_InertialSensor &ins = AP::ins();
     const Compass &compass = AP::compass();
     int16_t _temperature = 0;
@@ -2555,7 +2554,7 @@ void GCS_MAVLINK::send_local_position() const
  */
 void GCS_MAVLINK::send_vibration() const
 {
-#if HAL_INS_ENABLED
+#if AP_INERTIALSENSOR_ENABLED
     const AP_InertialSensor &ins = AP::ins();
 
     Vector3f vibration = ins.get_vibration_levels();
@@ -3011,9 +3010,13 @@ MAV_RESULT GCS_MAVLINK::handle_preflight_reboot(const mavlink_command_long_t &pa
 #endif
     }
 
+    // refuse reboot when armed:
     if (hal.util->get_soft_armed()) {
-        // refuse reboot when armed
-        return MAV_RESULT_FAILED;
+        /// but allow it if forced:
+        const float magic_force_reboot_value = 20190226;
+        if (!is_equal(packet.param6, magic_force_reboot_value)) {
+            return MAV_RESULT_FAILED;
+        }
     }
 
     if (!(is_equal(packet.param1, 1.0f) || is_equal(packet.param1, 3.0f))) {
@@ -3412,11 +3415,13 @@ void GCS_MAVLINK::handle_odometry(const mavlink_message_t &msg)
         posErr = cbrtf(sq(m.pose_covariance[0])+sq(m.pose_covariance[6])+sq(m.pose_covariance[11]));
         angErr = cbrtf(sq(m.pose_covariance[15])+sq(m.pose_covariance[18])+sq(m.pose_covariance[20]));
     }
-    
+
     const uint32_t timestamp_ms = correct_offboard_timestamp_usec_to_ms(m.time_usec, PAYLOAD_SIZE(chan, ODOMETRY));
     visual_odom->handle_vision_position_estimate(m.time_usec, timestamp_ms, m.x, m.y, m.z, q, posErr, angErr, m.reset_counter);
 
-    const Vector3f vel{m.vx, m.vy, m.vz};
+    // convert velocity vector from FRD to NED frame
+    Vector3f vel{m.vx, m.vy, m.vz};
+    vel = q * vel;
     visual_odom->handle_vision_speed_estimate(m.time_usec, timestamp_ms, vel, m.reset_counter);
 }
 
@@ -3803,6 +3808,10 @@ void GCS_MAVLINK::handle_common_message(const mavlink_message_t &msg)
         break;
 #endif
 
+    case MAVLINK_MSG_ID_MANUAL_CONTROL:
+        handle_manual_control(msg);
+        break;
+
 #if AP_NOTIFY_MAVLINK_PLAY_TUNE_SUPPORT_ENABLED
     case MAVLINK_MSG_ID_PLAY_TUNE:
         // send message to Notify
@@ -3939,10 +3948,6 @@ void GCS_MAVLINK::handle_common_message(const mavlink_message_t &msg)
 
 void GCS_MAVLINK::handle_common_mission_message(const mavlink_message_t &msg)
 {
-    AP_Mission *_mission = AP::mission();
-    if (_mission == nullptr) {
-        return;
-    }
     switch (msg.msgid) {
     case MAVLINK_MSG_ID_MISSION_WRITE_PARTIAL_LIST: // MAV ID: 38
     {
@@ -3966,7 +3971,10 @@ void GCS_MAVLINK::handle_common_mission_message(const mavlink_message_t &msg)
 
     case MAVLINK_MSG_ID_MISSION_SET_CURRENT:    // MAV ID: 41
     {
-        handle_mission_set_current(*_mission, msg);
+        AP_Mission *_mission = AP::mission();
+        if (_mission != nullptr) {
+            handle_mission_set_current(*_mission, msg);
+        }
         break;
     }
 
@@ -4030,7 +4038,7 @@ void GCS_MAVLINK::send_banner()
         send_text(MAV_SEVERITY_INFO, "%s", banner_msg);
     }
 
-#if HAL_INS_ENABLED
+#if AP_INERTIALSENSOR_ENABLED
     // output any fast sampling status messages
     for (uint8_t i = 0; i < INS_MAX_BACKENDS; i++) {
         if (AP::ins().get_output_banner(i, banner_msg, sizeof(banner_msg))) {
@@ -4106,7 +4114,7 @@ MAV_RESULT GCS_MAVLINK::handle_command_preflight_set_sensor_offsets(const mavlin
 
 bool GCS_MAVLINK::calibrate_gyros()
 {
-#if HAL_INS_ENABLED
+#if AP_INERTIALSENSOR_ENABLED
     AP::ins().init_gyro();
     if (!AP::ins().gyro_calibrated_ok_all()) {
         return false;
@@ -4166,7 +4174,7 @@ MAV_RESULT GCS_MAVLINK::_handle_command_preflight_calibration(const mavlink_comm
     }
 #endif
 
-#if HAL_INS_ENABLED
+#if AP_INERTIALSENSOR_ENABLED
     const uint32_t now = AP_HAL::millis();
     if (is_equal(packet.param5,2.0f)) {
         // reject any time we've done a calibration recently
@@ -5026,47 +5034,40 @@ void GCS::try_send_queued_message_for_type(MAV_MISSION_TYPE type) const {
 
 bool GCS_MAVLINK::try_send_mission_message(const enum ap_message id)
 {
-    AP_Mission *mission = AP::mission();
-    if (mission == nullptr) {
-        return true;
-    }
-
-    bool ret = true;
     switch (id) {
     case MSG_CURRENT_WAYPOINT:
+    {
         CHECK_PAYLOAD_SIZE(MISSION_CURRENT);
-        mavlink_msg_mission_current_send(chan, mission->get_current_nav_index());
-        ret = true;
+        AP_Mission *mission = AP::mission();
+        if (mission != nullptr) {
+            mavlink_msg_mission_current_send(chan, mission->get_current_nav_index());
+        }
         break;
+    }
     case MSG_MISSION_ITEM_REACHED:
         CHECK_PAYLOAD_SIZE(MISSION_ITEM_REACHED);
         mavlink_msg_mission_item_reached_send(chan, mission_item_reached_index);
-        ret = true;
         break;
     case MSG_NEXT_MISSION_REQUEST_WAYPOINTS:
         CHECK_PAYLOAD_SIZE(MISSION_REQUEST);
         gcs().try_send_queued_message_for_type(MAV_MISSION_TYPE_MISSION);
-        ret = true;
         break;
 #if HAL_RALLY_ENABLED
     case MSG_NEXT_MISSION_REQUEST_RALLY:
         CHECK_PAYLOAD_SIZE(MISSION_REQUEST);
         gcs().try_send_queued_message_for_type(MAV_MISSION_TYPE_RALLY);
-        ret = true;
         break;
 #endif
 #if AP_FENCE_ENABLED
     case MSG_NEXT_MISSION_REQUEST_FENCE:
         CHECK_PAYLOAD_SIZE(MISSION_REQUEST);
         gcs().try_send_queued_message_for_type(MAV_MISSION_TYPE_FENCE);
-        ret = true;
         break;
 #endif
     default:
-        ret = true;
         break;
     }
-    return ret;
+    return true;
 }
 
 void GCS_MAVLINK::send_hwstatus()
@@ -5357,11 +5358,11 @@ void GCS_MAVLINK::send_autopilot_state_for_gimbal_device() const
         vel.zero();
     }
 
-    // get vehicle body-frame rotation rate targets
-    Vector3f rate_bf_targets;
+    // get vehicle earth-frame rotation rate targets
+    Vector3f rate_ef_targets;
     const AP_Vehicle *vehicle = AP::vehicle();
     if (vehicle != nullptr) {
-        vehicle->get_rate_bf_targets(rate_bf_targets);
+        vehicle->get_rate_ef_targets(rate_ef_targets);
     }
 
     // get estimator flags
@@ -5382,7 +5383,7 @@ void GCS_MAVLINK::send_autopilot_state_for_gimbal_device() const
         vel.y,  // y speed in NED (m/s)
         vel.z,  // z speed in NED (m/s)
         0,      // velocity estimated delay in micros
-        rate_bf_targets.z,// feed forward angular velocity z
+        rate_ef_targets.z,  // feed forward angular velocity z
         est_status_flags,   // estimator status
         0);     // landed_state (see MAV_LANDED_STATE)
 }
@@ -6298,6 +6299,29 @@ void GCS_MAVLINK::manual_override(RC_Channel *c, int16_t value_in, const uint16_
     }
     c->set_override(override_value, tnow);
 }
+
+void GCS_MAVLINK::handle_manual_control(const mavlink_message_t &msg)
+{
+    if (msg.sysid != sysid_my_gcs()) {
+        return; // only accept control from our gcs
+    }
+
+    mavlink_manual_control_t packet;
+    mavlink_msg_manual_control_decode(&msg, &packet);
+
+    if (packet.target != gcs().sysid_this_mav()) {
+        return; // only accept control aimed at us
+    }
+
+    uint32_t tnow = AP_HAL::millis();
+
+    handle_manual_control_axes(packet, tnow);
+
+    // a manual control message is considered to be a 'heartbeat'
+    // from the ground station for failsafe purposes
+    gcs().sysid_myggcs_seen(tnow);
+}
+
 
 uint8_t GCS_MAVLINK::receiver_rssi() const
 {

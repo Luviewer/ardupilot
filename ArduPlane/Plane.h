@@ -558,7 +558,7 @@ private:
 #endif // OFFBOARD_GUIDED == ENABLED
     } guided_state;
 
-#if LANDING_GEAR_ENABLED == ENABLED
+#if AP_LANDINGGEAR_ENABLED
     // landing gear state
     struct {
         AP_FixedWing::FlightStage last_flight_stage;
@@ -631,7 +631,7 @@ private:
 
 
 #if PARACHUTE == ENABLED
-    AP_Parachute parachute{relay};
+    AP_Parachute parachute;
 #endif
 
     // terrain handling

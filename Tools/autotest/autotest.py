@@ -20,7 +20,6 @@ import subprocess
 import sys
 import time
 import traceback
-from distutils.dir_util import copy_tree
 
 import rover
 import arducopter
@@ -661,6 +660,10 @@ class TestResults(object):
             f.write(badge)
 
 
+def copy_tree(f, t, dirs_exist_ok=False):
+    shutil.copytree(f, t, dirs_exist_ok=dirs_exist_ok)
+
+
 def write_webresults(results_to_write):
     """Write webpage results."""
     t = mavtemplate.MAVTemplate()
@@ -671,7 +674,7 @@ def write_webresults(results_to_write):
         f.close()
     for f in glob.glob(util.reltopdir('Tools/autotest/web/*.png')):
         shutil.copy(f, buildlogs_path(os.path.basename(f)))
-    copy_tree(util.reltopdir("Tools/autotest/web/css"), buildlogs_path("css"))
+    copy_tree(util.reltopdir("Tools/autotest/web/css"), buildlogs_path("css"), dirs_exist_ok=True)
     results_to_write.generate_badge()
 
 

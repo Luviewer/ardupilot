@@ -1128,15 +1128,16 @@ class AutoTestCopter(AutoTest):
         self.change_mode(mode)
         self.zero_throttle()
         self.wait_ready_to_arm()
+        self.context_push()
         self.context_collect('STATUSTEXT')
-        self.send_mavlink_arm_command()
-        self.mav.recv_match(blocking=True, timeout=1)
+        self.arm_vehicle()
         if user_takeoff:
             self.run_cmd(mavutil.mavlink.MAV_CMD_NAV_TAKEOFF, 0, 0, 0, 0, 0, 0, 10)
         else:
             self.set_rc(3, 1700)
         # we may never see ourselves as armed in a heartbeat
         self.wait_statustext("Takeoff blocked: ESC RPM too low", check_context=True)
+        self.context_pop()
         self.zero_throttle()
         self.disarm_vehicle()
         self.wait_disarmed()
@@ -2192,8 +2193,7 @@ class AutoTestCopter(AutoTest):
 
         self.set_rc(2, 1500)
         self.context_pop()
-        self.disarm_vehicle(force=True)
-        self.reboot_sitl()
+        self.reboot_sitl(force=True)
 
         if ex is not None:
             raise ex
@@ -2403,6 +2403,65 @@ class AutoTestCopter(AutoTest):
 
         raise NotAchievedException("AUTOTUNE failed (%u seconds)" %
                                    (self.get_sim_time() - tstart))
+
+    def EK3_RNG_USE_HGT(self):
+        '''basic tests for using rangefinder when speed and height below thresholds'''
+        # this takes advantage of some code in send_status_report
+        # which only reports terrain variance when using switch-height
+        # and using the rangefinder
+        self.context_push()
+
+        self.set_analog_rangefinder_parameters()
+        # set use-height to 20m (the parameter is a percentage of max range)
+        self.set_parameters({
+            'EK3_RNG_USE_HGT': 200000 / self.get_parameter('RNGFND1_MAX_CM'),
+        })
+        self.reboot_sitl()
+
+        # add a listener that verifies rangefinder innovations look good
+        global alt
+        alt = None
+
+        def verify_innov(mav, m):
+            global alt
+            if m.get_type() == 'GLOBAL_POSITION_INT':
+                alt = m.relative_alt * 0.001  # mm -> m
+                return
+            if m.get_type() != 'EKF_STATUS_REPORT':
+                return
+            if alt is None:
+                return
+            if alt > 1 and alt < 8:  # 8 is very low, but it takes a long time to start to use the rangefinder again
+                zero_variance_wanted = False
+            elif alt > 20:
+                zero_variance_wanted = True
+            else:
+                return
+            variance = m.terrain_alt_variance
+            if zero_variance_wanted and variance > 0.00001:
+                raise NotAchievedException("Wanted zero variance at height %f, got %f" % (alt, variance))
+            elif not zero_variance_wanted and variance == 0:
+                raise NotAchievedException("Wanted non-zero variance at alt=%f, got zero" % alt)
+
+        self.install_message_hook_context(verify_innov)
+
+        self.takeoff(50, mode='GUIDED')
+        current_alt = self.mav.location().alt
+        target_position = mavutil.location(
+            -35.362938,
+            149.165185,
+            current_alt,
+            0
+        )
+
+        self.fly_guided_move_to(target_position, timeout=300)
+
+        self.change_mode('LAND')
+        self.wait_disarmed()
+
+        self.context_pop()
+
+        self.reboot_sitl()
 
     def CopterMission(self):
         '''fly mission which tests a significant number of commands'''
@@ -4499,6 +4558,50 @@ class AutoTestCopter(AutoTest):
         if ex is not None:
             raise ex
 
+    def Weathervane(self):
+        '''Test copter weathervaning'''
+        # We test nose into wind code paths and yaw direction here and test side into wind
+        # yaw direction in QuadPlane tests to reduce repetition.
+        self.set_parameters({
+            "SIM_WIND_SPD": 10,
+            "SIM_WIND_DIR": 100,
+            "GUID_OPTIONS": 129, # allow weathervaning and arming from tx in guided
+            "AUTO_OPTIONS": 131, # allow arming in auto, take off without raising the stick, and weathervaning
+            "WVANE_ENABLE": 1,
+            "WVANE_GAIN": 3,
+            "WVANE_VELZ_MAX": 1,
+            "WVANE_SPD_MAX": 2
+        })
+
+        self.progress("Test weathervaning in auto")
+        self.load_mission("weathervane_mission.txt", strict=False)
+
+        self.change_mode("AUTO")
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        self.wait_statustext("Weathervane Active", timeout=60)
+        self.do_RTL()
+        self.wait_disarmed()
+        self.change_mode("GUIDED")
+
+        # After take off command in guided we enter the velaccl sub mode
+        self.progress("Test weathervaning in guided vel-accel")
+        self.set_rc(3, 1000)
+        self.wait_ready_to_arm()
+
+        self.arm_vehicle()
+        self.user_takeoff(alt_min=15)
+        # Wait for heading to match wind direction.
+        self.wait_heading(100, accuracy=8, timeout=100)
+
+        self.progress("Test weathervaning in guided pos only")
+        # Travel directly north to align heading north and build some airspeed.
+        self.fly_guided_move_local(x=40, y=0, z_up=15)
+        # Wait for heading to match wind direction.
+        self.wait_heading(100, accuracy=8, timeout=100)
+        self.do_RTL()
+
     def GuidedSubModeChange(self):
         """"Ensure we can move around in guided after a takeoff command."""
 
@@ -5844,6 +5947,191 @@ class AutoTestCopter(AutoTest):
         if ex is not None:
             raise ex
 
+    def GyroFFTPostFilter(self):
+        """Use FFT-driven dynamic harmonic notch to control post-RPM filter motor noise."""
+        # basic gyro sample rate test
+        self.progress("Flying with gyro FFT post-filter supression - Gyro sample rate")
+        self.context_push()
+        ex = None
+        try:
+            # This set of parameters creates two noise peaks one at the motor frequency and one at 250Hz
+            # we then use ESC telemetry to drive the notch to clean up the motor noise and a post-filter
+            # FFT notch to clean up the remaining 250Hz. If either notch fails then the test will be failed
+            # due to too much noise being present
+            self.set_parameters({
+                "AHRS_EKF_TYPE": 10,    # magic tridge EKF type that dramatically speeds up the test
+                "EK2_ENABLE": 0,
+                "EK3_ENABLE": 0,
+                "INS_LOG_BAT_MASK": 3,
+                "INS_LOG_BAT_OPT": 4,
+                "INS_GYRO_FILTER": 100,
+                "INS_FAST_SAMPLE": 3,
+                "LOG_BITMASK": 958,
+                "LOG_DISARMED": 0,
+                "SIM_DRIFT_SPEED": 0,
+                "SIM_DRIFT_TIME": 0,
+                "SIM_GYR1_RND": 20,     # enable a noisy gyro
+                "INS_HNTCH_ENABLE": 1,
+                "INS_HNTCH_FREQ": 80,
+                "INS_HNTCH_REF": 1.0,
+                "INS_HNTCH_HMNCS": 1,   # first harmonic
+                "INS_HNTCH_ATT": 50,
+                "INS_HNTCH_BW": 30,
+                "INS_HNTCH_MODE": 3,    # ESC telemetry
+                "INS_HNTCH_OPTS": 2,    # notch-per-motor
+                "INS_HNTC2_ENABLE": 1,
+                "INS_HNTC2_FREQ": 80,
+                "INS_HNTC2_REF": 1.0,
+                "INS_HNTC2_HMNCS": 1,
+                "INS_HNTC2_ATT": 50,
+                "INS_HNTC2_BW": 40,
+                "INS_HNTC2_MODE": 4,    # in-flight FFT
+                "INS_HNTC2_OPTS": 18,   # triple-notch, notch-per-FFT peak
+                "FFT_ENABLE": 1,
+                "FFT_WINDOW_SIZE": 64,  # not the default, but makes the test more reliable
+                "FFT_OPTIONS": 1,
+                "FFT_MINHZ": 50,
+                "FFT_MAXHZ": 450,
+                "SIM_VIB_MOT_MAX": 250, # gives a motor peak at about 145Hz
+                "SIM_VIB_FREQ_X": 250,  # create another peak at 250hz
+                "SIM_VIB_FREQ_Y": 250,
+                "SIM_VIB_FREQ_Z": 250,
+                "SIM_GYR_FILE_RW": 2,   # write data to a file
+            })
+            self.reboot_sitl()
+
+            # do test flight:
+            self.takeoff(10, mode="ALT_HOLD")
+            tstart, tend, hover_throttle = self.hover_for_interval(60)
+            # fly fast forrest!
+            self.set_rc(3, 1900)
+            self.set_rc(2, 1200)
+            self.wait_groundspeed(5, 1000)
+            self.set_rc(3, 1500)
+            self.set_rc(2, 1500)
+            self.do_RTL()
+
+            psd = self.mavfft_fttd(1, 2, tstart * 1.0e6, tend * 1.0e6)
+
+            # batch sampler defaults give 1024 fft and sample rate of 1kz so roughly 1hz/bin
+            scale = 1000. / 1024.
+            sminhz = int(100 * scale)
+            smaxhz = int(350 * scale)
+            freq = psd["F"][numpy.argmax(psd["X"][sminhz:smaxhz]) + sminhz]
+            peakdb = numpy.amax(psd["X"][sminhz:smaxhz])
+            if peakdb < -5:
+                self.progress("Did not detect a motor peak, found %fHz at %fdB" % (freq, peakdb))
+            else:
+                raise NotAchievedException("Detected %fHz motor peak at %fdB" % (freq, peakdb))
+
+            # prevent update parameters from messing with the settings when we pop the context
+            self.set_parameters({
+                "SIM_VIB_FREQ_X": 0,
+                "SIM_VIB_FREQ_Y": 0,
+                "SIM_VIB_FREQ_Z": 0,
+                "SIM_VIB_MOT_MULT": 1.0,
+                "SIM_GYR_FILE_RW": 0,  # stop writing data
+                "FFT_ENABLE": 0,
+            })
+            self.reboot_sitl()
+
+        except Exception as e:
+            self.print_exception_caught(e)
+            ex = e
+
+        self.context_pop()
+
+        # need a final reboot because weird things happen to your
+        # vehicle state when switching back from EKF type 10!
+        self.reboot_sitl()
+
+        if ex is not None:
+            raise ex
+
+    def GyroFFTMotorNoiseCheck(self):
+        """Use FFT to detect post-filter motor noise."""
+        # basic gyro sample rate test
+        self.progress("Flying with FFT motor-noise detection - Gyro sample rate")
+        self.context_push()
+        ex = None
+        try:
+            # This set of parameters creates two noise peaks one at the motor frequency and one at 250Hz
+            # we then use ESC telemetry to drive the notch to clean up the motor noise and a post-filter
+            # FFT notch to clean up the remaining 250Hz. If either notch fails then the test will be failed
+            # due to too much noise being present
+            self.set_parameters({
+                "AHRS_EKF_TYPE": 10,    # magic tridge EKF type that dramatically speeds up the test
+                "EK2_ENABLE": 0,
+                "EK3_ENABLE": 0,
+                "INS_LOG_BAT_MASK": 3,
+                "INS_LOG_BAT_OPT": 4,
+                "INS_GYRO_FILTER": 100,
+                "INS_FAST_SAMPLE": 3,
+                "LOG_BITMASK": 958,
+                "LOG_DISARMED": 0,
+                "SIM_DRIFT_SPEED": 0,
+                "SIM_DRIFT_TIME": 0,
+                "SIM_GYR1_RND": 200,     # enable a noisy gyro
+                "INS_HNTCH_ENABLE": 1,
+                "INS_HNTCH_FREQ": 80,
+                "INS_HNTCH_REF": 1.0,
+                "INS_HNTCH_HMNCS": 1,   # first harmonic
+                "INS_HNTCH_ATT": 50,
+                "INS_HNTCH_BW": 30,
+                "INS_HNTCH_MODE": 3,    # ESC telemetry
+                "INS_HNTCH_OPTS": 2,    # notch-per-motor
+                "INS_HNTC2_ENABLE": 1,
+                "INS_HNTC2_FREQ": 80,
+                "INS_HNTC2_REF": 1.0,
+                "INS_HNTC2_HMNCS": 1,
+                "INS_HNTC2_ATT": 50,
+                "INS_HNTC2_BW": 40,
+                "INS_HNTC2_MODE": 0,    # istatic notch
+                "INS_HNTC2_OPTS": 16,   # triple-notch
+                "FFT_ENABLE": 1,
+                "FFT_WINDOW_SIZE": 64,  # not the default, but makes the test more reliable
+                "FFT_OPTIONS": 3,
+                "FFT_MINHZ": 50,
+                "FFT_MAXHZ": 450,
+                "SIM_VIB_MOT_MAX": 250, # gives a motor peak at about 145Hz
+                "SIM_VIB_FREQ_X": 250,  # create another peak at 250hz
+                "SIM_VIB_FREQ_Y": 250,
+                "SIM_VIB_FREQ_Z": 250,
+                "SIM_GYR_FILE_RW": 2,   # write data to a file
+            })
+            self.reboot_sitl()
+
+            # do test flight:
+            self.takeoff(10, mode="ALT_HOLD")
+            tstart, tend, hover_throttle = self.hover_for_interval(10)
+            self.wait_statustext("Noise ", timeout=20)
+            self.set_parameter("SIM_GYR1_RND", 0) # stop noise so that we can get home
+            self.do_RTL()
+
+            # prevent update parameters from messing with the settings when we pop the context
+            self.set_parameters({
+                "SIM_VIB_FREQ_X": 0,
+                "SIM_VIB_FREQ_Y": 0,
+                "SIM_VIB_FREQ_Z": 0,
+                "SIM_VIB_MOT_MULT": 1.0,
+                "SIM_GYR_FILE_RW": 0,  # stop writing data
+                "FFT_ENABLE": 0,
+            })
+            self.reboot_sitl()
+
+        except Exception as e:
+            self.print_exception_caught(e)
+            ex = e
+
+        self.context_pop()
+
+        # need a final reboot because weird things happen to your
+        # vehicle state when switching back from EKF type 10!
+        self.reboot_sitl()
+
+        if ex is not None:
+            raise ex
+
     def BrakeMode(self):
         '''Fly Brake Mode'''
         # test brake mode
@@ -6714,10 +7002,14 @@ class AutoTestCopter(AutoTest):
                 "BARO1_WCF_BCK": -0.300000,
                 "BARO1_WCF_RGT": 0.300000,
                 "BARO1_WCF_LFT": 0.300000,
+                "BARO1_WCF_UP": 0.300000,
+                "BARO1_WCF_DN": 0.300000,
                 "SIM_BARO_WCF_FWD": -0.300000,
                 "SIM_BARO_WCF_BAK": -0.300000,
                 "SIM_BARO_WCF_RGT": 0.300000,
                 "SIM_BARO_WCF_LFT": 0.300000,
+                "SIM_BARO_WCF_UP": 0.300000,
+                "SIM_BARO_WCF_DN": 0.300000,
                 "SIM_WIND_DIR": wind_dir_truth,
                 "SIM_WIND_SPD": wind_spd_truth,
                 "SIM_WIND_T": 1.000000,
@@ -9166,6 +9458,7 @@ class AutoTestCopter(AutoTest):
              self.RichenPower,
              self.IE24,
              self.MAVLandedStateTakeoff,
+             self.Weathervane,
         ])
         return ret
 
@@ -9189,14 +9482,16 @@ class AutoTestCopter(AutoTest):
         '''return list of all tests'''
         ret = ([
             self.MotorVibration,
-            Test(self.DynamicNotches, attempts=8),
+            Test(self.DynamicNotches, attempts=4),
             self.PositionWhenGPSIsZero,
-            Test(self.DynamicRpmNotches, attempts=8),
+            Test(self.DynamicRpmNotches, attempts=4),
             self.RefindGPS,
-            Test(self.GyroFFT, attempts=8),
-            Test(self.GyroFFTHarmonic, attempts=16, speedup=8),
-            self.GyroFFTAverage,
-            Test(self.GyroFFTContinuousAveraging, attempts=8, speedup=8),
+            Test(self.GyroFFT, attempts=1, speedup=8),
+            Test(self.GyroFFTHarmonic, attempts=4, speedup=8),
+            Test(self.GyroFFTAverage, attempts=1, speedup=8),
+            Test(self.GyroFFTContinuousAveraging, attempts=4, speedup=8),
+            self.GyroFFTPostFilter,
+            self.GyroFFTMotorNoiseCheck,
             self.CompassReordering,
             self.CRSF,
             self.MotorTest,
@@ -9230,6 +9525,7 @@ class AutoTestCopter(AutoTest):
             self.WatchAlts,
             self.GuidedEKFLaneChange,
             self.Sprayer,
+            self.EK3_RNG_USE_HGT
         ])
         return ret
 

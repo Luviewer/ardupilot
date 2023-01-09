@@ -11,6 +11,9 @@
 #if MODE_FOLLOW_ENABLED == ENABLED
  # include <AP_Follow/AP_Follow.h>
 #endif
+#if WEATHERVANE_ENABLED == ENABLED
+ #include <AC_AttitudeControl/AC_WeatherVane.h>
+#endif
 
 // Global parameter class.
 //
@@ -489,6 +492,7 @@ public:
 
     // var_info for holding Parameter information
     static const struct AP_Param::GroupInfo var_info[];
+    static const struct AP_Param::GroupInfo var_info2[];
 
     // altitude at which nav control can start in takeoff
     AP_Float wp_navalt_min;
@@ -674,6 +678,16 @@ public:
 #if HAL_WITH_ESC_TELEM && FRAME_CONFIG != HELI_FRAME
     AP_Int16 takeoff_rpm_min;
 #endif
+
+#if WEATHERVANE_ENABLED == ENABLED
+    AC_WeatherVane weathervane;
+#endif
+
+    // payload place parameters
+    AP_Float pldp_thrust_placed_fraction;
+    AP_Float pldp_range_finder_minimum_m;
+    AP_Float pldp_delay_s;
+    AP_Float pldp_descent_speed_ms;
 };
 
 extern const AP_Param::Info        var_info[];

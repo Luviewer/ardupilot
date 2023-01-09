@@ -115,7 +115,7 @@ public:
     virtual bool does_auto_throttle() const { return false; }
 
     // method for mode specific target altitude profiles
-    virtual bool update_target_altitude() { return false; }
+    virtual void update_target_altitude();
 
     // handle a guided target request from GCS
     virtual bool handle_guided_request(Location target_loc) { return false; }
@@ -226,6 +226,8 @@ public:
 
     void set_radius_and_direction(const float radius, const bool direction_is_ccw);
 
+    void update_target_altitude() override;
+
 protected:
 
     bool _enter() override;
@@ -275,8 +277,10 @@ public:
     bool does_auto_navigation() const override { return true; }
 
     bool does_auto_throttle() const override { return true; }
-    
+
     bool allows_terrain_disable() const override { return true; }
+
+    void update_target_altitude() override;
 
 protected:
 
@@ -345,7 +349,7 @@ protected:
 private:
 
     // Switch to QRTL if enabled and within radius
-    bool switch_QRTL(bool check_loiter_target = true);
+    bool switch_QRTL();
 };
 
 class ModeStabilize : public Mode
@@ -422,6 +426,8 @@ public:
 
     bool does_auto_throttle() const override { return true; }
 
+    void update_target_altitude() override {};
+
 protected:
 
     bool _enter() override;
@@ -447,6 +453,8 @@ public:
     bool get_target_heading_cd(int32_t &target_heading) const;
 
     bool does_auto_throttle() const override { return true; }
+
+    void update_target_altitude() override {};
 
 protected:
 
@@ -596,7 +604,7 @@ public:
 
     bool does_auto_throttle() const override { return true; }
 
-    bool update_target_altitude() override;
+    void update_target_altitude() override;
 
     bool allows_throttle_nudging() const override;
 
@@ -617,8 +625,8 @@ class ModeQAcro : public Mode
 public:
 
     Number mode_number() const override { return Number::QACRO; }
-    const char *name() const override { return "QACO"; }
-    const char *name4() const override { return "QACRO"; }
+    const char *name() const override { return "QACRO"; }
+    const char *name4() const override { return "QACO"; }
 
     bool is_vtol_mode() const override { return true; }
     bool is_vtol_man_throttle() const override { return true; }
