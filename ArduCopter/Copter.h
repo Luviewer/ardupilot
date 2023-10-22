@@ -73,6 +73,8 @@
 #include <AP_Winch/AP_Winch_config.h>
 #include <AP_SurfaceDistance/AP_SurfaceDistance.h>
 
+#include <AC_BalanceControl/AC_BalanceControl.h>
+
 // Configuration
 #include "defines.h"
 #include "config.h"
@@ -476,6 +478,8 @@ private:
     AC_PosControl *pos_control;
     AC_WPNav *wp_nav;
     AC_Loiter *loiter_nav;
+
+    AC_BalanceControl *balanceControl;
 
 #if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
     AC_CustomControl custom_control{ahrs_view, attitude_control, motors, scheduler.get_loop_period_s()};
@@ -972,6 +976,8 @@ private:
     void userhook_auxSwitch1(const RC_Channel::AuxSwitchPos ch_flag);
     void userhook_auxSwitch2(const RC_Channel::AuxSwitchPos ch_flag);
     void userhook_auxSwitch3(const RC_Channel::AuxSwitchPos ch_flag);
+
+    void BalanceControl_loop();
 
 #if MODE_ACRO_ENABLED == ENABLED
 #if FRAME_CONFIG == HELI_FRAME

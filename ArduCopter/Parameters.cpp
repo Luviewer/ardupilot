@@ -721,6 +721,8 @@ const AP_Param::Info Copter::var_info[] = {
     // @Path: Parameters.cpp
     GOBJECT(g2, "",  ParametersG2),
 
+    GOBJECTPTR(balanceControl, "BALA_", AC_BalanceControl),
+
     // @Group:
     // @Path: ../libraries/AP_Vehicle/AP_Vehicle.cpp
     PARAM_VEHICLE_INFO,

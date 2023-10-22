@@ -498,6 +498,9 @@ void Copter::allocate_motors(void)
         g.rc_speed.set_default(16000);
     }
     
+    balanceControl = new AC_BalanceControl(motors, ahrs_view);
+    AP_Param::load_object_from_eeprom(balanceControl, balanceControl->var_info);
+
     // upgrade parameters. This must be done after allocating the objects
     convert_pid_parameters();
 #if FRAME_CONFIG == HELI_FRAME

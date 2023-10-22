@@ -182,6 +182,8 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if HAL_SPRAYER_ENABLED
     SCHED_TASK_CLASS(AC_Sprayer,           &copter.sprayer,               update,         3,  90,  54),
 #endif
+    SCHED_TASK(BalanceControl_loop,         200, 50, 55),
+
     SCHED_TASK(three_hz_loop,          3,     75, 57),
 #if AP_SERVORELAYEVENTS_ENABLED
     SCHED_TASK_CLASS(AP_ServoRelayEvents,  &copter.ServoRelayEvents,      update_events, 50,  75,  60),
@@ -705,6 +707,11 @@ void Copter::one_hz_loop()
 #if AC_CUSTOMCONTROL_MULTI_ENABLED == ENABLED
     custom_control.set_notch_sample_rate(AP::scheduler().get_filtered_loop_rate_hz());
 #endif
+}
+
+void Copter::BalanceControl_loop()
+{
+    balanceControl->update();
 }
 
 void Copter::init_simple_bearing()

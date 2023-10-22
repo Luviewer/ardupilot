@@ -68,6 +68,7 @@
 
   #include <AP_PiccoloCAN/AP_PiccoloCAN.h>
   #include <AP_DroneCAN/AP_DroneCAN.h>
+  #include <AP_BalanceCAN/AP_BalanceCAN.h>
 #endif
 
 #include <AP_Logger/AP_Logger.h>
@@ -1254,6 +1255,16 @@ bool AP_Arming::can_checks(bool report)
                     }
                     break;
                 }
+                case AP_CAN::Protocol::BalanceCAN:
+                {
+                    AP_BalanceCAN *ap_balcncecan = AP_BalanceCAN::get_balancecan(i);
+                    if (ap_balcncecan != nullptr) {
+                            check_failed(ARMING_CHECK_SYSTEM, report, "BlanceCAN: %s", fail_msg);
+                            return false;
+                    }
+                    break;
+                }
+
                 case AP_CAN::Protocol::EFI_NWPMU:
                 case AP_CAN::Protocol::None:
                 case AP_CAN::Protocol::Scripting:
