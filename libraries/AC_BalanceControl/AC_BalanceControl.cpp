@@ -32,6 +32,8 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_SUBGROUPINFO(_pid_roll, "ROL_", 11, AC_BalanceControl, AC_PID),
 
+    AP_GROUPINFO("VEL_D", 12, AC_BalanceControl, _balance_velocity_d, AC_BALANCE_VELOCITY_D),
+
     AP_GROUPEND
 };
 
@@ -50,7 +52,7 @@ AC_BalanceControl::AC_BalanceControl(AP_Motors& motors, AP_AHRS_View& ahrs, AP_R
 {
     AP_Param::setup_object_defaults(this, var_info);
 
-    Encoder_bias_filter = 0.84f;
+    Encoder_bias_filter = 0.2f;
 
     _dt = 1.0f / 400.0f;
 
@@ -91,13 +93,14 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
     float velocity;
 
     //================遥控前进后退部分====================//
-    if (_moveflag_x == moveFlag::moveFront) {
-        Encoder_Movement = Target_Velocity_X;  // 收到前进信号
-    } else if (_moveflag_x == moveFlag::moveBack) {
-        Encoder_Movement = -Target_Velocity_X; // 收到后退信号
-    } else {
+    // if (_moveflag_x == moveFlag::moveFront) {
+    //     Encoder_Movement = Target_Velocity_X;  // 收到前进信号
+    // } else if (_moveflag_x == moveFlag::moveBack) {
+    //     Encoder_Movement = -Target_Velocity_X; // 收到后退信号
+    // } else {
+    //     Encoder_Movement = 0;
+    // }
         Encoder_Movement = 0;
-    }
 
     //================速度PI控制器=====================//
     Encoder_Least = Encoder_Movement - (encoder_left + encoder_right); // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
@@ -113,9 +116,14 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
     if (Encoder_Integral < -AC_BALANCE_VELOCITY_IMAX)
         Encoder_Integral = -AC_BALANCE_VELOCITY_IMAX;                                       // 积分限幅
 
-    velocity = Encoder_bias * _balance_velocity_p + Encoder_Integral * _balance_velocity_i; // 速度控制
+    static float last_Encoder_bias;
+
+    velocity = Encoder_bias * _balance_velocity_p + Encoder_Integral * _balance_velocity_i + (Encoder_bias-last_Encoder_bias) * _balance_velocity_d; // 速度控制
     // if (Turn_Off(Angle_Balance, Voltage) == 1 || Flag_Stop == 1)
     //     Encoder_Integral = 0;                                                           // 电机关闭后清除积分
+
+    last_Encoder_bias = Encoder_bias;
+
     return velocity;
 }
 /**************************************************************************
@@ -171,8 +179,16 @@ void AC_BalanceControl::balance_all_control(void)
     static float angle_y, gyro_y, gyro_z;
 
     _rmuart.getWheelSpeed(_wheel_left_int, _wheel_right_int);
-    _wheel_left_f  = (float)_wheel_left_int / _max_speed;
-    _wheel_right_f = (float)_wheel_right_int / _max_speed;
+    _wheel_left_f  = (float)_wheel_left_int *0.01f /  (float)_max_speed;
+    _wheel_right_f = (float)_wheel_right_int *0.01f/  (float)_max_speed;
+
+    static uint8_t cnnttt=0;
+    cnnttt++;
+    if(cnnttt>30){
+        gcs().send_text(MAV_SEVERITY_INFO,"left_s=%.3f, right_s=%.3f\n", _wheel_left_f, _wheel_right_f);
+        // gcs().send_text(MAV_SEVERITY_INFO,"%x %x %x %x %x %x %x \r\n",receive_buff[0],receive_buff[1],receive_buff[2],receive_buff[3],receive_buff[4],receive_buff[5],receive_buff[6]);
+        cnnttt=0;
+    }
 
     angle_y = _ahrs.pitch;
     gyro_y  = _ahrs.get_gyro_latest()[1];

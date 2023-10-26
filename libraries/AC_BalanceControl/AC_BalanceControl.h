@@ -19,6 +19,7 @@
 #define AC_BALANCE_VELOCITY_P          0.5f
 #define AC_BALANCE_VELOCITY_I          0.05f
 #define AC_BALANCE_VELOCITY_IMAX       1.0f
+#define AC_BALANCE_VELOCITY_D          0.0f
 
 #define AC_BALANCE_TURN_P              0.3f
 #define AC_BALANCE_TURN_D              0.1f
@@ -84,6 +85,7 @@ protected:
 
     AP_Float _balance_velocity_p;
     AP_Float _balance_velocity_i;
+    AP_Float _balance_velocity_d;
     AP_Float _balance_velocity_imax;
 
     AP_Float _balance_turn_p;

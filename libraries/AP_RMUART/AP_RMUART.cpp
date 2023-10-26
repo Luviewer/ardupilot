@@ -46,12 +46,14 @@ void AP_RMUART::init(const AP_SerialManager& serial_manager)
                      AP_SERIALMANAGER_RMUART_BUFSIZE_TX);
     }
 
-    memset(apm_2_stm32.bits, 0, sizeof(struct apm_2_stm32_struct));
-    memset(stm32_2_apm.bits, 0, sizeof(struct stm32_2_apm_struct));
+    memset(&apm_2_stm32, 0, sizeof(struct apm_2_stm32_struct));
+    memset(&stm32_2_apm, 0, sizeof(struct stm32_2_apm_struct));
 
-    apm_2_stm32.apm_2_stm32_t.header[0] = 0xAA;
-    apm_2_stm32.apm_2_stm32_t.header[1] = 0xAF;
-    apm_2_stm32.apm_2_stm32_t.len = sizeof(struct apm_2_stm32_struct);
+    apm_2_stm32.header[0] = 0xAA;
+    apm_2_stm32.header[1] = 0xAB;
+    apm_2_stm32.tail = 0xAF;
+    apm_2_stm32.len = sizeof(struct apm_2_stm32_struct);
+
 }
 
 void AP_RMUART::update()
@@ -72,7 +74,6 @@ void AP_RMUART::Receive(void)
 
     uint8_t numc = _port->available();
     uint8_t data = 0;
-    uint8_t count = 0;
 
     for (uint8_t i = 0; i < numc; i++) {
         data = _port->read();
@@ -80,49 +81,67 @@ void AP_RMUART::Receive(void)
         switch (_rx_step) {
         case 0:
             if (data == 0xAA) {
-                receive_buff[count++] = data;
+                receive_buff[0] = data;
                 _rx_step = 1;
-                count = 0;
             }
             break;
 
         case 1:
             if (data == 0xAC) {
-                receive_buff[count++] = data;
+                receive_buff[1] = data;
                 _rx_step = 2;
             } else  {
                 _rx_step = 0;
-                count = 0;
             }
             break;
 
         case 2:
-            if (data == sizeof(struct stm32_2_apm_struct)) {
-                receive_buff[count++] = data;
+            if (data == sizeof(stm32_2_apm_struct)) {
+                receive_buff[2] = data;
                 _rx_step = 3;
             } else  {
                 _rx_step = 0;
-                count = 0;
             }
             break;
 
-        case 3:
-            receive_buff[count++] = data;
-            if (count >= sizeof(struct stm32_2_apm_struct)) {
+        case 3:              
+              _rx_step = 4;
+                receive_buff[3]=data;
+            break;
+
+        case 4:
+              _rx_step = 5;
+                receive_buff[4]=data;
+            break;
+
+        case 5:
+              _rx_step = 6;
+            receive_buff[5]=data;
+            break;
+
+        case 6:
+            receive_buff[6]=data;
+            _rx_step = 7;
+            break;
+
+        case 7:
+            if (data == 0xAF) {
+                receive_buff[7]=data;
+                memcpy(&stm32_2_apm, receive_buff, sizeof(stm32_2_apm));
+                // static uint8_t cnnttt=0;
+                // cnnttt++;
+                // if(cnnttt>50){
+                //     gcs().send_text(MAV_SEVERITY_INFO,"left_s=%d, right_s=%d\n", stm32_2_apm.wheel_left_int, stm32_2_apm.wheel_right_int);
+                //     // gcs().send_text(MAV_SEVERITY_INFO,"%x %x %x %x %x %x %x \r\n",receive_buff[0],receive_buff[1],receive_buff[2],receive_buff[3],receive_buff[4],receive_buff[5],receive_buff[6]);
+                //     cnnttt=0;
+                // }
+            } else  {
                 _rx_step = 0;
-                count = 0;
-
-                memcpy(stm32_2_apm.bits, receive_buff, sizeof(struct stm32_2_apm_struct));
-
-                // printf("wheel_left_speed=%d\n", ardupilot_rx.ardupilot_s.wheel_left_speed);
-                // gcs().send_text(MAV_SEVERITY_INFO,"wheel_left_speed=%d\n", ardupilot_rx.ardupilot_s.wheel_left_speed );
-                // getWheelSpeed(wheel1, wheel2);
             }
             break;
 
         default:
             _rx_step = 0;
-            count = 0;
             break;
         }
     }
@@ -133,7 +152,7 @@ void AP_RMUART::Send(void)
     if (_port == NULL)
         return;
 
-    apm_2_stm32.apm_2_stm32_t.len = sizeof(struct apm_2_stm32_struct);
+    apm_2_stm32.len = sizeof(struct apm_2_stm32_struct);
 
-    _port->write(apm_2_stm32.bits, sizeof(struct apm_2_stm32_struct));
+    _port->write((uint8_t*)&apm_2_stm32, sizeof(struct apm_2_stm32_struct));
 }

@@ -23,11 +23,11 @@
     // 粘贴时自动格式化
     "editor.formatOnPaste": false,
     "files.associations": {
+        "*.dat": "cmake",
         "*.px4board": "makefile",
         "*.toml": "makefile",
         "Kconfig": "makefile",
         "*.map": "arm",
-        "*.dat": "cmake",
         ".config": "cmake",
         "*.inc": "cmake",
         "*.sdf": "xml",
@@ -38,7 +38,11 @@
         "string_view": "cpp",
         "functional": "cpp",
         "*.tcc": "cpp",
-        "chrono": "cpp"
+        "chrono": "cpp",
+        "hash_map": "cpp",
+        "hash_set": "cpp",
+        "bitset": "cpp",
+        "algorithm": "cpp"
     },
     "editor.defaultFormatter": "xaver.clang-format",
     "[jsonc]": {

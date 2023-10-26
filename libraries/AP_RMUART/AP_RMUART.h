@@ -39,45 +39,39 @@ public:
     // 从电机转速映射到【-1~1】
     void getWheelSpeed(int16_t& wheelleft_f, int16_t& wheelright_f)
     {
-        wheelleft_f = (stm32_2_apm.stm32_2_apm_t.wheel_left_int);
-        wheelright_f = (stm32_2_apm.stm32_2_apm_t.wheel_right_int);
+        wheelleft_f = (stm32_2_apm.wheel_left_int);
+        wheelright_f = (stm32_2_apm.wheel_right_int);
     }
 
     // 从【-1~1】映射到电机转速
     void setWheelSpeed(int16_t& wheelleft_f, int16_t& wheelright_f)
     {
-        apm_2_stm32.apm_2_stm32_t.wheel_left_int = (int16_t)(wheelleft_f);
-        apm_2_stm32.apm_2_stm32_t.wheel_right_int = (int16_t)(wheelright_f);
+        apm_2_stm32.wheel_left_int = (int16_t)(wheelleft_f);
+        apm_2_stm32.wheel_right_int = (int16_t)(wheelright_f);
     }
 
     struct PACKED apm_2_stm32_struct {
         uint8_t header[2];
         uint8_t len;
         int16_t wheel_left_int;
-        int16_t wheel_right_int;
+        int16_t wheel_right_int; 
+        uint8_t tail;
     };
-    union apm_2_stm32_union {
-        struct apm_2_stm32_struct apm_2_stm32_t;
-        uint8_t bits[sizeof(struct apm_2_stm32_struct)];
-    };
+
 
     struct PACKED stm32_2_apm_struct {
         uint8_t header[2];
         uint8_t len;
         int16_t wheel_left_int;
         int16_t wheel_right_int;
-    };
-    union stm32_2_apm_union {
-        struct stm32_2_apm_struct stm32_2_apm_t;
-
-        uint8_t bits[sizeof(struct stm32_2_apm_struct)];
+        uint8_t tail;
     };
 
 private:
     AP_HAL::UARTDriver* _port; // UART used to send data to receiver
 
-    apm_2_stm32_union apm_2_stm32;
-    stm32_2_apm_union stm32_2_apm;
+    apm_2_stm32_struct apm_2_stm32;
+    stm32_2_apm_struct stm32_2_apm;
 
     uint8_t _rx_step;
 

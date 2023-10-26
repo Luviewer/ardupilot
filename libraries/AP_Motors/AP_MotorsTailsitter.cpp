@@ -123,8 +123,8 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
     // 平衡车 轮腿舵机
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftJoint, -_tilt_leftjoint * SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightJoint, +_tilt_rightjoint * SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeftJoint, -_roll_out * SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRightJoint, +_roll_out * SERVO_OUTPUT_RANGE);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -230,8 +230,8 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
 
     // _speed_leftwheel = pitch_thrust * 0.3f - yaw_thrust * 0.5f;  //添加左右两个足部电机
     // _speed_rightwheel = pitch_thrust * 0.3f + yaw_thrust * 0.5f;
-    // _tilt_leftjoint = pitch_thrust * 0.5f - yaw_thrust * 0.5f;  //添加左右两个关节舵机
-    // _tilt_rightjoint = pitch_thrust * 0.5f + yaw_thrust * 0.5f;
+    // _tilt_leftjoint = _roll_out * 0.5f - yaw_thrust * 0.5f;  //添加左右两个关节舵机
+    // _tilt_rightjoint = _roll_out * 0.5f + yaw_thrust * 0.5f;
 
 }
 
