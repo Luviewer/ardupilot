@@ -711,6 +711,14 @@ void Copter::one_hz_loop()
 
 void Copter::BalanceControl_loop()
 {
+    if(rangefinder_alt_ok()) {
+        balanceControl->setAltOK(true);
+        balanceControl->setAltData(rangefinder_state.alt_cm_filt.get());
+    } else {
+        balanceControl->setAltOK(false);
+        balanceControl->setAltData(100000);
+    }
+
     balanceControl->update();
 }
 

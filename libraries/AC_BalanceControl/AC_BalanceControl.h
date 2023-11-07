@@ -69,6 +69,10 @@ public:
 
     void update(void);
 
+    void setAltOK(bool sta) {alt_ok = sta;}
+
+    void setAltData(float data) {alt_cm = data; }
+
     uint8_t get_Balance_Mode() { return balanceMode; }
 
     // user settable parameters
@@ -133,4 +137,7 @@ protected:
     float _dt;
 
     enum BalanceMode balanceMode;
+
+    bool alt_ok;
+    float alt_cm;
 };

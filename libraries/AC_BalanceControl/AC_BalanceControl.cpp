@@ -152,6 +152,7 @@ void AC_BalanceControl::update(void)
     static float motor_target_left_f, motor_target_right_f;
     const float  max_scale_value = 10000.0f;
 
+
     angle_y = _ahrs->pitch;
     gyro_y  = _ahrs->get_gyro_latest()[1];
     gyro_z  = _ahrs->get_gyro_latest()[2];
@@ -163,10 +164,15 @@ void AC_BalanceControl::update(void)
     // 调试用
     static uint16_t cnt = 0;
     cnt++;
-    if (cnt > 200) {
+    if (cnt > 400) {
         cnt = 0;
         gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(1));
         gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(2));
+
+        
+        if(alt_ok) {
+            gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);            
+        }
     }
 
     // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
