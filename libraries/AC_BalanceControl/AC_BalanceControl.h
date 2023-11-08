@@ -73,6 +73,8 @@ public:
 
     void setAltData(float data) {alt_cm = data; }
 
+    void set_control_zeros(void);
+
     uint8_t get_Balance_Mode() { return balanceMode; }
 
     // user settable parameters
@@ -91,9 +93,10 @@ public:
 
     enum BalanceMode {
         ground                 = 0,
-        flying_with_balance    = 1,
-        flying_without_balance = 2,
-        landing_check          = 3,
+        balance_car            = 1,
+        flying_with_balance    = 2,
+        flying_without_balance = 3,
+        landing_check          = 4,
     };
 
 
@@ -128,9 +131,13 @@ protected:
     float Turn_Target;
     float Turn_Kp;
     float Turn_Kd;
+    float Encoder_Movement = 0;
 
     uint8_t _moveflag_x;
     uint8_t _moveflag_z;
+
+    int16_t motor_target_left_int;
+    int16_t motor_target_right_int;
 
     float control_balance, control_velocity, control_turn;
 

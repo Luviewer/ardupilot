@@ -54,7 +54,7 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
 
     // 右腿 to servo output 6
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_RightJointMotor, CH_6);
-    SRV_Channels::set_angle(SRV_Channel::k_RightJointMotor,90);
+    SRV_Channels::set_angle(SRV_Channel::k_RightJointMotor,9000);
 
     _mav_type = MAV_TYPE_VTOL_DUOROTOR;
 

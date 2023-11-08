@@ -89,6 +89,16 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
 {
     float velocity;
     float Encoder_Now;
+    // float Encoder_Movement = 0;
+
+    //================遥控前进后退部分====================//
+    if (_moveflag_x == moveFlag::moveFront) {
+        Encoder_Movement = -Target_Velocity_X;  // 收到前进信号
+    } else if (_moveflag_x == moveFlag::moveBack) {
+        Encoder_Movement = Target_Velocity_X; // 收到后退信号
+    } else {
+        Encoder_Movement = 0;
+    }
 
     //================速度PI控制器=====================//
 
@@ -169,9 +179,9 @@ void AC_BalanceControl::update(void)
         gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(1));
         gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(2));
 
-        
         if(alt_ok) {
-            gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);            
+            gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
+            gcs().send_text(MAV_SEVERITY_NOTICE, "balanceMode=%d", balanceMode);            
         }
     }
 
@@ -188,8 +198,8 @@ void AC_BalanceControl::update(void)
     motor_target_left_f  = control_balance + control_velocity + control_turn; // 计算左轮电机最终PWM
     motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
 
-    int16_t motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
-    int16_t motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
+    motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
+    motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
     balanceCAN->setCurrent(1, (int16_t)motor_target_left_int);
@@ -200,6 +210,56 @@ void AC_BalanceControl::update(void)
 
     // 腿部舵机控制
      RollControl(_ahrs->roll);
+
+    // Vector3f acc { 0, 0, 0 };
+    switch (balanceMode) {
+    case BalanceMode::ground:
+        if ((alt_cm < 8) && (hal.rcin->read(CH_8) < 1600)) {
+            // printf("flying_with_balance\r\n");
+            balanceMode = BalanceMode::balance_car;
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
+        }
+        break;
+    case BalanceMode::balance_car:
+        if ((_motors.armed()) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) > 1600) {
+            // printf("flying_without_balance\r\n");
+            balanceMode = BalanceMode::flying_with_balance;
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
+
+            // if(hal.rcin->read(CH_8) > 1600) {
+            // set_control_zeros();
+            // balanceMode = BalanceMode::flying_without_balance;
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "motor_target_left_int=%d", motor_target_left_int);
+            // }
+        }
+        break;
+    case BalanceMode::flying_with_balance:
+        if ((alt_cm >= 8) && (hal.rcin->read(CH_3) > 1200)) {
+            // printf("flying_with_balance\r\n");
+            balanceMode = BalanceMode::flying_without_balance;
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+        }
+        break;
+    case BalanceMode::flying_without_balance:
+        if ((alt_cm < 10) && (hal.rcin->read(CH_8) < 1600) && (hal.rcin->read(CH_3) < 1200)) {
+            // printf("flying_with_balance\r\n");
+            balanceMode = BalanceMode::landing_check;
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+        }
+        break;
+    case BalanceMode::landing_check:
+        if ((alt_cm < 8)) {
+            // printf("flying_with_balance\r\n");
+            balanceMode = BalanceMode::ground;
+            // gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
+        }
+        break;
+
+    default:
+        break;
+    }
+
 
     // /////////////////////////////////////////////////////////////////
     // Vector3f acc { 0, 0, 0 };
@@ -265,3 +325,15 @@ void AC_BalanceControl::update(void)
     //     _moveflag_z = moveFlag::none;
     // }
 }
+
+// void AC_BalanceControl::set_control_zeros(void)
+// {
+//     Encoder_Movement = 0;
+
+//     Turn_Target = 0;
+//     motor_target_left_int   = 0;
+//     motor_target_right_int  = 0;
+
+//     SRV_Channels::set_angle(SRV_Channel::k_RightJointMotor, 9000);
+//     SRV_Channels::set_angle(SRV_Channel::k_LeftJointMotor, 9000);
+// }
