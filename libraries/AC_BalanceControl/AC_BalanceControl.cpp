@@ -221,7 +221,7 @@ void AC_BalanceControl::update(void)
         }
         break;
     case BalanceMode::balance_car:
-        if ((_motors.armed()) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) > 1600) {
+        if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) > 1600) {
             // printf("flying_without_balance\r\n");
             balanceMode = BalanceMode::flying_with_balance;
             // gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
