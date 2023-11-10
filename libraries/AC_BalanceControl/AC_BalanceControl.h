@@ -114,27 +114,9 @@ public:
         aerial     = 1,
     };
 
-    // enum BalanceMode {
-    //     ground                 = 0,
-    //     balance_car            = 1,
-    //     flying_with_balance    = 2,
-    //     flying_without_balance = 3,
-    //     landing_ground_idle    = 4,
-    //     landing_finish         = 5,
-    // };
+    void check_rotation();
 
-    // bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
-    // bool Put_Down(float Angle, int encoder_left, int encoder_right);
-    // void debug_info();
-    // void function_s();
-    double S_FG;
-    double S_GF;
-    double JT;
-
-    // void AC_BalanceControl::checkAcc_func();
-    void check_Acceleration();
-    float accelData;
-
+    void debug_info();
 
 protected:
     AP_BalanceCAN* balanceCAN;
@@ -212,7 +194,5 @@ protected:
     bool  alt_ok;
     float alt_cm;
 
-    bool Flag_Stop;
-
-    bool force_stop_balance_control;
+    bool is_max_rotation;
 };

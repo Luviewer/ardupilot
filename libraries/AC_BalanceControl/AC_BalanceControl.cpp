@@ -98,7 +98,7 @@ float AC_BalanceControl::angle_controller(float Angle, float Gyro)
     // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
     angle_out = _pid_angle.kP() * angle_bias + gyro_bias * _pid_angle.kD();
 
-    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
+    if (stop_balance_control || is_max_rotation) {
         angle_out  = 0;
         angle_bias = 0;
         gyro_bias  = 0;
@@ -129,7 +129,7 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
     //更新速度输出
     velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
-    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
+    if (stop_balance_control || is_max_rotation) {
         _pid_speed.reset_I();
         encoder_error        = 0;
         encoder_error_filter = 0;
@@ -155,7 +155,7 @@ float AC_BalanceControl::turn_controller(float yaw, float gyro)
     //===================转向PD控制器=================//
     turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
 
-    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
+    if (stop_balance_control || is_max_rotation) {
         turn_out    = 0;
         turn_target = 0;
     }
@@ -250,35 +250,10 @@ void AC_BalanceControl::update(void)
     hight_controller();
 
     // 设置模式
-    // set_control_mode();
-
-    // 遥控输入
-    pilot_control();
+    set_control_mode();
 
     // 检查是否失控
-    // if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
-    //     Flag_Stop = true;
-    // }
-
-    // if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
-    //     Flag_Stop = false;
-    // }
-
-    // debug_info();
-    // function_s();
-
-    if (hal.rcin->read(CH_8) > 1700) {
-        force_stop_balance_control = true;
-    } else {
-        force_stop_balance_control = false;
-    }
-
-    // const auto timeus_start = AP_HAL::micros64();
-    // if(cnt > 400){
-    //     cnt = 0;
-    //     gcs().send_text(MAV_SEVERITY_NOTICE, "######## Time = %lld ########", timeus);
-    // }
-    check_Acceleration();
+    check_rotation();
 }
 
 // void AC_BalanceControl::function_s()
@@ -550,71 +525,31 @@ void AC_BalanceControl::pilot_control()
 //     }
 // }
 
-/**************************************************************************
-Function: Check whether the car is picked up
-Input   : Acceleration：Z-axis acceleration；Angle：The angle of balance；encoder_left：Left encoder count；encoder_right：Right encoder count
-Output  : 1：picked up  0：No action
-函数功能：检测小车是否被拿起
-入口参数：Acceleration：z轴加速度；Angle：平衡的角度；encoder_left：左编码器计数；encoder_right：右编码器计数
-返回  值：1:小车被拿起  0：小车未被拿起
-**************************************************************************/
-// bool AC_BalanceControl::Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right)
-// {
-//     static uint16_t flag, count0, count1, count2;
-//     if (flag == 0) // 第一步
-//     {
-//         if ((abs(encoder_left) + abs(encoder_right)) < 100) // 条件1，小车接近静止
-//             count0++;
-//         else
-//             count0 = 0;
-//         if (count0 > 10) flag = 1, count0 = 0;
-//     }
-//     if (flag == 1) // 进入第二步
-//     {
-//         if (++count1 > (2 * 200)) count1 = 0, flag = 0;         // 超时不再等待2000ms，返回第一步
-//         if ((Acceleration > 0.75) && ((fabsf(Angle) - 10) < 0)) // 条件2，小车是在0度附近被拿起
-//             flag = 2;
-//     }
-//     if (flag == 2) // 第三步
-//     {
-//         if (++count2 > (1 * 200)) count2 = 0, flag = 0; // 超时不再等待1000ms
-//         if (abs(encoder_left + encoder_right) > 15000)  // 条件3，小车的轮胎因为正反馈达到最大的转速
-//         {
-//             flag = 0;
-//             return true; // 检测到小车被拿起
-//         }
-//     }
-//     return false;
-// }
+    // 调试用
+    static uint16_t cnt = 0;
+    cnt++;
+    if (cnt > 400) {
+        cnt = 0;
+        gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(0));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "left_target_current=%d", balanceCAN->getCurrent(0));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "right_target_current=%d", balanceCAN->getCurrent(1));
+        gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
+        gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
+    }
+}
 
-/**************************************************************************
-Function: Check whether the car is lowered
-Input   : The angle of balance；Left encoder count；Right encoder count
-Output  : 1：put down  0：No action
-函数功能：检测小车是否被放下
-入口参数：平衡角度；左编码器读数；右编码器读数
-返回  值：1：小车放下   0：小车未放下
-**************************************************************************/
-// bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
-// {
-//     static uint16_t flag, count;
-//     if (Flag_Stop == false) // 防止误检
-//         return 0;
-//     if (flag == 0) {
-//         if ((fabsf(Angle) - 20) < 0 && abs(encoder_left) == 0 && abs(encoder_right) == 0) // 条件1，小车是在0度附近的
-//             flag = 1;
-//     }
-//     if (flag == 1) {
-//         if (++count > 50) // 超时不再等待 500ms
-//         {
-//             count = 0;
-//             flag  = 0;
-//         }
-//         if (abs(encoder_left) > 50 && abs(encoder_right) > 50) // 条件2，小车的轮胎在未上电的时候被人为转动
-//         {
-//             flag = 0;
-//             return true; // 检测到小车被放下
-//         }
-//     }
-//     return false;
-// }
+void AC_BalanceControl::check_rotation()
+{
+    static uint16_t check_cnt = 0;
+
+    if (balanceCAN->getSpeed(0) + balanceCAN->getSpeed(1) > 5000) {
+        if (++check_cnt > 200 * 1.5) {
+            is_max_rotation = true;
+        }
+    } else {
+        is_max_rotation = false;
+        check_cnt       = 0;
+    }
+}

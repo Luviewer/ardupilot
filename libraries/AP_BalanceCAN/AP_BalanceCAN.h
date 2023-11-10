@@ -30,6 +30,8 @@ public:
 
   void setCurrent(uint8_t id, int16_t _cuur) { target_current[id] = _cuur; }
 
+  int16_t getCurrent(uint8_t id) { return target_current[id]; }
+
   bool read_frame(AP_HAL::CANFrame &recv_frame, uint64_t timeout);
   bool write_frame(AP_HAL::CANFrame &out_frame, uint64_t timeout);
 
