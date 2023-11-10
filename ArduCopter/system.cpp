@@ -194,6 +194,8 @@ void Copter::init_ardupilot()
     pos_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
     vel_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
     hgt_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
+    
+    balanceControl->init();
 
     // flag that initialisation has completed
     ap.initialised = true;
