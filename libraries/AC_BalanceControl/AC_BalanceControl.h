@@ -99,7 +99,7 @@ public:
         landing_check          = 4,
     };
 
-
+    
 protected:
 
     ///////////////////////////////////////////////////////
@@ -122,8 +122,12 @@ protected:
     AP_Float Target_Velocity_Z;
 
     ///////////////////////////////////////////////////////
-    // 速度环参数
+    // 直立环参数
+    float Balance_Angle_bias;
+    float Balance_Gyro_bias;
 
+    ///////////////////////////////////////////////////////
+    // 速度环参数
     LowPassFilterFloat speed_low_pass_filter; // 一阶低通滤波器
 
     ///////////////////////////////////////////////////////
@@ -135,6 +139,7 @@ protected:
 
     uint8_t _moveflag_x;
     uint8_t _moveflag_z;
+    uint8_t stop_balance_control = false;
 
     int16_t motor_target_left_int;
     int16_t motor_target_right_int;
@@ -144,7 +149,7 @@ protected:
     float _dt;
 
     enum BalanceMode balanceMode;
-
+    
     bool alt_ok;
     float alt_cm;
 };

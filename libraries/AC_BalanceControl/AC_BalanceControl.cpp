@@ -63,7 +63,7 @@ Output  : balance：Vertical control PWM
 **************************************************************************/
 float AC_BalanceControl::Balance(float Angle, float Gyro)
 {
-    static float balance, Balance_Angle_bias, Balance_Gyro_bias;
+    static float balance;
 
     // 求出平衡的角度中值 和机械相关
     Balance_Angle_bias = _zero_angle - Angle;
@@ -88,7 +88,7 @@ Output  : Speed control PWM
 float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
 {
     float velocity;
-    float Encoder_Now;
+float Encoder_Now;
     // float Encoder_Movement = 0;
 
     //================遥控前进后退部分====================//
@@ -108,6 +108,30 @@ float AC_BalanceControl::Velocity(float encoder_left, float encoder_right)
     float Encoder_filter = speed_low_pass_filter.apply(Encoder_Now, _dt);
 
     velocity = _pid_speed.update_all(0.0f, Encoder_filter, _dt);
+    
+    if(stop_balance_control == false){
+        static uint16_t cnttt = 0;
+        cnttt++;
+        if(cnttt > 400){
+            gcs().send_text(MAV_SEVERITY_WARNING, "coming_out");
+            cnttt = 0;
+        }
+    }
+
+    if(stop_balance_control == true){
+        Balance_Angle_bias = 0;
+        Balance_Gyro_bias = 0;
+        motor_target_left_int = 0;
+        motor_target_right_int = 0;
+        velocity = 0;
+        _pid_speed.reset_I();
+        static uint16_t cnttt = 0;
+        cnttt++;
+        if(cnttt > 400){
+            gcs().send_text(MAV_SEVERITY_WARNING, "coming_in");
+            cnttt = 0;
+        }
+    }
 
     return velocity;
 }
@@ -121,6 +145,15 @@ Output  : Turn control PWM
 **************************************************************************/
 float AC_BalanceControl::Turn(float yaw, float gyro)
 {
+    //===================遥控左右旋转部分=================//
+    if (_moveflag_z == moveFlag::moveLeft) {
+        Turn_Target = -Target_Velocity_Z;
+    } else if (_moveflag_z == moveFlag::moveRight) {
+        Turn_Target = Target_Velocity_Z;
+    } else {
+        Turn_Target = 0;
+    }
+    
     //===================转向PD控制器=================//
     float turn = (Turn_Target)*_pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
 
@@ -178,10 +211,9 @@ void AC_BalanceControl::update(void)
         cnt = 0;
         gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(1));
         gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(2));
-
+        
         if(alt_ok) {
-            gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
-            gcs().send_text(MAV_SEVERITY_NOTICE, "balanceMode=%d", balanceMode);            
+            gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);           
         }
     }
 
@@ -202,57 +234,47 @@ void AC_BalanceControl::update(void)
     motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
 
     // 最终的电机输入量
-    balanceCAN->setCurrent(1, (int16_t)motor_target_left_int);
-    balanceCAN->setCurrent(2, (int16_t)motor_target_right_int);
-
-    // 最终的电机速度环
-    // MotorSpeed(motor_target_left_int, motor_target_right_int);
-
+    balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
+    balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
+    
     // 腿部舵机控制
      RollControl(_ahrs->roll);
 
-    // Vector3f acc { 0, 0, 0 };
     switch (balanceMode) {
     case BalanceMode::ground:
         if ((alt_cm < 8) && (hal.rcin->read(CH_8) < 1600)) {
-            // printf("flying_with_balance\r\n");
             balanceMode = BalanceMode::balance_car;
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
+            gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
         }
         break;
     case BalanceMode::balance_car:
         if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) > 1600) {
-            // printf("flying_without_balance\r\n");
+            
             balanceMode = BalanceMode::flying_with_balance;
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
-
-            // if(hal.rcin->read(CH_8) > 1600) {
-            // set_control_zeros();
-            // balanceMode = BalanceMode::flying_without_balance;
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "motor_target_left_int=%d", motor_target_left_int);
-            // }
+            gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
         }
         break;
     case BalanceMode::flying_with_balance:
         if ((alt_cm >= 8) && (hal.rcin->read(CH_3) > 1200)) {
-            // printf("flying_with_balance\r\n");
+            
             balanceMode = BalanceMode::flying_without_balance;
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+            gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
         }
         break;
     case BalanceMode::flying_without_balance:
+        // set_control_zeros();
+        stop_balance_control = true;
         if ((alt_cm < 10) && (hal.rcin->read(CH_8) < 1600) && (hal.rcin->read(CH_3) < 1200)) {
-            // printf("flying_with_balance\r\n");
+            
             balanceMode = BalanceMode::landing_check;
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+            gcs().send_text(MAV_SEVERITY_NOTICE, "landing_check");
         }
         break;
     case BalanceMode::landing_check:
         if ((alt_cm < 8)) {
-            // printf("flying_with_balance\r\n");
             balanceMode = BalanceMode::ground;
-            // gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
+            stop_balance_control = false;
+            gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
         }
         break;
 
@@ -260,54 +282,8 @@ void AC_BalanceControl::update(void)
         break;
     }
 
-
-    // /////////////////////////////////////////////////////////////////
-    // Vector3f acc { 0, 0, 0 };
-    // switch (balanceMode) {
-    // case BalanceMode::ground:
-    //     if ((hal.rcin->read(CH_3) > 1400) && (_motors.armed())) {
-    //         printf("flying_with_balance\r\n");
-    //         balanceMode = BalanceMode::flying_with_balance;
-    //     }
-    //     break;
-
-    // case BalanceMode::flying_with_balance:
-    //     if ((hal.rcin->read(CH_8) > 1600)) {
-    //         printf("flying_without_balance\r\n");
-
-    //         balanceMode = BalanceMode::flying_without_balance;
-    //     }
-    //     break;
-
-    // case BalanceMode::flying_without_balance:
-    //     set_control_zeros();
-
-    //     // motor_target_left_int  = 0.0f;
-    //     // motor_target_right_int = 0.0f;
-
-    //     acc = _ahrs.get_accel_ef();
-    //     if ((acc.length() > 15.0f) && (hal.rcin->read(CH_3) < 1450)) {
-    //         printf("acc:%f\r\n", acc.length());
-    //         printf("landing_check\r\n");
-
-    //         balanceMode = BalanceMode::landing_check;
-    //     }
-    //     break;
-
-    // case BalanceMode::landing_check:
-    //     _motors.set_desired_spool_state(AP_Motors::DesiredSpoolState::SHUT_DOWN);
-    //     balanceMode = BalanceMode::ground;
-    //     printf("ground\r\n");
-    //     break;
-
-    // default:
-    //     break;
-    // }
-
-    // // _rmuart.setWheelSpeed(motor_target_left_int, motor_target_right_int);
-
-    // uint16_t pwm_x = hal.rcin->read(CH_7);
-    // uint16_t pwm_z = hal.rcin->read(CH_6);
+    uint16_t pwm_x = hal.rcin->read(CH_7);
+    uint16_t pwm_z = hal.rcin->read(CH_6);
 
     // if (pwm_x < 1300) {
     //     _moveflag_x = moveFlag::moveBack;
@@ -328,9 +304,17 @@ void AC_BalanceControl::update(void)
 
 // void AC_BalanceControl::set_control_zeros(void)
 // {
+//     Balance_Angle_bias = 0;
+//     Balance_Gyro_bias = 0;
+    
+//     Encoder_Now = 0;
 //     Encoder_Movement = 0;
+//     Encoder_filter = 0;
 
 //     Turn_Target = 0;
+//     Turn_Kp = 0;
+//     Turn_Kd = 0;
+
 //     motor_target_left_int   = 0;
 //     motor_target_right_int  = 0;
 
