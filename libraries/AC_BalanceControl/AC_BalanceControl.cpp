@@ -81,24 +81,24 @@ void AC_BalanceControl::init()
 
 /**************************************************************************
 Function: Vertical PD control
-Input   : Angle:angle；Gyro：angular velocity
-Output  : balance：Vertical control PWM
-函数功能：直立PD控制
-入口参数：Angle:角度；Gyro：角速度
-返回  值：balance：直立控制PWM
+Input   : Angle:angle��Gyro��angular velocity
+Output  : balance��Vertical control PWM
+�������ܣ�ֱ��PD����
+��ڲ�����Angle:�Ƕȣ�Gyro�����ٶ�
+����  ֵ��balance��ֱ������PWM
 **************************************************************************/
 float AC_BalanceControl::angle_controller(float Angle, float Gyro)
 {
-    // 求出平衡的角度中值 和机械相关
+    // ���ƽ��ĽǶ���ֵ �ͻ�е���
     angle_bias = _zero_angle - Angle;
 
-    // 计算角速度误差
+    // ������ٶ����
     gyro_bias = 0.0f - Gyro;
 
-    // 计算平衡控制的电机PWM  PD控制   kp是P系数 kd是D系数
+    // ����ƽ����Ƶĵ��PWM  PD����   kp��Pϵ�� kd��Dϵ��
     angle_out = _pid_angle.kP() * angle_bias + gyro_bias * _pid_angle.kD();
 
-    if (stop_balance_control || is_max_rotation) {
+    if (stop_balance_control || Flag_Stop) {
         angle_out  = 0;
         angle_bias = 0;
         gyro_bias  = 0;
@@ -109,27 +109,30 @@ float AC_BalanceControl::angle_controller(float Angle, float Gyro)
 
 /**************************************************************************
 Function: Speed PI control
-Input   : encoder_left：Left wheel encoder reading；encoder_right：Right wheel encoder reading
+Input   : encoder_left��Left wheel encoder reading��encoder_right��Right wheel encoder reading
 Output  : Speed control PWM
-函数功能：速度控制PWM
-入口参数：encoder_left：左轮编码器读数；encoder_right：右轮编码器读数
-返回  值：速度控制PWM
+�������ܣ��ٶȿ���PWM
+��ڲ�����encoder_left�����ֱ�����������encoder_right�����ֱ���������
+����  ֵ���ٶȿ���PWM
 **************************************************************************/
 float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_right)
 {
-    //================遥控前进后退部分====================//
-    encoder_movement = (float)_movement_x / 500.0f * Target_MAX_Velocity_X;
 
-    //================速度PI控制器=====================//
+    //================ң��ǰ�����˲���====================//
+    if (_moveflag_x == moveFlag::moveFront) {
+        encoder_movement = -Target_Velocity_X; // �յ�ǰ���ź�
+    } else if (_moveflag_x == moveFlag::moveBack) {
+        encoder_movement = Target_Velocity_X; // �յ������ź�
+    } else {
+        encoder_movement = 0;
+    }
 
-    // 获取最新速度偏差=测量速度（左右编码器之和）- 目标速度
-    encoder_error = (encoder_left + encoder_right) - encoder_movement;
-    //对速度偏差进行一阶低通滤波
-    encoder_error_filter = speed_low_pass_filter.apply(encoder_error, _dt);
+    //================�ٶ�PI������=====================//
+
+    // ��ȡ�����ٶ�ƫ��=Ŀ���ٶȣ��˴�Ϊ�㣩-�����ٶȣ����ұ�����֮�ͣ�
     //更新速度输出
-    velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
-    if (stop_balance_control || is_max_rotation) {
+    if (stop_balance_control || Flag_Stop) {
         _pid_speed.reset_I();
         encoder_error        = 0;
         encoder_error_filter = 0;
@@ -143,19 +146,25 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
 Function: Turn control
 Input   : Z-axis angular velocity
 Output  : Turn control PWM
-函数功能：转向控制
-入口参数：Z轴陀螺仪
-返回  值：转向控制PWM
+�������ܣ�ת�����
+��ڲ�����Z��������
+����  ֵ��ת�����PWM
 **************************************************************************/
 float AC_BalanceControl::turn_controller(float yaw, float gyro)
 {
-    //===================遥控左右旋转部分=================//
-    turn_target = (float)_movement_z / 500.0f * Target_MAX_Velocity_Z;
+    //===================ң��������ת����=================//
+    if (_moveflag_z == moveFlag::moveLeft) {
+        turn_target = -Target_Velocity_Z;
+    } else if (_moveflag_z == moveFlag::moveRight) {
+        turn_target = Target_Velocity_Z;
+    } else {
+        turn_target = 0;
+    }
 
-    //===================转向PD控制器=================//
-    turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // 结合Z轴陀螺仪进行PD控制
+    //===================ת��PD������=================//
+    turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // ���Z�������ǽ���PD����
 
-    if (stop_balance_control || is_max_rotation) {
+    if (stop_balance_control || Flag_Stop) {
         turn_out    = 0;
         turn_target = 0;
     }
@@ -215,22 +224,22 @@ void AC_BalanceControl::update(void)
     gyro_y  = _ahrs->get_gyro_latest()[1];
     gyro_z  = _ahrs->get_gyro_latest()[2];
 
-    // 转速缩小1000倍
+    // ת����С1000��
     wheel_left_f  = (float)balanceCAN->getSpeed(0) / max_scale_value;
     wheel_right_f = -(float)balanceCAN->getSpeed(1) / max_scale_value;
 
-    // 平衡PID控制 Gyro_Balance平衡角速度极性：前倾为正，后倾为负
+    // ƽ��PID���� Gyro_Balanceƽ����ٶȼ��ԣ�ǰ��Ϊ��������Ϊ��
     control_balance = angle_controller(angle_y, gyro_y);
 
-    // 速度环PID控制,记住，速度反馈是正反馈，就是小车快的时候要慢下来就需要再跑快一点
+    // �ٶȻ�PID����,��ס���ٶȷ�����������������С�����ʱ��Ҫ����������Ҫ���ܿ�һ��
     control_velocity = velocity_controller(wheel_left_f, wheel_right_f);
 
-    // 转向环PID控制
+    // ת��PID����
     control_turn = turn_controller(_ahrs->yaw, gyro_z);
 
-    // motor值正数使小车前进，负数使小车后退, 范围【-1，1】
-    motor_target_left_f  = control_balance + control_velocity + control_turn; // 计算左轮电机最终PWM
-    motor_target_right_f = control_balance + control_velocity - control_turn; // 计算右轮电机最终PWM
+    // motorֵ����ʹС��ǰ��������ʹС������, ��Χ��-1��1��
+    motor_target_left_f  = control_balance + control_velocity + control_turn; // �������ֵ������PWM
+    motor_target_right_f = control_balance + control_velocity - control_turn; // �������ֵ������PWM
 
     motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
     motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
@@ -239,21 +248,26 @@ void AC_BalanceControl::update(void)
     if(motor_target_right_int > 0){motor_target_right_int += 60;}
    else {motor_target_right_int -= 60;}
 
-    // 最终的电机输入量
-    balanceCAN->setCurrent(0, S_FG * (int16_t)motor_target_left_int);
-    balanceCAN->setCurrent(1, S_FG * (int16_t)motor_target_right_int);
+    // ���յĵ��������
+    balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
+    balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
 
-    // 腿部滚转控制
+    // �Ȳ��������
     roll_controller(_ahrs->roll);
 
-    // 腿部高度控制
-    hight_controller();
-
-    // 设置模式
+    // ����ģʽ
     set_control_mode();
 
-    // 检查是否失控
-    check_rotation();
+    // ����Ƿ�ʧ��
+    if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+        Flag_Stop = true;
+    }
+
+    if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+        Flag_Stop = false;
+    }
+
+    debug_info();
 }
 
 // void AC_BalanceControl::function_s()
@@ -525,7 +539,7 @@ void AC_BalanceControl::pilot_control()
 //     }
 // }
 
-    // 调试用
+    // ������
     static uint16_t cnt = 0;
     cnt++;
     if (cnt > 400) {
@@ -540,16 +554,71 @@ void AC_BalanceControl::pilot_control()
     }
 }
 
-void AC_BalanceControl::check_rotation()
+/**************************************************************************
+Function: Check whether the car is picked up
+Input   : Acceleration��Z-axis acceleration��Angle��The angle of balance��encoder_left��Left encoder count��encoder_right��Right encoder count
+Output  : 1��picked up  0��No action
+�������ܣ����С���Ƿ�����
+��ڲ�����Acceleration��z����ٶȣ�Angle��ƽ��ĽǶȣ�encoder_left���������������encoder_right���ұ���������
+����  ֵ��1:С��������  0��С��δ������
+**************************************************************************/
+bool AC_BalanceControl::Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right)
 {
-    static uint16_t check_cnt = 0;
-
-    if (balanceCAN->getSpeed(0) + balanceCAN->getSpeed(1) > 5000) {
-        if (++check_cnt > 200 * 1.5) {
-            is_max_rotation = true;
-        }
-    } else {
-        is_max_rotation = false;
-        check_cnt       = 0;
+    static uint16_t flag, count0, count1, count2;
+    if (flag == 0) // ��һ��
+    {
+        if ((abs(encoder_left) + abs(encoder_right)) < 100) // ����1��С���ӽ���ֹ
+            count0++;
+        else
+            count0 = 0;
+        if (count0 > 10) flag = 1, count0 = 0;
     }
+    if (flag == 1) // ����ڶ���
+    {
+        if (++count1 > (2 * 200)) count1 = 0, flag = 0;         // ��ʱ���ٵȴ�2000ms�����ص�һ��
+        if ((Acceleration > 0.75) && ((fabsf(Angle) - 10) < 0)) // ����2��С������0�ȸ���������
+            flag = 2;
+    }
+    if (flag == 2) // ������
+    {
+        if (++count2 > (1 * 200)) count2 = 0, flag = 0; // ��ʱ���ٵȴ�1000ms
+        if (abs(encoder_left + encoder_right) > 15000)  // ����3��С������̥��Ϊ�������ﵽ����ת��
+        {
+            flag = 0;
+            return true; // ��⵽С��������
+        }
+    }
+    return false;
+}
+
+/**************************************************************************
+Function: Check whether the car is lowered
+Input   : The angle of balance��Left encoder count��Right encoder count
+Output  : 1��put down  0��No action
+�������ܣ����С���Ƿ񱻷���
+��ڲ�����ƽ��Ƕȣ���������������ұ���������
+����  ֵ��1��С������   0��С��δ����
+**************************************************************************/
+bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
+{
+    static uint16_t flag, count;
+    if (Flag_Stop == false) // ��ֹ���
+        return 0;
+    if (flag == 0) {
+        if ((fabsf(Angle) - 10) < 0 && abs(encoder_left) < 20 && abs(encoder_right) < 20) // ����1��С������0�ȸ�����
+            flag = 1;
+    }
+    if (flag == 1) {
+        if (++count > 50) // ��ʱ���ٵȴ� 500ms
+        {
+            count = 0;
+            flag  = 0;
+        }
+        if (abs(encoder_left) > 50 && abs(encoder_right) > 50) // ����2��С������̥��δ�ϵ��ʱ����Ϊת��
+        {
+            flag = 0;
+            return true; // ��⵽С��������
+        }
+    }
+    return false;
 }
