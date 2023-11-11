@@ -98,7 +98,7 @@ float AC_BalanceControl::angle_controller(float Angle, float Gyro)
     // ����ƽ����Ƶĵ��PWM  PD����   kp��Pϵ�� kd��Dϵ��
     angle_out = _pid_angle.kP() * angle_bias + gyro_bias * _pid_angle.kD();
 
-    if (stop_balance_control || Flag_Stop) {
+    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         angle_out  = 0;
         angle_bias = 0;
         gyro_bias  = 0;
@@ -132,7 +132,7 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
     // ��ȡ�����ٶ�ƫ��=Ŀ���ٶȣ��˴�Ϊ�㣩-�����ٶȣ����ұ�����֮�ͣ�
     //更新速度输出
 
-    if (stop_balance_control || Flag_Stop) {
+    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         _pid_speed.reset_I();
         encoder_error        = 0;
         encoder_error_filter = 0;
@@ -164,7 +164,7 @@ float AC_BalanceControl::turn_controller(float yaw, float gyro)
     //===================ת��PD������=================//
     turn_out = turn_target * _pid_turn.kP() + gyro * _pid_turn.kD(); // ���Z�������ǽ���PD����
 
-    if (stop_balance_control || Flag_Stop) {
+    if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         turn_out    = 0;
         turn_target = 0;
     }
@@ -268,6 +268,12 @@ void AC_BalanceControl::update(void)
     }
 
     debug_info();
+
+    if (hal.rcin->read(CH_8) > 1700) {
+        force_stop_balance_control = true;
+    } else {
+        force_stop_balance_control = false;
+    }
 }
 
 // void AC_BalanceControl::function_s()
@@ -358,27 +364,44 @@ void AC_BalanceControl::check_Acceleration(){
             balanceMode = BalanceMode::aerial; //进入飞行模式
             }
             break;
-        }
 
-        case BalanceMode::aerial:{
-            S_GF = 1.0f; 
-            S_FG = 0.0f;
-            if((hal.rcin->read(CH_3) < 1400) && (hal.rcin->read(CH_7) > 1500)){ //如果进入空地过渡且油门输入小于1300时
-                JT   = 1 - 1 / (1 + expf(-((T - 1300) / 20))); //关节舵机影响因子为S形函数，随着油门量减少作用越来越强，以适应复杂地形
+        case BalanceMode::balance_car:
+            if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1200)) {
+                balanceMode = BalanceMode::flying_with_balance;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
             }
-            _motors->set_fac_out(JT);   
+            break;
 
-            if((fabsf(accelData) > _landing_acc) && (hal.rcin->read(CH_3) < _landing_thr) && (hal.rcin->read(CH_7) > 1500)){ //当反馈的加速度值大于设定的降落加速度，油门输入小于设定的降落油门并且当前处于空地过渡时，则进入过渡
-            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
-            gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is landing, accel = %f", accelData);
-            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
+        case BalanceMode::flying_with_balance:
+            if ((alt_cm >= 8) && (hal.rcin->read(CH_3) > 1200) && (hal.rcin->read(CH_8)) > 1600) {
+                stop_balance_control = true;
+                balanceMode          = BalanceMode::flying_without_balance;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
+            }
+            break;
 
-            S_GF = 1 / (1 + expf(-((T - 1200) / 20))); //成功落地后油门量会逐渐减小，避免由1到0的突变引入额外的扰动
-            S_FG = 1.0f;
-            JT   = 1.0F;
-            _motors->set_fac_out(JT);
+        case BalanceMode::flying_without_balance:
+            // set_control_zeros();
+            // stop_balance_control = true;
+            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1200)) {
+                stop_balance_control = true;
+                balanceMode          = BalanceMode::landing_ground_idle;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_ground_idle");
+            }
+            break;
 
-            balanceMode = BalanceMode::ground; //进入地面模式
+        case BalanceMode::landing_ground_idle:
+            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) < 1600) {
+                stop_balance_control = false;
+                balanceMode          = BalanceMode::landing_finish;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_finish");
+            }
+            break;
+
+        case BalanceMode::landing_finish:
+            if ((alt_cm < 8)) {
+                balanceMode = BalanceMode::ground;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
             }
             break;
         }
