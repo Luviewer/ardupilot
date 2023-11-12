@@ -82,7 +82,7 @@ public:
     void  hight_controller();
 
     void pilot_control();
-    // void set_control_mode();
+    void set_control_mode();
 
     void update(void);
 
@@ -143,18 +143,6 @@ protected:
     AP_Float Target_MAX_Velocity_X;
     AP_Float Target_MAX_Velocity_Z;
 
-    AP_Float Target_Offset_SGF_B;
-    AP_Float Target_Slope_SGF_R;
-
-    AP_Float Joint_Offset_B;
-    AP_Float Joint_Slope_R;
-
-    AP_Float _take_off_acc;
-    AP_Float _landing_acc;
-
-    AP_Float _take_off_thr;
-    AP_Float _landing_thr;
-
     ///////////////////////////////////////////////////////
     // 直立环参数
     float angle_out;
@@ -178,10 +166,6 @@ protected:
     ///////////////////////////////////////////////////////
     int16_t _movement_x;
     int16_t _movement_z;
-    int16_t _movement_y;
-    int16_t _movement_h;
-
-
     uint8_t stop_balance_control;
 
     ///////////////////////////////////////////////////////
