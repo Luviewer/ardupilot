@@ -166,6 +166,9 @@ protected:
     ///////////////////////////////////////////////////////
     int16_t _movement_x;
     int16_t _movement_z;
+    int16_t _movement_y;
+
+
     uint8_t stop_balance_control;
 
     ///////////////////////////////////////////////////////
