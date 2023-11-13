@@ -390,7 +390,7 @@ void AC_BalanceControl::pilot_control()
 {
     int16_t pwm_x = hal.rcin->read(CH_1) - 1500;
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
-    int16_t pwm_y = hal.rcin->read(CH_3) - 1500;
+    int16_t pwm_y = hal.rcin->read(CH_2) - 1500;
 
     if (pwm_x < 50 && pwm_x > -50) {
         _movement_x = 0;
