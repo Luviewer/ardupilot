@@ -126,7 +126,7 @@ void AP_AHRS_View::Write_AttitudeView(const Vector3f &targets) const
     const struct log_Attitude pkt{
         LOG_PACKET_HEADER_INIT(LOG_ATTITUDE_MSG),
         time_us         : AP_HAL::micros64(),
-        control_roll    : (int16_t)targets.x,
+        control_roll    : (int16_t)(targets.x * 0.5f),
         roll            : (int16_t)roll_sensor,
         control_pitch   : (int16_t)targets.y,
         pitch           : (int16_t)pitch_sensor,

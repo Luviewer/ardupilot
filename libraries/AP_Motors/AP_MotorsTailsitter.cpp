@@ -50,11 +50,11 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
 
     // 左腿 to servo output 5
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_LeftJointMotor, CH_5);
-    SRV_Channels::set_angle(SRV_Channel::k_LeftJointMotor, 9000);
+    SRV_Channels::set_angle(SRV_Channel::k_LeftJointMotor, 4500);
 
     // 右腿 to servo output 6
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_RightJointMotor, CH_6);
-    SRV_Channels::set_angle(SRV_Channel::k_RightJointMotor,9000);
+    SRV_Channels::set_angle(SRV_Channel::k_RightJointMotor, 4500);
 
     _mav_type = MAV_TYPE_VTOL_DUOROTOR;
 
@@ -119,8 +119,8 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
 
     // 平衡车 轮腿舵机
-    SRV_Channels::set_output_scaled(SRV_Channel::k_LeftJointMotor, -_roll_out * 9000);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_RightJointMotor, +_roll_out * 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_LeftJointMotor, (_high_out -_roll_out) * 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_RightJointMotor, (_high_out +_roll_out) * 9000);
 
 }
 
