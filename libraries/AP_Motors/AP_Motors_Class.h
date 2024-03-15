@@ -161,6 +161,7 @@ public:
     virtual float       get_throttle_hover() const = 0;
 
     virtual void        set_roll_out(float _val) { }
+    virtual void        set_high_out(float _val) { }
 
     // motor failure handling
     void                set_thrust_boost(bool enable) { _thrust_boost = enable; }

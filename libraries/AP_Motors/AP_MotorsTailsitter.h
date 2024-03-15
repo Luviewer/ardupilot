@@ -34,6 +34,8 @@ public:
 
     void set_roll_out(float _val) override { _roll_out = _val; } 
 
+    void set_high_out(float _val) override { _high_out = _val; } 
+
 protected:
     // calculate motor outputs
     void output_armed_stabilizing() override;
@@ -57,4 +59,5 @@ protected:
     bool _has_diff_thrust;
 
     float _roll_out;
+    float _high_out;
 };

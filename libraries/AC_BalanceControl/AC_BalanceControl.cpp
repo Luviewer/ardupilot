@@ -105,11 +105,11 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
 
     //================速度PI控制器=====================//
 
-    // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
+    // 获取最新速度偏差=测量速度（左右编码器之和）- 目标速度
     encoder_error = (encoder_left + encoder_right) - encoder_movement;
-
+    //对速度偏差进行一阶低通滤波
     encoder_error_filter = speed_low_pass_filter.apply(encoder_error, _dt);
-
+    //更新速度输出
     velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
     if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
@@ -152,11 +152,25 @@ void AC_BalanceControl::roll_controller(float roll)
 
     float roll_out;
 
-    float roll_target = (float)_movement_y / 500.0f * radians(45.0f);
+    float roll_target = (float)_movement_y / 500.0f * radians(60.0f);
 
     roll_out = _pid_roll.update_all(roll_target, roll, _dt);
+    // if(force_stop_balance_control){
+    //     roll_out = 0;
+    // }
 
     _motors->set_roll_out(roll_out); // -1 ~ 1
+}
+
+void AC_BalanceControl::hight_controller()
+{
+    if (_motors == nullptr) return;
+
+    float high_out;
+
+    high_out = (float)_movement_h / 500.0f * radians(30.0f);
+
+    _motors->set_high_out(high_out); // -1 ~ 1
 }
 
 void AC_BalanceControl::update(void)
@@ -203,13 +217,20 @@ void AC_BalanceControl::update(void)
 
     motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
     motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
+    if(motor_target_left_int > 0){motor_target_left_int += 20;}
+   else {motor_target_left_int -=20;}
+    if(motor_target_right_int > 0){motor_target_right_int += 10;}
+   else {motor_target_right_int -= 10;}
 
     // 最终的电机输入量
     balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
     balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
 
-    // 腿部舵机控制
+    // 腿部滚转控制
     roll_controller(_ahrs->roll);
+
+    // 腿部高度控制
+    hight_controller();
 
     // 设置模式
     set_control_mode();
@@ -292,10 +313,13 @@ void AC_BalanceControl::set_control_mode(void)
 
 void AC_BalanceControl::pilot_control()
 {
-    int16_t pwm_x = hal.rcin->read(CH_1) - 1500;
+    int16_t pwm_x = hal.rcin->read(CH_2) - 1500;
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
-    int16_t pwm_y = hal.rcin->read(CH_2) - 1500;
-
+    int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
+    int16_t pwm_h = hal.rcin->read(CH_6) - 1500;
+    // int16_t T  = hal.rcin->read(CH_6);
+    // sigm = 1/(1 + expf(-((T - 1500)/20))); //0 ~ 1
+    
     if (pwm_x < 50 && pwm_x > -50) {
         _movement_x = 0;
     } else if (abs(pwm_x) > 500) {
@@ -312,12 +336,20 @@ void AC_BalanceControl::pilot_control()
         _movement_z = pwm_z;
     }
 
-    if (pwm_y < 50 && pwm_y > -50) {
+    if (pwm_y < 20 && pwm_y > -20) {
         _movement_y = 0;
     } else if (abs(pwm_y) > 500) {
         _movement_y = 0;
     } else {
         _movement_y = pwm_y;
+    }
+
+    if (pwm_h < 20 && pwm_h > -20) {
+        _movement_h = 0;
+    } else if (abs(pwm_h) > 500) {
+        _movement_h = 0;
+    } else {
+        _movement_h = pwm_h;
     }
 }
 

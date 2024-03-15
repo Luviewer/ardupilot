@@ -67,6 +67,7 @@ public:
     float velocity_controller(float encoder_left, float encoder_right);
     float turn_controller(float yaw, float gyro);
     void  roll_controller(float roll);
+    void  hight_controller();
 
     void pilot_control();
     void set_control_mode();
@@ -83,6 +84,7 @@ public:
 
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
+    //float sigm;
 
     AP_Motors*          _motors;
     const AP_AHRS_View* _ahrs;
@@ -154,6 +156,7 @@ protected:
     int16_t _movement_x;
     int16_t _movement_z;
     int16_t _movement_y;
+    int16_t _movement_h;
 
 
     uint8_t stop_balance_control;
