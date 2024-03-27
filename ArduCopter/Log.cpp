@@ -171,8 +171,8 @@ struct PACKED log_Data_UInt32t {
 // Write a uint32_t data packet
 void Copter::Log_Write_Data(LogDataID id, uint32_t value)
 {
-    float sgf = balanceControl->function_sgf();
-    float sfg = balanceControl->function_sfg();
+    float sgf = balanceControl->S_GF;
+    float sfg = balanceControl->S_FG;
     if (should_log(MASK_LOG_ANY)) {
         struct log_Data_UInt32t pkt = {
             LOG_PACKET_HEADER_INIT(LOG_DATA_UINT32_MSG),

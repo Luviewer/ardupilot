@@ -113,10 +113,10 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
 
     // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
-    SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2]*100);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _S_GF * _actuator[2]*100);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,  _S_GF * _tilt_left*SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _S_GF * _tilt_right*SERVO_OUTPUT_RANGE);
 
     // 平衡车 轮腿舵机
     SRV_Channels::set_output_scaled(SRV_Channel::k_LeftJointMotor, -_roll_out * 9000);
