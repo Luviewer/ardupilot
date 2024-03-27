@@ -114,8 +114,7 @@ public:
     // bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
     // bool Put_Down(float Angle, int encoder_left, int encoder_right);
     void debug_info();
-    void function_sgf();
-    void function_sfg();
+    void function_s();
     double S_FG;
     double S_GF;
 

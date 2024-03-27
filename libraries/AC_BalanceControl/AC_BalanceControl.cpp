@@ -226,8 +226,8 @@ void AC_BalanceControl::update(void)
 
     motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
     motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
-    if(motor_target_left_int > 0){motor_target_left_int += 120;}
-   else {motor_target_left_int -=120;}
+    if(motor_target_left_int > 0){motor_target_left_int += 100;}
+   else {motor_target_left_int -=100;}
     if(motor_target_right_int > 0){motor_target_right_int += 60;}
    else {motor_target_right_int -= 60;}
 
@@ -254,8 +254,7 @@ void AC_BalanceControl::update(void)
     // }
 
     debug_info();
-    function_sgf();
-    function_sfg();
+    function_s();
 
     if (hal.rcin->read(CH_8) > 1700) {
         force_stop_balance_control = true;
@@ -264,31 +263,22 @@ void AC_BalanceControl::update(void)
     }
 }
 
-void AC_BalanceControl::function_sgf()
+void AC_BalanceControl::function_s()
 {
     if (_motors == nullptr) return;
 
     if (hal.rcin->read(CH_7) > 1700) {
+        
         int16_t T = hal.rcin->read(CH_3);
-        S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R))); // 0 ~ 1
-        _motors->set_sgf_out(S_GF);
+
+        S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R)));     // 0 ~ 1
+        S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
+
+        _motors->set_fac_out(S_GF); // 输出S_GF因子，只有AP_MotorsTailsitter.cpp文件中要用到
     } else {
         S_GF = 1.0f;
-        _motors->set_sgf_out(S_GF);
-    }
-}
-
-void AC_BalanceControl::function_sfg()
-{
-    if (_motors == nullptr) return;
-
-    if (hal.rcin->read(CH_7) > 1700) {
-        int16_t T = hal.rcin->read(CH_3);
-        S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
-        _motors->set_sfg_out(S_FG);
-    } else {
         S_FG = 1.0f;
-        _motors->set_sfg_out(S_FG);
+        _motors->set_fac_out(S_GF);
     }
 }
 
