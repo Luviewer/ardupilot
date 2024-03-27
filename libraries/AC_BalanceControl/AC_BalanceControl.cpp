@@ -26,6 +26,14 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_GROUPINFO("T_SPD_MAX_Z", 8, AC_BalanceControl, Target_MAX_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
 
+    AP_GROUPINFO("F_SGF_B", 9, AC_BalanceControl, Target_Offset_SGF_B, AC_BALANCE_TARGET_SGF_B),
+
+    AP_GROUPINFO("F_SGF_R", 10, AC_BalanceControl, Target_Slope_SGF_R, AC_BALANCE_TARGET_SGF_R),
+
+    AP_GROUPINFO("F_SFG_B", 11, AC_BalanceControl, Target_Offset_SFG_B, AC_BALANCE_TARGET_SFG_B),
+
+    AP_GROUPINFO("F_SFG_R", 12, AC_BalanceControl, Target_Slope_SFG_R, AC_BALANCE_TARGET_SFG_R),
+
     AP_GROUPEND
 };
 
@@ -155,7 +163,7 @@ void AC_BalanceControl::roll_controller(float roll)
     }
     roll_out = _pid_roll.update_all(roll_target, roll, _dt);
 
-    _motors->set_roll_out(JT * roll_out); // -1 ~ 1
+    _motors->set_roll_out(function_sfg() * roll_out); // -1 ~ 1
 }
 
 void AC_BalanceControl::hight_controller()
@@ -166,13 +174,11 @@ void AC_BalanceControl::hight_controller()
 
     float roll_target = (float)_movement_y / 500.0f * radians(45.0f);
 
+<<<<<<< HEAD
     roll_out = _pid_roll.update_all(roll_target, roll, _dt);
 
     _motors->set_high_out(JT * high_out); // -1 ~ 1
-}
-
 void AC_BalanceControl::update(void)
-{
     if (_motors == nullptr) {
         gcs().send_text(MAV_SEVERITY_WARNING, "_motors = nullptr");
         return;
@@ -215,14 +221,14 @@ void AC_BalanceControl::update(void)
 
     motor_target_left_int  = (int16_t)(motor_target_left_f * max_scale_value);
     motor_target_right_int = -(int16_t)(motor_target_right_f * max_scale_value);
-    if(motor_target_left_int > 0){motor_target_left_int += 100;}
-   else {motor_target_left_int -=100;}
+    if(motor_target_left_int > 0){motor_target_left_int += 120;}
+   else {motor_target_left_int -=120;}
     if(motor_target_right_int > 0){motor_target_right_int += 60;}
    else {motor_target_right_int -= 60;}
 
     // 最终的电机输入量
-    balanceCAN->setCurrent(0, (int16_t)motor_target_left_int);
-    balanceCAN->setCurrent(1, (int16_t)motor_target_right_int);
+    balanceCAN->setCurrent(0, function_sfg() * (int16_t)motor_target_left_int);
+    balanceCAN->setCurrent(1, function_sfg() * (int16_t)motor_target_right_int);
 
     // 腿部舵机控制
     roll_controller(_ahrs->roll);
@@ -234,13 +240,13 @@ void AC_BalanceControl::update(void)
     pilot_control();
 
     // 检查是否失控
-    if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
-        Flag_Stop = true;
-    }
+    // if (Pick_Up(_ahrs->get_accel_ef().z, angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+    //     Flag_Stop = true;
+    // }
 
-    if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
-        Flag_Stop = false;
-    }
+    // if (Put_Down(angle_y, balanceCAN->getSpeed(0), balanceCAN->getSpeed(1))) {
+    //     Flag_Stop = false;
+    // }
 
     debug_info();
 
@@ -250,7 +256,22 @@ void AC_BalanceControl::update(void)
         force_stop_balance_control = false;
     }
 }
+int16_t T = hal.rcin->read(CH_3);
+float AC_BalanceControl::function_sgf()
+{
+    //int16_t T  = hal.rcin->read(CH_3);
+    float S_GF = 1 / (1 + expf(-((T - Target_Offset_SGF_B)/Target_Slope_SGF_R))); //0 ~ 1
+    return S_GF;
+}
 
+float AC_BalanceControl::function_sfg()
+{
+    //int16_t T  = hal.rcin->read(CH_3);
+    float S_FG = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B)/Target_Slope_SFG_R))); //0 ~ 1
+    return S_FG;
+}
+
+<<<<<<< HEAD
 // void AC_BalanceControl::function_s()
 // {
 //     if (_motors == nullptr) return;
@@ -337,18 +358,27 @@ void AC_BalanceControl::check_Acceleration(){
             _motors->set_fac_out(JT);
 
             balanceMode = BalanceMode::aerial; //进入飞行模式
+=======
+void AC_BalanceControl::set_control_mode(void)
+{
+    switch (balanceMode) {
+        case BalanceMode::ground:
+            if ((alt_cm < 10) && (hal.rcin->read(CH_8) < 1600)) {
+                balanceMode = BalanceMode::balance_car;
+                gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
+>>>>>>> 88d77efda4... 添加转换因子
             }
             break;
 
         case BalanceMode::balance_car:
-            if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1200)) {
+            if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1550)) {
                 balanceMode = BalanceMode::flying_with_balance;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
             }
             break;
 
         case BalanceMode::flying_with_balance:
-            if ((alt_cm >= 8) && (hal.rcin->read(CH_3) > 1200) && (hal.rcin->read(CH_8)) > 1600) {
+            if ((alt_cm >= 10) && (hal.rcin->read(CH_3) > 1500) && (hal.rcin->read(CH_8)) > 1600) {
                 stop_balance_control = true;
                 balanceMode          = BalanceMode::flying_without_balance;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
@@ -358,7 +388,7 @@ void AC_BalanceControl::check_Acceleration(){
         case BalanceMode::flying_without_balance:
             // set_control_zeros();
             // stop_balance_control = true;
-            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1200)) {
+            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1500)) {
                 stop_balance_control = true;
                 balanceMode          = BalanceMode::landing_ground_idle;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "landing_ground_idle");
@@ -366,7 +396,7 @@ void AC_BalanceControl::check_Acceleration(){
             break;
 
         case BalanceMode::landing_ground_idle:
-            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1200) && (hal.rcin->read(CH_8)) < 1600) {
+            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1500) && (hal.rcin->read(CH_8)) < 1600) {
                 stop_balance_control = false;
                 balanceMode          = BalanceMode::landing_finish;
                 gcs().send_text(MAV_SEVERITY_NOTICE, "landing_finish");
@@ -386,12 +416,28 @@ void AC_BalanceControl::check_Acceleration(){
     }
 }
 
+// void AC_BalanceControl::factor_s()
+// {
+//     int16_t T  = hal.rcin->read(CH_3);
+//     S_GF = 1 / (1 + expf(-((T - 1200)/20))); //0 ~ 1
+//     S_FG = 1 - 1 / (1 + expf(-((T - 1400)/50))); //0 ~ 1
+// }
+
 void AC_BalanceControl::pilot_control()
 {
     int16_t pwm_x = hal.rcin->read(CH_1) - 1500;
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
+<<<<<<< HEAD
     int16_t pwm_y = hal.rcin->read(CH_2) - 1500;
 
+=======
+    int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
+    int16_t pwm_h = hal.rcin->read(CH_6) - 1500;
+    // int16_t T  = hal.rcin->read(CH_3);
+    // S_GF = 1 / (1 + expf(-((T - 1200)/20))); //0 ~ 1
+    // S_FG = 1 - 1 / (1 + expf(-((T - 1400)/50))); //0 ~ 1
+    
+>>>>>>> 88d77efda4... 添加转换因子
     if (pwm_x < 50 && pwm_x > -50) {
         _movement_x = 0;
     } else if (abs(pwm_x) > 500) {
@@ -449,34 +495,34 @@ Output  : 1：picked up  0：No action
 入口参数：Acceleration：z轴加速度；Angle：平衡的角度；encoder_left：左编码器计数；encoder_right：右编码器计数
 返回  值：1:小车被拿起  0：小车未被拿起
 **************************************************************************/
-bool AC_BalanceControl::Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right)
-{
-    static uint16_t flag, count0, count1, count2;
-    if (flag == 0) // 第一步
-    {
-        if ((abs(encoder_left) + abs(encoder_right)) < 100) // 条件1，小车接近静止
-            count0++;
-        else
-            count0 = 0;
-        if (count0 > 10) flag = 1, count0 = 0;
-    }
-    if (flag == 1) // 进入第二步
-    {
-        if (++count1 > (2 * 200)) count1 = 0, flag = 0;         // 超时不再等待2000ms，返回第一步
-        if ((Acceleration > 0.75) && ((fabsf(Angle) - 10) < 0)) // 条件2，小车是在0度附近被拿起
-            flag = 2;
-    }
-    if (flag == 2) // 第三步
-    {
-        if (++count2 > (1 * 200)) count2 = 0, flag = 0; // 超时不再等待1000ms
-        if (abs(encoder_left + encoder_right) > 15000)  // 条件3，小车的轮胎因为正反馈达到最大的转速
-        {
-            flag = 0;
-            return true; // 检测到小车被拿起
-        }
-    }
-    return false;
-}
+// bool AC_BalanceControl::Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right)
+// {
+//     static uint16_t flag, count0, count1, count2;
+//     if (flag == 0) // 第一步
+//     {
+//         if ((abs(encoder_left) + abs(encoder_right)) < 100) // 条件1，小车接近静止
+//             count0++;
+//         else
+//             count0 = 0;
+//         if (count0 > 10) flag = 1, count0 = 0;
+//     }
+//     if (flag == 1) // 进入第二步
+//     {
+//         if (++count1 > (2 * 200)) count1 = 0, flag = 0;         // 超时不再等待2000ms，返回第一步
+//         if ((Acceleration > 0.75) && ((fabsf(Angle) - 10) < 0)) // 条件2，小车是在0度附近被拿起
+//             flag = 2;
+//     }
+//     if (flag == 2) // 第三步
+//     {
+//         if (++count2 > (1 * 200)) count2 = 0, flag = 0; // 超时不再等待1000ms
+//         if (abs(encoder_left + encoder_right) > 15000)  // 条件3，小车的轮胎因为正反馈达到最大的转速
+//         {
+//             flag = 0;
+//             return true; // 检测到小车被拿起
+//         }
+//     }
+//     return false;
+// }
 
 /**************************************************************************
 Function: Check whether the car is lowered
@@ -486,6 +532,7 @@ Output  : 1：put down  0：No action
 入口参数：平衡角度；左编码器读数；右编码器读数
 返回  值：1：小车放下   0：小车未放下
 **************************************************************************/
+<<<<<<< HEAD
 bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
 {
     static uint16_t flag, count;
@@ -509,3 +556,28 @@ bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_righ
     }
     return false;
 }
+=======
+// bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
+// {
+//     static uint16_t flag, count;
+//     if (Flag_Stop == false) // 防止误检
+//         return 0;
+//     if (flag == 0) {
+//         if ((fabsf(Angle) - 20) < 0 && abs(encoder_left) == 0 && abs(encoder_right) == 0) // 条件1，小车是在0度附近的
+//             flag = 1;
+//     }
+//     if (flag == 1) {
+//         if (++count > 50) // 超时不再等待 500ms
+//         {
+//             count = 0;
+//             flag  = 0;
+//         }
+//         if (abs(encoder_left) > 50 && abs(encoder_right) > 50) // 条件2，小车的轮胎在未上电的时候被人为转动
+//         {
+//             flag = 0;
+//             return true; // 检测到小车被放下
+//         }
+//     }
+//     return false;
+// }
+>>>>>>> 88d77efda4... 添加转换因子

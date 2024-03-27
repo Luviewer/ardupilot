@@ -164,17 +164,23 @@ struct PACKED log_Data_UInt32t {
     uint64_t time_us;
     uint8_t id;
     uint32_t data_value;
+    float factor_sgf;
+    float factor_sfg;
 };
 
 // Write a uint32_t data packet
 void Copter::Log_Write_Data(LogDataID id, uint32_t value)
 {
+    float sgf = balanceControl->function_sgf();
+    float sfg = balanceControl->function_sfg();
     if (should_log(MASK_LOG_ANY)) {
         struct log_Data_UInt32t pkt = {
             LOG_PACKET_HEADER_INIT(LOG_DATA_UINT32_MSG),
             time_us     : AP_HAL::micros64(),
             id          : (uint8_t)id,
-            data_value  : value
+            data_value  : value,
+            factor_sgf  : sgf,
+            factor_sfg  : sfg
         };
         logger.WriteCriticalBlock(&pkt, sizeof(pkt));
     }
@@ -478,7 +484,7 @@ const struct LogStructure Copter::log_structure[] = {
     { LOG_DATA_INT32_MSG, sizeof(log_Data_Int32t),         
       "D32",   "QBi",         "TimeUS,Id,Value", "s--", "F--" },
     { LOG_DATA_UINT32_MSG, sizeof(log_Data_UInt32t),         
-      "DU32",  "QBI",         "TimeUS,Id,Value", "s--", "F--" },
+      "DU32",  "QBIff",         "TimeUS,Id,Value,SGf,SFg", "s----", "F----" },
     { LOG_DATA_FLOAT_MSG, sizeof(log_Data_Float),         
       "DFLT",  "QBf",         "TimeUS,Id,Value", "s--", "F--" },
     
