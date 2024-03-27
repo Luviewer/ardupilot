@@ -36,6 +36,10 @@ public:
 
     void set_high_out(float _val) override { _high_out = _val; } 
 
+    void set_sfg_out(float _val) override { _S_FG = _val; }
+
+    void set_sgf_out(float _val) override { _S_GF = _val; }
+
 protected:
     // calculate motor outputs
     void output_armed_stabilizing() override;
@@ -60,4 +64,7 @@ protected:
 
     float _roll_out;
     float _high_out;
+
+    float _S_FG;
+    float _S_GF;
 };

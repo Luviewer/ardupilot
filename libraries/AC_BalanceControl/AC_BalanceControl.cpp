@@ -164,7 +164,7 @@ void AC_BalanceControl::roll_controller(float roll)
 
     roll_out = _pid_roll.update_all(roll_target, roll, _dt);
 
-    _motors->set_roll_out(function_sfg() * roll_out); // -1 ~ 1
+    _motors->set_roll_out(S_FG * roll_out); // -1 ~ 1
 }
 
 void AC_BalanceControl::hight_controller()
@@ -175,7 +175,7 @@ void AC_BalanceControl::hight_controller()
 
     high_out = (float)_movement_h / 500.0f * radians(30.0f);
 
-    _motors->set_high_out(function_sfg() * high_out); // -1 ~ 1
+    _motors->set_high_out(S_FG * high_out); // -1 ~ 1
 }
 
 void AC_BalanceControl::update(void)
@@ -228,8 +228,8 @@ void AC_BalanceControl::update(void)
    else {motor_target_right_int -= 60;}
 
     // 最终的电机输入量
-    balanceCAN->setCurrent(0, function_sfg() * (int16_t)motor_target_left_int);
-    balanceCAN->setCurrent(1, function_sfg() * (int16_t)motor_target_right_int);
+    balanceCAN->setCurrent(0, S_FG * (int16_t)motor_target_left_int);
+    balanceCAN->setCurrent(1, S_FG * (int16_t)motor_target_right_int);
 
     // 腿部滚转控制
     roll_controller(_ahrs->roll);
@@ -253,6 +253,8 @@ void AC_BalanceControl::update(void)
     // }
 
     debug_info();
+    function_sgf();
+    function_sfg();
 
     if (hal.rcin->read(CH_8) > 1700) {
         force_stop_balance_control = true;
@@ -260,19 +262,33 @@ void AC_BalanceControl::update(void)
         force_stop_balance_control = false;
     }
 }
-int16_t T = hal.rcin->read(CH_3);
-float AC_BalanceControl::function_sgf()
+
+void AC_BalanceControl::function_sgf()
 {
-    //int16_t T  = hal.rcin->read(CH_3);
-    float S_GF = 1 / (1 + expf(-((T - Target_Offset_SGF_B)/Target_Slope_SGF_R))); //0 ~ 1
-    return S_GF;
+    if (_motors == nullptr) return;
+
+    if (hal.rcin->read(CH_7) > 1700) {
+        int16_t T = hal.rcin->read(CH_3);
+        S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R))); // 0 ~ 1
+        _motors->set_sgf_out(S_GF);
+    } else {
+        S_GF = 1.0f;
+        _motors->set_sgf_out(S_GF);
+    }
 }
 
-float AC_BalanceControl::function_sfg()
+void AC_BalanceControl::function_sfg()
 {
-    //int16_t T  = hal.rcin->read(CH_3);
-    float S_FG = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B)/Target_Slope_SFG_R))); //0 ~ 1
-    return S_FG;
+    if (_motors == nullptr) return;
+
+    if (hal.rcin->read(CH_7) > 1700) {
+        int16_t T = hal.rcin->read(CH_3);
+        S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
+        _motors->set_sfg_out(S_FG);
+    } else {
+        S_FG = 1.0f;
+        _motors->set_sfg_out(S_FG);
+    }
 }
 
 void AC_BalanceControl::set_control_mode(void)
@@ -330,22 +346,12 @@ void AC_BalanceControl::set_control_mode(void)
     }
 }
 
-// void AC_BalanceControl::factor_s()
-// {
-//     int16_t T  = hal.rcin->read(CH_3);
-//     S_GF = 1 / (1 + expf(-((T - 1200)/20))); //0 ~ 1
-//     S_FG = 1 - 1 / (1 + expf(-((T - 1400)/50))); //0 ~ 1
-// }
-
 void AC_BalanceControl::pilot_control()
 {
     int16_t pwm_x = hal.rcin->read(CH_2) - 1500;
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
     int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
     int16_t pwm_h = hal.rcin->read(CH_6) - 1500;
-    // int16_t T  = hal.rcin->read(CH_3);
-    // S_GF = 1 / (1 + expf(-((T - 1200)/20))); //0 ~ 1
-    // S_FG = 1 - 1 / (1 + expf(-((T - 1400)/50))); //0 ~ 1
     
     if (pwm_x < 50 && pwm_x > -50) {
         _movement_x = 0;
