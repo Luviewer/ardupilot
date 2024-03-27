@@ -54,6 +54,12 @@
 #define AC_BALANCE_ROLL_TARGET_FILT_HZ  0.135f
 #define AC_BALANCE_ROLL_ERROR_FILT_HZ   2.5f
 
+#define AC_BALANCE_TARGET_SGF_B         1200
+#define AC_BALANCE_TARGET_SGF_R         20
+
+#define AC_BALANCE_TARGET_SFG_B         1400
+#define AC_BALANCE_TARGET_SFG_R         50
+
 class AC_BalanceControl {
 public:
     AC_BalanceControl(AP_Motors* motors, AP_AHRS_View* ahrs);
@@ -84,7 +90,6 @@ public:
 
     // user settable parameters
     static const struct AP_Param::GroupInfo var_info[];
-    //float sigm;
 
     AP_Motors*          _motors;
     const AP_AHRS_View* _ahrs;
@@ -106,9 +111,12 @@ public:
         landing_finish         = 5,
     };
 
-    bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
-    bool Put_Down(float Angle, int encoder_left, int encoder_right);
+    // bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
+    // bool Put_Down(float Angle, int encoder_left, int encoder_right);
     void debug_info();
+    float function_sgf();
+    float function_sfg();
+
 
 protected:
     AP_BalanceCAN* balanceCAN;
@@ -131,6 +139,12 @@ protected:
 
     AP_Float Target_MAX_Velocity_X;
     AP_Float Target_MAX_Velocity_Z;
+
+    AP_Float Target_Offset_SGF_B;
+    AP_Float Target_Slope_SGF_R;
+
+    AP_Float Target_Offset_SFG_B;
+    AP_Float Target_Slope_SFG_R;
 
     ///////////////////////////////////////////////////////
     // 直立环参数
