@@ -26,13 +26,21 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_GROUPINFO("T_SPD_MAX_Z", 8, AC_BalanceControl, Target_MAX_Velocity_Z, AC_BALANCE_TARGET_Z_SPEED),
 
-    AP_GROUPINFO("F_SGF_B", 9, AC_BalanceControl, Target_Offset_SGF_B, AC_BALANCE_TARGET_SGF_B),
+    AP_GROUPINFO("F_TAKE_A", 9, AC_BalanceControl, _take_off_acc, AC_BALANCE_TAKE_OFF_ACC),
 
-    AP_GROUPINFO("F_SGF_R", 10, AC_BalanceControl, Target_Slope_SGF_R, AC_BALANCE_TARGET_SGF_R),
+    AP_GROUPINFO("F_LAND_A", 10, AC_BalanceControl, _landing_acc, AC_BALANCE_LANDING_ACC),
 
-    AP_GROUPINFO("F_SFG_B", 11, AC_BalanceControl, Target_Offset_SFG_B, AC_BALANCE_TARGET_SFG_B),
+    AP_GROUPINFO("F_TAKE_T", 11, AC_BalanceControl, _take_off_thr, AC_BALANCE_TAKE_OFF_THR),
 
-    AP_GROUPINFO("F_SFG_R", 12, AC_BalanceControl, Target_Slope_SFG_R, AC_BALANCE_TARGET_SFG_R),
+    AP_GROUPINFO("F_LAND_T", 12, AC_BalanceControl, _landing_thr, AC_BALANCE_LANDING_THR),
+
+    // AP_GROUPINFO("TAKE_OFF_ACC", 9, AC_BalanceControl, _take_off_acc, AC_BALANCE_TAKE_OFF_ACC),
+
+    // AP_GROUPINFO("TAKE_OFF_THR", 10, AC_BalanceControl, _landing_acc, AC_BALANCE_LANDING_ACC),
+
+    // AP_GROUPINFO("LANDING_ACC", 11, AC_BalanceControl, _take_off_thr, AC_BALANCE_TAKE_OFF_THR),
+
+    // AP_GROUPINFO("LANDING_THR", 12, AC_BalanceControl, _landing_thr, AC_BALANCE_TAKE_OFF_THR),
 
     AP_GROUPEND
 };
@@ -239,7 +247,7 @@ void AC_BalanceControl::update(void)
     roll_controller(_ahrs->roll);
 
     // 设置模式
-    set_control_mode();
+    // set_control_mode();
 
     // 遥控输入
     pilot_control();
@@ -253,35 +261,97 @@ void AC_BalanceControl::update(void)
     //     Flag_Stop = false;
     // }
 
-    debug_info();
-    function_s();
+    // debug_info();
+    // function_s();
 
     if (hal.rcin->read(CH_8) > 1700) {
         force_stop_balance_control = true;
     } else {
         force_stop_balance_control = false;
     }
+
+    // const auto timeus_start = AP_HAL::micros64();
+    // if(cnt > 400){
+    //     cnt = 0;
+    //     gcs().send_text(MAV_SEVERITY_NOTICE, "######## Time = %lld ########", timeus);
+    // }
+    check_Acceleration();
 }
 
-void AC_BalanceControl::function_s()
-{
-    if (_motors == nullptr) return;
+// void AC_BalanceControl::function_s()
+// {
+//     if (_motors == nullptr) return;
 
-    if (hal.rcin->read(CH_7) > 1700) {
-        
-        int16_t T = hal.rcin->read(CH_3);
+//     switch (balanceMode) {
+//         case BalanceMode::ground:{
+//             S_GF = 0.0f;
+//             S_FG = 1.0f;
+//             _motors->set_fac_out(S_GF);
 
-        S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R)));     // 0 ~ 1
-        S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
 
-        _motors->set_fac_out(S_GF); // 输出S_GF因子，只有AP_MotorsTailsitter.cpp文件中要用到
-    } else {
-        S_GF = 1.0f;
-        S_FG = 1.0f;
-        _motors->set_fac_out(S_GF);
-    }
-}
+//             if ((hal.rcin->read(CH_7) > 1300) && (hal.rcin->read(CH_7) < 1700)) { // 通道7切换到二档，进入过渡模式
+//                 balanceMode = BalanceMode::transition;
+//             }
+//             break;}
 
+//         case BalanceMode::transition:{
+//             int16_t T = hal.rcin->read(CH_3);
+//             S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R)));     // 0 ~ 1
+//             S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
+//             _motors->set_fac_out(S_GF);
+
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "transition");
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+
+//             if (hal.rcin->read(CH_7) > 1700) { // 通道7切换到3档，进入空中模式
+//                 balanceMode = BalanceMode::aerial;
+//             }
+
+//             if ((hal.rcin->read(CH_7) < 1300) && (hal.rcin->read(CH_3) < 1200)) { // 防止无人机在空中的时候误切到地面模式直接掉落
+//                 balanceMode = BalanceMode::ground;
+//             }
+//             break;}
+
+//         case BalanceMode::aerial:{
+//             S_GF = 1.0f;
+//             S_FG = 0.0f;
+//             _motors->set_fac_out(S_GF);
+
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "aerial");
+//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+
+//             if ((hal.rcin->read(CH_7) > 1300) && (hal.rcin->read(CH_7) < 1700)) { // 通道7切换到2档，进入过渡模式，准备降落
+//                 balanceMode = BalanceMode::transition;
+//             }
+//             break;}
+
+//         default:
+//             break;
+//     }
+// }
+
+// void AC_BalanceControl::checkAcc_func(){
+// uint32_t timems_start = AP_HAL::millis64();
+// while((AP_HAL::millis64() - timems_start) > 2){
+    
+// }
+
+// }
+
+void AC_BalanceControl::check_Acceleration(){
+    accelData =  _ahrs->get_accel_ef().z + 9.8f;
+    switch(balanceMode){
+        case BalanceMode::ground:{
+            S_GF = 0.0f;
+            S_FG = 1.0f;
+            _motors->set_fac_out(S_GF);   
+
+<<<<<<< HEAD
 <<<<<<< HEAD
 // void AC_BalanceControl::function_s()
 // {
@@ -380,44 +450,37 @@ void AC_BalanceControl::set_control_mode(void)
 >>>>>>> 88d77efda4... 添加转换因子
             }
             break;
+=======
+            if((fabsf(accelData) > _take_off_acc) && (hal.rcin->read(CH_3) > _take_off_thr) && (hal.rcin->read(CH_7) < 1500)){
+            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
+            gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is taking off, accel = %f", accelData);
+            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
+>>>>>>> d1a1dd30fc... 添加加速度检测函数
 
-        case BalanceMode::balance_car:
-            if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1550)) {
-                balanceMode = BalanceMode::flying_with_balance;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
+            S_GF = 1.0f;
+            S_FG = 0.0f;
+            _motors->set_fac_out(S_GF);
+
+            balanceMode = BalanceMode::aerial;
             }
             break;
+        }
 
-        case BalanceMode::flying_with_balance:
-            if ((alt_cm >= 10) && (hal.rcin->read(CH_3) > 1500) && (hal.rcin->read(CH_8)) > 1600) {
-                stop_balance_control = true;
-                balanceMode          = BalanceMode::flying_without_balance;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
-            }
-            break;
+        case BalanceMode::aerial:{
+            S_GF = 1.0f;
+            S_FG = 0.0f;
+            _motors->set_fac_out(S_GF);   
 
-        case BalanceMode::flying_without_balance:
-            // set_control_zeros();
-            // stop_balance_control = true;
-            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1500)) {
-                stop_balance_control = true;
-                balanceMode          = BalanceMode::landing_ground_idle;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_ground_idle");
-            }
-            break;
+            if((fabsf(accelData) > _landing_acc) && (hal.rcin->read(CH_3) < _landing_thr) && (hal.rcin->read(CH_7) > 1500)){
+            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
+            gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is landing, accel = %f", accelData);
+            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
 
-        case BalanceMode::landing_ground_idle:
-            if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1500) && (hal.rcin->read(CH_8)) < 1600) {
-                stop_balance_control = false;
-                balanceMode          = BalanceMode::landing_finish;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "landing_finish");
-            }
-            break;
+            S_GF = 0.0f;
+            S_FG = 1.0f;
+            _motors->set_fac_out(S_GF);
 
-        case BalanceMode::landing_finish:
-            if ((alt_cm < 8)) {
-                balanceMode = BalanceMode::ground;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+            balanceMode = BalanceMode::ground;
             }
             break;
         }
@@ -427,8 +490,102 @@ void AC_BalanceControl::set_control_mode(void)
     }
 }
 
+// void AC_BalanceControl::check_Acceleration(){
+//     accelData =  _ahrs->get_accel_ef().z + 9.8f;
+//     if((fabsf(accelData) > 0.3) && (hal.rcin->read(CH_3) > 1200)){
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is running, accel = %f", accelData);
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
+
+//         S_GF = 1.0f;
+//         S_FG = 0.0f;
+//         _motors->set_fac_out(S_GF);
+//     }
+//     // else{
+//         // gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter no running");
+//     // }
+//     // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+//     // gcs().send_text(MAV_SEVERITY_NOTICE, "Acceleration = %f", accelData);
+//     // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
+// }
+
+// void AC_BalanceControl::function_s()
+// {
+//     if (_motors == nullptr) return;
+
+//     if (hal.rcin->read(CH_7) > 1700) {
+
+//         int16_t T = hal.rcin->read(CH_3);
+
+//         S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R)));     // 0 ~ 1
+//         S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
+
+//         _motors->set_fac_out(S_GF); // 输出S_GF因子，只有AP_MotorsTailsitter.cpp文件中要用到
+//     } else {
+//         S_GF = 1.0f;
+//         S_FG = 1.0f;
+//         _motors->set_fac_out(S_GF);
+//     }
+// }
+
+// void AC_BalanceControl::set_control_mode(void)
+// {
+//     switch (balanceMode) {
+//         case BalanceMode::ground:
+//             if ((alt_cm < 10) && (hal.rcin->read(CH_8) < 1600)) {
+//                 balanceMode = BalanceMode::balance_car;
+//                 gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
+//             }
+//             break;
+
+//         case BalanceMode::balance_car:
+//             if ((_motors->armed()) && (hal.rcin->read(CH_3) < 1550)) {
+//                 balanceMode = BalanceMode::flying_with_balance;
+//                 gcs().send_text(MAV_SEVERITY_NOTICE, "flying_with_balance");
+//             }
+//             break;
+
+//         case BalanceMode::flying_with_balance:
+//             if ((alt_cm >= 10) && (hal.rcin->read(CH_3) > 1500) && (hal.rcin->read(CH_8)) > 1600) {
+//                 stop_balance_control = true;
+//                 balanceMode          = BalanceMode::flying_without_balance;
+//                 gcs().send_text(MAV_SEVERITY_NOTICE, "flying_without_balance");
+//             }
+//             break;
+
+//         case BalanceMode::flying_without_balance:
+//             // set_control_zeros();
+//             // stop_balance_control = true;
+//             if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1500)) {
+//                 stop_balance_control = true;
+//                 balanceMode          = BalanceMode::landing_ground_idle;
+//                 gcs().send_text(MAV_SEVERITY_NOTICE, "landing_ground_idle");
+//             }
+//             break;
+
+//         case BalanceMode::landing_ground_idle:
+//             if ((alt_cm < 10) && (hal.rcin->read(CH_3) < 1500) && (hal.rcin->read(CH_8)) < 1600) {
+//                 stop_balance_control = false;
+//                 balanceMode          = BalanceMode::landing_finish;
+//                 gcs().send_text(MAV_SEVERITY_NOTICE, "landing_finish");
+//             }
+//             break;
+
+//         case BalanceMode::landing_finish:
+//             if ((alt_cm < 8)) {
+//                 balanceMode = BalanceMode::ground;
+//                 gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
+//             }
+//             break;
+
+//         default:
+//             break;
+//     }
+// }
+
 void AC_BalanceControl::pilot_control()
 {
+<<<<<<< HEAD
     int16_t pwm_x = hal.rcin->read(CH_1) - 1500;
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
 <<<<<<< HEAD
@@ -436,6 +593,11 @@ void AC_BalanceControl::pilot_control()
 
 =======
     int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
+=======
+    int16_t pwm_x = hal.rcin->read(CH_2) - 1500;
+    int16_t pwm_z = hal.rcin->read(CH_1) - 1500;
+    int16_t pwm_y = hal.rcin->read(CH_4) - 1500;
+>>>>>>> d1a1dd30fc... 添加加速度检测函数
     int16_t pwm_h = hal.rcin->read(CH_6) - 1500;
     
 >>>>>>> 88d77efda4... 添加转换因子
@@ -473,6 +635,7 @@ void AC_BalanceControl::pilot_control()
     }
 }
 
+<<<<<<< HEAD
     // 调试用
     static uint16_t cnt = 0;
     cnt++;
@@ -487,6 +650,25 @@ void AC_BalanceControl::pilot_control()
         gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
     }
 }
+=======
+// void AC_BalanceControl::debug_info()
+// {
+
+//     // 调试用
+//     static uint16_t cnt = 0;
+//     cnt++;
+//     if (cnt > 400) {
+//         cnt = 0;
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(0));
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(1));
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "left_target_current=%d", balanceCAN->getCurrent(0));
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "right_target_current=%d", balanceCAN->getCurrent(1));
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
+//         gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
+//     }
+// }
+>>>>>>> d1a1dd30fc... 添加加速度检测函数
 
 /**************************************************************************
 Function: Check whether the car is picked up
