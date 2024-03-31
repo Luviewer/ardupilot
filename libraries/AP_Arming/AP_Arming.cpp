@@ -2035,6 +2035,7 @@ void AP_Arming::check_forced_logging(const AP_Arming::Method method)
         case Method::TOYMODELANDFORCE:
         case Method::LANDING:
         case Method::DDS:
+        case Method::TRANSITION:
         case Method::UNKNOWN:
             AP::logger().set_long_log_persist(false);
             return;

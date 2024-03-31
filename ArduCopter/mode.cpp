@@ -179,6 +179,12 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             break;
 #endif
 
+#if MODE_TRANSITION_ENABLED == ENABLED
+        case Mode::Number::TRANSITION:
+            ret = &mode_transition;
+            break;
+#endif
+
         default:
             break;
     }

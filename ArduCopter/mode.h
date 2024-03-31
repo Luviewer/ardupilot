@@ -96,6 +96,7 @@ public:
         AUTOROTATE =   26,  // Autonomous autorotation
         AUTO_RTL =     27,  // Auto RTL, this is not a true mode, AUTO will report as this mode if entered to perform a DO_LAND_START Landing sequence
         TURTLE =       28,  // Flip over after crash
+        TRANSITION =   29,
 
         // Mode number 127 reserved for the "drone show mode" in the Skybrush
         // fork at https://github.com/skybrush-io/ardupilot
@@ -1230,6 +1231,46 @@ private:
 
     uint32_t land_start_time;
     bool land_pause;
+};
+
+class ModeTransition : public Mode {
+
+public:
+    // inherit constructor
+    using Mode::Mode;
+    Number mode_number() const override { return Number::TRANSITION; }
+
+    bool init(bool ignore_checks) override;
+    void run() override;
+
+    bool requires_GPS() const override { return false; }
+    bool has_manual_throttle() const override { return false; }
+    bool allows_arming(AP_Arming::Method method) const override { return false; };
+    bool is_autopilot() const override { return true; }
+
+    bool is_transition() const { return true; };
+
+    void do_not_use_GPS();
+
+    // returns true if LAND mode is trying to control X/Y position
+    bool controlling_position() const { return control_position; }
+
+    void set_transition_pause(bool new_value) { transition_pause = new_value; }
+
+protected:
+
+    const char *name() const override { return "TRANSITION"; }
+    const char *name4() const override { return "TRANSITION"; }
+
+private:
+
+    void gps_run();
+    void nogps_run();
+
+    bool control_position; // true if we are using an external reference to control position
+
+    uint32_t transition_start_time;
+    bool transition_pause;
 };
 
 
