@@ -227,6 +227,7 @@ public:
     friend class ModeZigZag;
     friend class ModeAutorotate;
     friend class ModeTurtle;
+    friend class ModeTransition;
 
     Copter(void);
 
@@ -860,6 +861,8 @@ private:
     // mode_land.cpp
     void set_mode_land_with_pause(ModeReason reason);
     bool landing_with_GPS();
+    void set_mode_transition_with_pause(ModeReason reason);
+    bool transition_with_GPS();
 
     // motor_test.cpp
     void motor_test_output();
@@ -1028,6 +1031,9 @@ private:
 #endif
 #if MODE_TURTLE_ENABLED == ENABLED
     ModeTurtle mode_turtle;
+#endif
+#if MODE_TRANSITION_ENABLED == ENABLED
+    ModeTransition mode_transition;
 #endif
 
     // mode.cpp
