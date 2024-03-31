@@ -54,11 +54,17 @@
 #define AC_BALANCE_ROLL_TARGET_FILT_HZ  0.135f
 #define AC_BALANCE_ROLL_ERROR_FILT_HZ   2.5f
 
-#define AC_BALANCE_TARGET_SGF_B         1200
-#define AC_BALANCE_TARGET_SGF_R         20
+// #define AC_BALANCE_TARGET_SGF_B         1200
+// #define AC_BALANCE_TARGET_SGF_R         20
 
-#define AC_BALANCE_TARGET_SFG_B         1400
-#define AC_BALANCE_TARGET_SFG_R         50
+// #define AC_BALANCE_TARGET_SFG_B         1400
+// #define AC_BALANCE_TARGET_SFG_R         50
+
+#define AC_BALANCE_TAKE_OFF_ACC         0.3f
+#define AC_BALANCE_LANDING_ACC          1.5f
+
+#define AC_BALANCE_TAKE_OFF_THR         1200
+#define AC_BALANCE_LANDING_THR          1200
 
 class AC_BalanceControl {
 public:
@@ -76,7 +82,7 @@ public:
     void  hight_controller();
 
     void pilot_control();
-    void set_control_mode();
+    // void set_control_mode();
 
     void update(void);
 
@@ -103,20 +109,30 @@ public:
     };
 
     enum BalanceMode {
-        ground                 = 0,
-        balance_car            = 1,
-        flying_with_balance    = 2,
-        flying_without_balance = 3,
-        landing_ground_idle    = 4,
-        landing_finish         = 5,
+        ground     = 0,
+        // transition = 1,
+        aerial     = 1,
     };
+
+    // enum BalanceMode {
+    //     ground                 = 0,
+    //     balance_car            = 1,
+    //     flying_with_balance    = 2,
+    //     flying_without_balance = 3,
+    //     landing_ground_idle    = 4,
+    //     landing_finish         = 5,
+    // };
 
     // bool Pick_Up(float Acceleration, float Angle, int16_t encoder_left, int16_t encoder_right);
     // bool Put_Down(float Angle, int encoder_left, int encoder_right);
-    void debug_info();
-    void function_s();
+    // void debug_info();
+    // void function_s();
     double S_FG;
     double S_GF;
+
+    // void AC_BalanceControl::checkAcc_func();
+    void check_Acceleration();
+    float accelData;
 
 
 protected:
@@ -146,6 +162,12 @@ protected:
 
     AP_Float Target_Offset_SFG_B;
     AP_Float Target_Slope_SFG_R;
+
+    AP_Float _take_off_acc;
+    AP_Float _landing_acc;
+
+    AP_Float _take_off_thr;
+    AP_Float _landing_thr;
 
     ///////////////////////////////////////////////////////
     // 直立环参数
