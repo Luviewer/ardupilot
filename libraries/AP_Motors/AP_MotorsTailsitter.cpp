@@ -23,6 +23,7 @@
 #include "AP_MotorsTailsitter.h"
 #include <GCS_MAVLink/GCS.h>
 #include <SRV_Channel/SRV_Channel.h>
+#include "AP_Hiwonder/AP_Hiwonder.h"
 
 extern const AP_HAL::HAL& hal;
 

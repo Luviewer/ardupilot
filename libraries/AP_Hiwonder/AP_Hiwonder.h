@@ -20,36 +20,35 @@ typedef struct
 } Hiwonder_MOVE_WRITE_TypeDef;
 #pragma pack()
 
-typedef enum
-{
-    SERIAL_SERVO_RECV_STARTBYTE_1,
-    SERIAL_SERVO_RECV_STARTBYTE_2,
-    SERIAL_SERVO_RECV_SERVO_ID,
-    SERIAL_SERVO_RECV_LENGTH,
-    SERIAL_SERVO_RECV_COMMAND,
-    SERIAL_SERVO_RECV_ARGUMENTS,
-    SERIAL_SERVO_RECV_CHECKSUM,
-} SerialServoRecvState;
-
 class AP_Hiwonder
 {
 public:
     AP_Hiwonder();
 
+    void init(void);
+
     /* Do not allow copies */
     CLASS_NO_COPY(AP_Hiwonder);
 
-    void update();
-
-    static const struct AP_Param::GroupInfo var_info[];
+    // get singleton instance
+    static AP_Hiwonder *get_singleton()
+    {
+        return _singleton;
+    }
 
 private:
-    AP_HAL::UARTDriver *port;
-    uint32_t baudrate;
+    static AP_Hiwonder *_singleton;
 
-    void init(void);
+    AP_HAL::UARTDriver *_port;
 
     uint8_t serial_servo_checksum(const uint8_t buf[]);
 
     void serial_servo_set_position(uint32_t servo_id, int position, uint32_t duration);
+};
+
+
+
+namespace AP
+{
+    AP_Hiwonder &hiwonder();
 };
