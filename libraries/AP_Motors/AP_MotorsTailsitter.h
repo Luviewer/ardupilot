@@ -5,6 +5,7 @@
 #include <AP_Common/AP_Common.h>
 #include <AP_Math/AP_Math.h>
 #include "AP_MotorsMulticopter.h"
+#include "AP_Hiwonder/AP_Hiwonder.h"
 
 /// @class      AP_MotorsTailsitter
 class AP_MotorsTailsitter : public AP_MotorsMulticopter {
@@ -54,4 +55,5 @@ protected:
     // true if differential thrust is available
     bool _has_diff_thrust;
 
+    AP_Hiwonder* hiwonder;
 };
