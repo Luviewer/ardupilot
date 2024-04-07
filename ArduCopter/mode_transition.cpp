@@ -55,6 +55,7 @@ void ModeTransition::run()
 //      should be called at 100hz or more
 void ModeTransition::gps_run()
 {
+    float target_roll = 0.0f, target_pitch = 0.0f;
     // disarm when the landing detector says we've landed
     if (copter.ap.land_complete && motors->get_spool_state() == AP_Motors::SpoolState::GROUND_IDLE) {
         copter.arming.disarm(AP_Arming::Method::TRANSITION);
@@ -72,8 +73,11 @@ void ModeTransition::gps_run()
             transition_pause = false;
         }
 
+        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw(target_roll, target_pitch, auto_yaw.get_heading().yaw_rate_cds);
+
         // run normal landing or precision landing (if enabled)
-        land_run_normal_or_precland(transition_pause);
+        pos_control->land_at_climb_rate_cm(10.0f, false);
+        pos_control->update_z_controller();
     }
 }
 
