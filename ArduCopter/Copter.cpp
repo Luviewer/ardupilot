@@ -217,7 +217,7 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #endif
 #if HAL_LOGGING_ENABLED
     SCHED_TASK(ten_hz_logging_loop,   10,    350, 114),
-    SCHED_TASK(twentyfive_hz_logging, 25,    110, 117),
+    SCHED_TASK(twentyfive_hz_logging, 100,    110, 117),
     SCHED_TASK_CLASS(AP_Logger,            &copter.logger,              periodic_tasks, 400, 300, 120),
 #endif
     SCHED_TASK_CLASS(AP_InertialSensor,    &copter.ins,                 periodic,       400,  50, 123),
@@ -633,6 +633,10 @@ void Copter::twentyfive_hz_logging()
         AP::ins().Write_IMU();
     }
 
+    if (should_log(MASK_LOG_ANY)) {
+        Log_Write_Data(LogDataID::AP_STATE, ap.value);
+    }
+
 #if MODE_AUTOROTATE_ENABLED == ENABLED
     if (should_log(MASK_LOG_ATTITUDE_MED) || should_log(MASK_LOG_ATTITUDE_FAST)) {
         //update autorotation log
@@ -669,11 +673,9 @@ void Copter::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Copter::one_hz_loop()
 {
-#if HAL_LOGGING_ENABLED
-    if (should_log(MASK_LOG_ANY)) {
-        Log_Write_Data(LogDataID::AP_STATE, ap.value);
-    }
-#endif
+    // if (should_log(MASK_LOG_ANY)) {
+    //     Log_Write_Data(LogDataID::AP_STATE, ap.value);
+    // }
 
     if (!motors->armed()) {
         update_using_interlock();
