@@ -87,25 +87,6 @@ void AP_Hiwonder::adjust_offset(uint32_t servo_id, int8_t adjust)
     _port->write((uint8_t *)&frame, sizeof(frame));
 }
 
-void AP_Hiwonder::adjust_offset(uint32_t servo_id, int8_t adjust)
-{
-    if (_port == NULL)
-        return;
-
-    Hiwonder_OFFSET_ADJUST_TypeDef frame;
-    frame.header_1 = SERIAL_SERVO_FRAME_HEADER;
-    frame.header_2 = SERIAL_SERVO_FRAME_HEADER;
-    frame.servo_id = servo_id;
-    frame.command = SERVO_ANGLE_OFFSET_ADJUST;
-
-    adjust = constrain_int32(adjust, -125, 125);
-    frame.args = (uint8_t)adjust;
-
-    frame.length = sizeof(frame.args) + 3;
-    frame.crc = serial_servo_checksum((uint8_t *)&frame);
-
-    _port->write((uint8_t *)&frame, sizeof(frame));
-}
 void AP_Hiwonder::write_offset(uint32_t servo_id)
 {
     if (_port == NULL)
