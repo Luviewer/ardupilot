@@ -9,10 +9,10 @@
 
 enum
 {
-    SERVO_1 = 0,
-    SERVO_2 = 1,
-    SERVO_3 = 2,
-    SERVO_4 = 3,
+    SERVO_1 = 1,
+    SERVO_2 = 2,
+    SERVO_3 = 3,
+    SERVO_4 = 4,
 };
 
 #pragma pack(1)

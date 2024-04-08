@@ -50,10 +50,10 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
 
     hiwonder = AP_Hiwonder::get_singleton();
 
-    hiwonder->set_position(SERVO_1, 0, 0);
-    hiwonder->set_position(SERVO_2, 0, 0);
-    hiwonder->set_position(SERVO_3, 0, 0);
-    hiwonder->set_position(SERVO_4, 0, 0);
+    hiwonder->set_position(SERVO_1, 1500, 0);
+    hiwonder->set_position(SERVO_2, 1500, 0);
+    hiwonder->set_position(SERVO_3, 1500, 0);
+    hiwonder->set_position(SERVO_4, 1500, 0);
 
     _mav_type = MAV_TYPE_VTOL_DUOROTOR;
 
@@ -92,10 +92,10 @@ void AP_MotorsTailsitter::output_to_motors()
         _actuator[2] = 0.0f;
         _external_min_throttle = 0.0;
 
-        hiwonder->set_position(SERVO_1, 0, 0);
-        hiwonder->set_position(SERVO_2, 0, 0);
-        hiwonder->set_position(SERVO_3, 0, 0);
-        hiwonder->set_position(SERVO_4, 0, 0);
+        hiwonder->set_position(SERVO_1, 1500, 0);
+        hiwonder->set_position(SERVO_2, 1500, 0);
+        hiwonder->set_position(SERVO_3, 1500, 0);
+        hiwonder->set_position(SERVO_4, 1500, 0);
         break;
     case SpoolState::GROUND_IDLE:
         set_actuator_with_slew(_actuator[0], actuator_spin_up_to_ground_idle());
@@ -250,16 +250,26 @@ void AP_MotorsTailsitter::_output_test_seq(uint8_t motor_seq, int16_t pwm)
         break;
     case 2:
         // right tilt servo
-        SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorRight, pwm);
+        SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorRight, pwm);    
+        hiwonder->set_position(SERVO_1, pwm, 0);
         break;
+
     case 3:
-        // left throttle
+        hiwonder->set_position(SERVO_2, pwm, 0);
+        break;
+
+    case 4:
         SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, pwm);
         break;
-    case 4:
-        // left tilt servo
+
+    case 5:
         SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorLeft, pwm);
+        hiwonder->set_position(SERVO_3, pwm, 0);
         break;
+    case 6:
+        hiwonder->set_position(SERVO_4, pwm, 0);
+        break;
+
     default:
         // do nothing
         break;

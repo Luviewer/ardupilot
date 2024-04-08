@@ -54,8 +54,8 @@ void AP_Hiwonder::set_position(uint32_t servo_id, int position, uint32_t duratio
     frame.servo_id = servo_id;
     frame.command = SERIAL_SERVO_MOVE_TIME_WRITE;
 
-    position = position + 500;
-    position = position > 1000 ? 1000 : position;
+    position = constrain_int32(position, 1000, 2000);
+    position -= 1000;
     frame.args[0] = LOWBYTE(position);
     frame.args[1] = HIGHBYTE(position);
     frame.args[2] = LOWBYTE(duration);
