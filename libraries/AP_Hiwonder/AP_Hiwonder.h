@@ -1,16 +1,15 @@
 #pragma once
 
-#include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_HAL/AP_HAL.h>
+#include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Param/AP_Param.h>
 
-#define SERIAL_SERVO_FRAME_HEADER 0x55
+#define SERIAL_SERVO_FRAME_HEADER    0x55
 #define SERIAL_SERVO_MOVE_TIME_WRITE 1
-#define SERVO_ANGLE_OFFSET_ADJUST 17
-#define SERVO_ANGLE_OFFSET_WRITE 18
+#define SERVO_ANGLE_OFFSET_ADJUST    17
+#define SERVO_ANGLE_OFFSET_WRITE     18
 
-enum
-{
+enum {
     SERVO_1 = 1,
     SERVO_2 = 2,
     SERVO_3 = 3,
@@ -51,8 +50,7 @@ typedef struct
 } Hiwonder_WRITE_ADJUST_TypeDef;
 #pragma pack()
 
-class AP_Hiwonder
-{
+class AP_Hiwonder {
 public:
     AP_Hiwonder();
 
@@ -65,20 +63,19 @@ public:
     CLASS_NO_COPY(AP_Hiwonder);
 
     // get singleton instance
-    static AP_Hiwonder *get_singleton()
+    static AP_Hiwonder* get_singleton()
     {
         return _singleton;
     }
 
 private:
-    static AP_Hiwonder *_singleton;
+    static AP_Hiwonder* _singleton;
 
-    AP_HAL::UARTDriver *_port;
+    AP_HAL::UARTDriver* _port;
 
     uint8_t serial_servo_checksum(const uint8_t buf[]);
 };
 
-namespace AP
-{
-    AP_Hiwonder &hiwonder();
+namespace AP {
+AP_Hiwonder& hiwonder();
 };
