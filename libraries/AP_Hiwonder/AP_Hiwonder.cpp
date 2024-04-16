@@ -8,7 +8,7 @@
 #define AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX 64
 #define AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX 64
 
-int8_t SERVO_DIR[4] = { 1, -1, 1, -1 };
+int8_t SERVO_DIR[4] = { -1, 1, -1, 1 };
 
 AP_Hiwonder::AP_Hiwonder()
 {

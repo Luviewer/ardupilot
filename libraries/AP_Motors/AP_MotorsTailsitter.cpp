@@ -120,6 +120,9 @@ void AP_MotorsTailsitter::output_to_motors()
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE);
+
+    hiwonder->set_position(SERVO_1, _tilt_right * 300 + 1500, 0);
+    hiwonder->set_position(SERVO_3, _tilt_left * 300 + 1500, 0);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -232,7 +235,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
-    _tilt_left = pitch_thrust - yaw_thrust;
+    _tilt_left = -pitch_thrust + yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
 }
 
