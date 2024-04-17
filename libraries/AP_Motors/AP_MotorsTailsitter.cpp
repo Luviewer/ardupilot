@@ -27,6 +27,7 @@
 extern const AP_HAL::HAL &hal;
 
 #define SERVO_OUTPUT_RANGE 4500
+#define SEIRAL_SERVO_MAX_ANGLE 200
 
 // init
 void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type frame_type)
@@ -121,8 +122,8 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE);
 
-    hiwonder->set_position(SERVO_1, _tilt_right * 300 + 1500, 0);
-    hiwonder->set_position(SERVO_3, _tilt_left * 300 + 1500, 0);
+    hiwonder->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
+    hiwonder->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
