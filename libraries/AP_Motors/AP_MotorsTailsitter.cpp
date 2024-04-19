@@ -27,7 +27,7 @@
 extern const AP_HAL::HAL &hal;
 
 #define SERVO_OUTPUT_RANGE 4500
-#define SEIRAL_SERVO_MAX_ANGLE 200
+#define SEIRAL_SERVO_MAX_ANGLE 150
 
 // init
 void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type frame_type)
