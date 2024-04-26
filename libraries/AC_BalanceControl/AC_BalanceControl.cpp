@@ -34,6 +34,10 @@ const AP_Param::GroupInfo AC_BalanceControl::var_info[] = {
 
     AP_GROUPINFO("F_LAND_T", 12, AC_BalanceControl, _landing_thr, AC_BALANCE_LANDING_THR),
 
+    // AP_GROUPINFO("JOT_OFFSET_T", 13, AC_BalanceControl, Joint_Offset_B, AC_BALANCE_JOINT_OFS_B),
+
+    // AP_GROUPINFO("JOT_SLOPE_T", 14, AC_BalanceControl, Joint_Slope_R, AC_BALANCE_JOINT_SLO_B),
+
     // AP_GROUPINFO("TAKE_OFF_ACC", 9, AC_BalanceControl, _take_off_acc, AC_BALANCE_TAKE_OFF_ACC),
 
     // AP_GROUPINFO("TAKE_OFF_THR", 10, AC_BalanceControl, _landing_acc, AC_BALANCE_LANDING_ACC),
@@ -171,7 +175,7 @@ void AC_BalanceControl::roll_controller(float roll)
     }
     roll_out = _pid_roll.update_all(roll_target, roll, _dt);
 
-    _motors->set_roll_out(S_FG * roll_out); // -1 ~ 1
+    _motors->set_roll_out(JT * roll_out); // -1 ~ 1
 }
 
 void AC_BalanceControl::hight_controller()
@@ -184,9 +188,13 @@ void AC_BalanceControl::hight_controller()
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     roll_out = _pid_roll.update_all(roll_target, roll, _dt);
 =======
     _motors->set_high_out(S_FG * high_out); // -1 ~ 1
+=======
+    _motors->set_high_out(JT * high_out); // -1 ~ 1
+>>>>>>> 25898b6cb4... 优化空陆过渡策略
 }
 >>>>>>> 52b72e01b6... 完善过渡切换
 
@@ -344,13 +352,16 @@ void AC_BalanceControl::update(void)
 // }
 
 void AC_BalanceControl::check_Acceleration(){
-    accelData =  _ahrs->get_accel_ef().z + 9.8f;
+    accelData =  _ahrs->get_accel_ef().z + 9.8f; //获取当前加速度值
+    int16_t T = hal.rcin->read(CH_3); //获取当前油门输入值
     switch(balanceMode){
         case BalanceMode::ground:{
-            S_GF = 0.0f;
-            S_FG = 1.0f;
-            _motors->set_fac_out(S_GF);   
+            S_GF = 1.0f; //飞行部分影响因子置1，正常
+            S_FG = 1.0f; //轮足电机影响因子置1，开启
+            JT = 1;      //关节舵机影响因子置1，开启
+            _motors->set_fac_out(JT);   //输出飞行部分影响因子，方便调用
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 // void AC_BalanceControl::function_s()
@@ -452,35 +463,43 @@ void AC_BalanceControl::set_control_mode(void)
             break;
 =======
             if((fabsf(accelData) > _take_off_acc) && (hal.rcin->read(CH_3) > _take_off_thr) && (hal.rcin->read(CH_7) < 1500)){
+=======
+            if((fabsf(accelData) > _take_off_acc) && (hal.rcin->read(CH_3) > _take_off_thr) && (hal.rcin->read(CH_7) < 1500)){ //当反馈的加速度值大于设定的起飞加速度，油门输入大于设定的起飞油门并且当前处于地空过渡时，则进入过渡
+>>>>>>> 25898b6cb4... 优化空陆过渡策略
             gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
             gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is taking off, accel = %f", accelData);
             gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
 >>>>>>> d1a1dd30fc... 添加加速度检测函数
 
-            S_GF = 1.0f;
-            S_FG = 0.0f;
-            _motors->set_fac_out(S_GF);
+            S_GF = 1.0f;    //起飞，飞行部分影响因子置1
+            S_FG = 0.0f;    //轮足电机影响因子置0，关闭
+            JT = 0.0f;      //关节舵机影响因子置0，关闭
+            _motors->set_fac_out(JT);
 
-            balanceMode = BalanceMode::aerial;
+            balanceMode = BalanceMode::aerial; //进入飞行模式
             }
             break;
         }
 
         case BalanceMode::aerial:{
-            S_GF = 1.0f;
+            S_GF = 1.0f; 
             S_FG = 0.0f;
-            _motors->set_fac_out(S_GF);   
+            if((hal.rcin->read(CH_3) < 1400) && (hal.rcin->read(CH_7) > 1500)){ //如果进入空地过渡且油门输入小于1300时
+                JT   = 1 - 1 / (1 + expf(-((T - 1300) / 20))); //关节舵机影响因子为S形函数，随着油门量减少作用越来越强，以适应复杂地形
+            }
+            _motors->set_fac_out(JT);   
 
-            if((fabsf(accelData) > _landing_acc) && (hal.rcin->read(CH_3) < _landing_thr) && (hal.rcin->read(CH_7) > 1500)){
+            if((fabsf(accelData) > _landing_acc) && (hal.rcin->read(CH_3) < _landing_thr) && (hal.rcin->read(CH_7) > 1500)){ //当反馈的加速度值大于设定的降落加速度，油门输入小于设定的降落油门并且当前处于空地过渡时，则进入过渡
             gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
             gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is landing, accel = %f", accelData);
             gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
 
-            S_GF = 0.0f;
+            S_GF = 1 / (1 + expf(-((T - 1200) / 20))); //成功落地后油门量会逐渐减小，避免由1到0的突变引入额外的扰动
             S_FG = 1.0f;
-            _motors->set_fac_out(S_GF);
+            JT   = 1.0F;
+            _motors->set_fac_out(JT);
 
-            balanceMode = BalanceMode::ground;
+            balanceMode = BalanceMode::ground; //进入地面模式
             }
             break;
         }
@@ -595,9 +614,14 @@ void AC_BalanceControl::pilot_control()
     int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
 =======
     int16_t pwm_x = hal.rcin->read(CH_2) - 1500;
+<<<<<<< HEAD
     int16_t pwm_z = hal.rcin->read(CH_1) - 1500;
     int16_t pwm_y = hal.rcin->read(CH_4) - 1500;
 >>>>>>> d1a1dd30fc... 添加加速度检测函数
+=======
+    int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
+    int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
+>>>>>>> 25898b6cb4... 优化空陆过渡策略
     int16_t pwm_h = hal.rcin->read(CH_6) - 1500;
     
 >>>>>>> 88d77efda4... 添加转换因子

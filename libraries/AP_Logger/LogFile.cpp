@@ -196,14 +196,14 @@ void AP_Logger::Write_RCOUT(void)
             chan4         : hal.rcout->read(3),
             chan5         : hal.rcout->read(4),
             chan6         : hal.rcout->read(5),
-            chan7         : hal.rcin->read(6),
+            chan7         : hal.rcin->read(CH_7),
             chan8         : hal.rcout->read(7),
             chan9         : hal.rcout->read(8),
             chan10        : hal.rcout->read(9),
             chan11        : hal.rcout->read(10),
             chan12        : hal.rcout->read(11),
             chan13        : hal.rcout->read(12),
-            chan14        : hal.rcout->read(13)
+            chan14        : hal.rcin->read(CH_3)
         };
         WriteBlock(&pkt, sizeof(pkt));
     }
