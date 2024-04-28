@@ -201,7 +201,8 @@ void Copter::init_ardupilot()
     pos_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
     vel_variance_filt.set_cutoff_frequency(g2.fs_ekf_filt_hz);
 
-    hiwonder.init();
+    hiwonder_l.init();
+    hiwonder_r.init();
 
     // flag that initialisation has completed
     ap.initialised = true;

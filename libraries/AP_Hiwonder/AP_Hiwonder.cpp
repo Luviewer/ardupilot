@@ -12,19 +12,44 @@ int8_t SERVO_DIR[4] = { -1, 1, -1, 1 };
 
 AP_Hiwonder::AP_Hiwonder()
 {
+    _port = NULL;
+}
+
+AP_Hiwonder_L::AP_Hiwonder_L()
+{
     if (_singleton != nullptr) {
         // it's an error to get here.  But I don't want to include
         // AP_HAL here
         return;
     }
     _singleton = this;
-    _port      = NULL;
 }
 
-void AP_Hiwonder::init(void)
+AP_Hiwonder_R::AP_Hiwonder_R()
+{
+    if (_singleton != nullptr) {
+        // it's an error to get here.  But I don't want to include
+        // AP_HAL here
+        return;
+    }
+    _singleton = this;
+}
+
+void AP_Hiwonder_L::init(void)
 {
     AP_SerialManager& serial_manager = AP::serialmanager();
-    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder, 0))) {
+    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_L, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    }
+}
+
+void AP_Hiwonder_R::init(void)
+{
+    AP_SerialManager& serial_manager = AP::serialmanager();
+    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_R, 0))) {
         _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
         _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
@@ -109,12 +134,17 @@ void AP_Hiwonder::write_offset(uint32_t servo_id)
 }
 
 // singleton instance
-AP_Hiwonder* AP_Hiwonder::_singleton;
+AP_Hiwonder_L* AP_Hiwonder_L::_singleton;
+AP_Hiwonder_R* AP_Hiwonder_R::_singleton;
 
 namespace AP {
-AP_Hiwonder& hiwonder()
+AP_Hiwonder_L& hiwonder_l()
 {
-    return *AP_Hiwonder::get_singleton();
+    return *AP_Hiwonder_L::get_singleton();
 }
 
+AP_Hiwonder_R& hiwonder_r()
+{
+    return *AP_Hiwonder_R::get_singleton();
+}
 }

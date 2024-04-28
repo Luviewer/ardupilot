@@ -54,28 +54,49 @@ class AP_Hiwonder {
 public:
     AP_Hiwonder();
 
-    void init(void);
-    void set_position(uint32_t servo_id, int position, uint32_t duration);
-    void adjust_offset(uint32_t servo_id, int8_t adjust);
-    void write_offset(uint32_t servo_id);
+    virtual void init(void) = 0;
+    void         set_position(uint32_t servo_id, int position, uint32_t duration);
+    void         adjust_offset(uint32_t servo_id, int8_t adjust);
+    void         write_offset(uint32_t servo_id);
+    uint8_t      serial_servo_checksum(const uint8_t buf[]);
 
-    /* Do not allow copies */
-    CLASS_NO_COPY(AP_Hiwonder);
+    AP_HAL::UARTDriver* _port;
+};
+
+class AP_Hiwonder_L : public AP_Hiwonder {
+public:
+    AP_Hiwonder_L();
+
+    void init(void) override;
 
     // get singleton instance
-    static AP_Hiwonder* get_singleton()
+    static AP_Hiwonder_L* get_singleton()
     {
         return _singleton;
     }
 
 private:
-    static AP_Hiwonder* _singleton;
+    static AP_Hiwonder_L* _singleton;
+};
 
-    AP_HAL::UARTDriver* _port;
+class AP_Hiwonder_R : public AP_Hiwonder {
+public:
+    AP_Hiwonder_R();
 
-    uint8_t serial_servo_checksum(const uint8_t buf[]);
+    void init(void) override;
+
+    // get singleton instance
+    static AP_Hiwonder_R* get_singleton()
+    {
+        return _singleton;
+    }
+
+private:
+    static AP_Hiwonder_R* _singleton;
 };
 
 namespace AP {
-AP_Hiwonder& hiwonder();
+AP_Hiwonder_L& hiwonder_l();
+AP_Hiwonder_R& hiwonder_r();
+
 };

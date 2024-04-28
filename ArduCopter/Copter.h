@@ -1118,8 +1118,9 @@ public:
     void failsafe_check();      // failsafe.cpp
 
 
-private:
-    AP_Hiwonder hiwonder;
+public:
+    AP_Hiwonder_L hiwonder_l;
+    AP_Hiwonder_R hiwonder_r;
 
 };
 
