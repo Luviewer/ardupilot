@@ -55,5 +55,7 @@ protected:
     // true if differential thrust is available
     bool _has_diff_thrust;
 
-    AP_Hiwonder* hiwonder;
+    AP_Hiwonder_L* hiwonder_l;
+    AP_Hiwonder_R* hiwonder_r;
+
 };

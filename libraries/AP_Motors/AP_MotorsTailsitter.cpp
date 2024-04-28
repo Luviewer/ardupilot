@@ -49,12 +49,13 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeft, CH_4);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeft, SERVO_OUTPUT_RANGE);
 
-    hiwonder = AP_Hiwonder::get_singleton();
+    hiwonder_l = AP_Hiwonder_L::get_singleton();
+    hiwonder_r = AP_Hiwonder_R::get_singleton();
 
-    hiwonder->set_position(SERVO_1, 1500, 0);
-    hiwonder->set_position(SERVO_2, 1500, 0);
-    hiwonder->set_position(SERVO_3, 1500, 0);
-    hiwonder->set_position(SERVO_4, 1500, 0);
+    hiwonder_r->set_position(SERVO_1, 1500, 0);
+    hiwonder_r->set_position(SERVO_2, 1500, 0);
+    hiwonder_l->set_position(SERVO_3, 1500, 0);
+    hiwonder_l->set_position(SERVO_4, 1500, 0);
 
     _mav_type = MAV_TYPE_VTOL_DUOROTOR;
 
@@ -93,10 +94,10 @@ void AP_MotorsTailsitter::output_to_motors()
         _actuator[2] = 0.0f;
         _external_min_throttle = 0.0;
 
-        hiwonder->set_position(SERVO_1, 1500, 0);
-        hiwonder->set_position(SERVO_2, 1500, 0);
-        hiwonder->set_position(SERVO_3, 1500, 0);
-        hiwonder->set_position(SERVO_4, 1500, 0);
+        // hiwonder_l->set_position(SERVO_1, 1500, 0);
+        // hiwonder_l->set_position(SERVO_2, 1500, 0);
+        // hiwonder_l->set_position(SERVO_3, 1500, 0);
+        // hiwonder_l->set_position(SERVO_4, 1500, 0);
         break;
     case SpoolState::GROUND_IDLE:
         set_actuator_with_slew(_actuator[0], actuator_spin_up_to_ground_idle());
@@ -122,8 +123,8 @@ void AP_MotorsTailsitter::output_to_motors()
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE);
 
-    hiwonder->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
-    hiwonder->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
+    hiwonder_r->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);    
+    hiwonder_l->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -255,11 +256,11 @@ void AP_MotorsTailsitter::_output_test_seq(uint8_t motor_seq, int16_t pwm)
     case 2:
         // right tilt servo
         SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorRight, pwm);    
-        hiwonder->set_position(SERVO_1, pwm, 0);
+        hiwonder_r->set_position(SERVO_1, pwm, 0);
         break;
 
     case 3:
-        hiwonder->set_position(SERVO_2, pwm, 0);
+        hiwonder_r->set_position(SERVO_2, pwm, 0);
         break;
 
     case 4:
@@ -268,10 +269,10 @@ void AP_MotorsTailsitter::_output_test_seq(uint8_t motor_seq, int16_t pwm)
 
     case 5:
         SRV_Channels::set_output_pwm(SRV_Channel::k_tiltMotorLeft, pwm);
-        hiwonder->set_position(SERVO_3, pwm, 0);
+        hiwonder_l->set_position(SERVO_3, pwm, 0);
         break;
     case 6:
-        hiwonder->set_position(SERVO_4, pwm, 0);
+        hiwonder_l->set_position(SERVO_4, pwm, 0);
         break;
 
     default:
