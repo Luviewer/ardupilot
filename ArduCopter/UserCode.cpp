@@ -25,13 +25,14 @@ void Copter::userhook_50Hz()
     // put your 50Hz code here
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         uint16_t chin = hal.rcin->read(CH_7);
-        aim_pitch_deg = ((float)chin - 1500) / 500.0f * 90.0f;
+        if (chin > 1450 && chin < 1550) chin = 1500;
+        aim_pitch_deg = ((float)chin - 1500) / 500.0f * 45.0f;
 
         delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
         aim_pitch_deg_last  = aim_pitch_deg;
 
-        hiwonder_l.set_position(SERVO_4, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
-        hiwonder_r.set_position(SERVO_2, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+        hiwonder_l.set_position(SERVO_4, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+        hiwonder_r.set_position(SERVO_2, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
     } else {
         delta_aim_pitch_deg = 0;
         aim_pitch_deg_last  = 0;

@@ -125,7 +125,7 @@ void AP_MotorsTailsitter::output_to_motors()
 
     static uint16_t cnt = 0;
 
-    if ((++cnt % 2) == 0) {
+    if ((++cnt % 4) == 0) {
         hiwonder_r->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
         hiwonder_l->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
     }
