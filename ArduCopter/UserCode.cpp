@@ -26,7 +26,7 @@ void Copter::userhook_50Hz()
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         uint16_t chin = hal.rcin->read(CH_7);
         if (chin > 1450 && chin < 1550) chin = 1500;
-        aim_pitch_deg = ((float)chin - 1500) / 500.0f * 45.0f;
+        aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
 
         delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
         aim_pitch_deg_last  = aim_pitch_deg;
