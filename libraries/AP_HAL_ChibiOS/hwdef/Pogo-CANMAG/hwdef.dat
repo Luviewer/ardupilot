@@ -1,0 +1,102 @@
+# hw definition file for Matek L431 CAN node
+
+# MCU class and specific type
+MCU STM32L431 STM32L431xx
+
+# bootloader starts firmware at 36k + 4k (STORAGE_FLASH)
+FLASH_RESERVE_START_KB 40
+FLASH_SIZE_KB 256
+
+# store parameters in pages 18 and 19
+STORAGE_FLASH_PAGE 18
+define HAL_STORAGE_SIZE 800
+
+# ChibiOS system timer
+STM32_ST_USE_TIMER 15
+define CH_CFG_ST_RESOLUTION 16
+
+# board ID for firmware load
+APJ_BOARD_ID 1062
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+env AP_PERIPH 1
+
+define HAL_NO_GPIO_IRQ
+define SERIAL_BUFFERS_SIZE 512
+define PORT_INT_REQUIRED_STACK 64
+
+define DMA_RESERVE_SIZE 0
+
+# MAIN_STACK is stack for ISR handlers
+MAIN_STACK 0x300
+
+# PROCESS_STACK controls stack for main thread
+PROCESS_STACK 0xA00
+
+define HAL_DISABLE_LOOP_DELAY
+
+define HAL_NO_MONITOR_THREAD
+
+# we setup a small defaults.parm
+define AP_PARAM_MAX_EMBEDDED_PARAM 512
+
+# blue LED0 marked as ACT
+PB9 LED OUTPUT HIGH
+define HAL_LED_ON 0
+
+# debugger support
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+
+define HAL_USE_ADC FALSE
+define STM32_ADC_USE_ADC1 FALSE
+define HAL_DISABLE_ADC_DRIVER TRUE
+
+# make the UARTn numbers in parameters match the silkscreen
+SERIAL_ORDER
+define HAL_USE_UART FALSE
+define HAL_NO_UARTDRIVER TRUE
+
+# SPI1
+PA5 SPI1_SCK SPI1
+PA6 SPI1_MISO SPI1
+PA7 SPI1_MOSI SPI1
+
+PB3 RM3100_CS CS
+PB4 BARO_CS CS
+
+SPIDEV rm3100 SPI1 DEVID1  RM3100_CS MODE3  2*MHZ  8*MHZ
+SPIDEV ms5611 SPI1 DEVID2  BARO_CS   MODE3  8*MHZ  8*MHZ
+
+# and ms5611 baro
+BARO MS56XX SPI:ms5611
+
+# probe for RM3100 
+COMPASS RM3100 SPI:rm3100 false ROTATION_NONE
+
+# ---------------------- CAN bus -------------------------
+CAN_ORDER 1
+
+PA11 CAN1_RX CAN1
+PA12 CAN1_TX CAN1
+# PC13 GPIO_CAN1_SILENT OUTPUT PUSHPULL SPEED_LOW LOW
+
+define HAL_CAN_POOL_SIZE 12000
+
+define HAL_PERIPH_ENABLE_SERIAL_OPTIONS
+
+# allow for reboot command for faster development
+define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
+
+# keep ROMFS uncompressed as we don't have enough RAM
+# to uncompress the bootloader at runtime
+env ROMFS_UNCOMPRESSED True
+
+define CAN_APP_NODE_NAME "pogo.canmag"
+
+define HAL_PERIPH_ENABLE_BARO
+define HAL_BARO_ALLOW_INIT_NO_BARO
+define HAL_PERIPH_ENABLE_MAG
