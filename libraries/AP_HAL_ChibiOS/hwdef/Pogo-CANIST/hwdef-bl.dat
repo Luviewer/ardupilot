@@ -55,4 +55,4 @@ define HAL_DISABLE_LOOP_DELAY
 PA13 JTMS-SWDIO SWD
 PA14 JTCK-SWCLK SWD
 
-define CAN_APP_NODE_NAME "pogo.canbaro"
+define CAN_APP_NODE_NAME "pogo.canist"
