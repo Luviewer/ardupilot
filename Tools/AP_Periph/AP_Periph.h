@@ -31,6 +31,9 @@
 #include <AP_RPM/AP_RPM.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_ESC_Telem/AP_ESC_Telem_config.h>
+
+#include <AP_Hiwonder/AP_Hiwonder.h>
+
 #if HAL_WITH_ESC_TELEM
 #include <AP_ESC_Telem/AP_ESC_Telem.h>
 #endif
@@ -465,6 +468,11 @@ public:
 #endif
 #if AP_PERIPH_GPS_ENABLED
     bool saw_gps_lock_once;
+#endif
+
+#ifdef HAL_PERIPH_ENABLE_HIWONDER
+    AP_Hiwonder_L hiwonder_l;
+    AP_Hiwonder_R hiwonder_r;
 #endif
 
     static AP_Periph_FW *_singleton;

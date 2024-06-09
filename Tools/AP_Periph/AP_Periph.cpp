@@ -308,6 +308,11 @@ void AP_Periph_FW::init()
     relay.init();
 #endif
 
+#ifdef HAL_PERIPH_ENABLE_HIWONDER
+    hiwonder_l.init();
+    hiwonder_r.init();
+#endif
+
 #if AP_SCRIPTING_ENABLED
     scripting.init();
 #endif

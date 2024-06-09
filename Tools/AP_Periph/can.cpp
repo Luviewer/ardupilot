@@ -648,6 +648,11 @@ void AP_Periph_FW::handle_esc_rawcommand(CanardInstance* canard_instance, Canard
     }
     rcout_esc(cmd.cmd.data, cmd.cmd.len);
 
+#ifdef HAL_PERIPH_ENABLE_HIWONDER
+    hiwonder_r->set_position(SERVO_1, cmd.cmd.data[2], 0);
+    hiwonder_l->set_position(SERVO_3, cmd.cmd.data[3], 0);
+#endif
+
     // Update internal copy for disabling output to ESC when CAN packets are lost
     last_esc_num_channels = cmd.cmd.len;
     last_esc_raw_command_ms = AP_HAL::millis();
