@@ -23,10 +23,46 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
+    // if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
+    //     uint16_t chin = hal.rcin->read(CH_7);
+    //     if (chin > 1450 && chin < 1550) chin = 1500;
+    //     aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
+
+    //     delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
+    //     aim_pitch_deg_last  = aim_pitch_deg;
+
+    //     hiwonder_l.set_position(SERVO_4, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+    //     hiwonder_r.set_position(SERVO_2, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+    // } else {
+    //     delta_aim_pitch_deg = 0;
+    //     aim_pitch_deg_last  = 0;
+    //     aim_pitch_deg       = 0;
+    // }
+
+    const float speed_angle = 1.5f;
+    float       max_Deg     = g2.user_parameters.get_MaxDegParam();
+
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
-        uint16_t chin = hal.rcin->read(CH_7);
-        if (chin > 1450 && chin < 1550) chin = 1500;
-        aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
+        uint16_t chin = hal.rcin->read(CH_8);
+        if (chin > 1400 && chin < 1600) {
+            if (aim_pitch_deg < -1) {
+                aim_pitch_deg = aim_pitch_deg + speed_angle / 50.0f; //
+            } else if (aim_pitch_deg > 1) {
+                aim_pitch_deg = aim_pitch_deg - speed_angle / 50.0f; //
+            }
+        } else if (chin > 1800 && chin < 2000) {
+            if (aim_pitch_deg < max_Deg) {
+                aim_pitch_deg = aim_pitch_deg + speed_angle / 50.0f;
+            } else {
+                aim_pitch_deg = max_Deg;
+            }
+        } else if (chin > 1000 && chin < 1200) {
+            if (aim_pitch_deg > -max_Deg)
+                aim_pitch_deg = aim_pitch_deg - speed_angle / 50.0f; //
+            else
+                aim_pitch_deg = -max_Deg;
+        } else {
+        }
 
         delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
         aim_pitch_deg_last  = aim_pitch_deg;
@@ -59,6 +95,9 @@ void Copter::userhook_SlowLoop()
 void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
+
+    float angle_v = degrees(ahrs.get_pitch()) + aim_pitch_deg;
+    gcs().send_text(MAV_SEVERITY_NOTICE, "av=%f, ch=[%d]", angle_v, hal.rcin->read(CH_8));
 }
 #endif
 
