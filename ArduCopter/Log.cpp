@@ -358,6 +358,15 @@ struct PACKED log_Guided_Attitude_Target {
     float climb_rate;
 };
 
+struct PACKED log_Virtual_Pitch {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float pitch_v;
+    float pitch_b;
+    float pitch_des;
+};
+
+
 // Write a Guided mode position target
 // pos_target is lat, lon, alt OR offset from ekf origin in cm
 // terrain should be 0 if pos_target.z is alt-above-ekf-origin, 1 if alt-above-terrain
@@ -401,6 +410,18 @@ void Copter::Log_Write_Guided_Attitude_Target(ModeGuided::SubMode target_type, f
         yaw_rate        : degrees(ang_vel.z),  // rad/s to deg/s
         thrust          : thrust,
         climb_rate      : climb_rate
+    };
+    logger.WriteBlock(&pkt, sizeof(pkt));
+}
+
+void Copter::Log_Write_Virtual_Pitch(float pitch_v, float pitch_b, float pitch_des)
+{
+    const log_Virtual_Pitch pkt {
+        LOG_PACKET_HEADER_INIT(LOG_VIRUTAL_PITCH_MSG),
+        time_us : AP_HAL::micros64(),
+        pitch_v : pitch_v,
+        pitch_b : pitch_b,
+        pitch_des : pitch_des,
     };
     logger.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -558,6 +579,11 @@ const struct LogStructure Copter::log_structure[] = {
 
     { LOG_GUIDED_ATTITUDE_TARGET_MSG, sizeof(log_Guided_Attitude_Target),
       "GUIA",  "QBffffffff",    "TimeUS,Type,Roll,Pitch,Yaw,RollRt,PitchRt,YawRt,Thrust,ClimbRt", "s-dddkkk-n", "F-000000-0" , true },
+
+
+    { LOG_VIRUTAL_PITCH_MSG, sizeof(log_Virtual_Pitch),
+      "VPSC",  "Qfff",    "TimeUS,PitchV,PitchB,PitchD", "s---", "F---" , true },
+
 };
 
 uint8_t Copter::get_num_log_structures() const
