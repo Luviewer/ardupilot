@@ -922,6 +922,8 @@ private:
     void Log_Write_SysID_Data(float waveform_time, float waveform_sample, float waveform_freq, float angle_x, float angle_y, float angle_z, float accel_x, float accel_y, float accel_z);
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Write_Rate_Thread_Dt(float dt, float dtAvg, float dtMax, float dtMin);
+
+    void Log_Write_Virtual_Pitch(float pitch_v, float pitch_b, float pitch_des);
 #endif  // HAL_LOGGING_ENABLED
 
     // mode.cpp

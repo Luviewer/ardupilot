@@ -3,6 +3,7 @@
 float aim_pitch_deg;
 float delta_aim_pitch_deg;
 float aim_pitch_deg_last;
+float pitch_b;
 
 #ifdef USERHOOK_INIT
 void Copter::userhook_init()
@@ -81,6 +82,7 @@ void Copter::userhook_50Hz()
 void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
+    copter.Log_Write_Virtual_Pitch(degrees(ahrs.get_pitch()), pitch_b, aim_pitch_deg);
 }
 #endif
 
@@ -96,8 +98,8 @@ void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
 
-    float angle_v = degrees(ahrs.get_pitch()) + aim_pitch_deg;
-    gcs().send_text(MAV_SEVERITY_NOTICE, "av=%f, ch=[%d]", angle_v, hal.rcin->read(CH_8));
+    pitch_b = degrees(ahrs.get_pitch()) + aim_pitch_deg;
+    gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));
 }
 #endif
 
