@@ -1,0 +1,86 @@
+# hw definition file for processing by chibios_hwdef.py
+# for the ARKV6X hardware
+
+# MCU class and specific type
+MCU STM32H7xx STM32H743xx
+
+# crystal frequency
+OSCILLATOR_HZ 8000000
+
+define HAL_BUILD_AP_PERIPH
+
+# setup build for a peripheral firmware
+env AP_PERIPH 1
+
+# board ID for firmware load
+APJ_BOARD_ID 57
+
+FLASH_BOOTLOADER_LOAD_KB 128
+FLASH_RESERVE_START_KB 128
+
+# flash size
+FLASH_SIZE_KB 2048
+
+env OPTIMIZE -O2
+
+# order of UARTs (and USB) no IO MCU
+SERIAL_ORDER OTG1  USART3
+# CAN1
+PD0 CAN1_RX CAN1
+PD1 CAN1_TX CAN1
+
+# SERIAL
+PC10 USART3_TX USART3
+PC11 USART3_RX USART3
+
+# USB
+PA11    OTG_FS_DM    OTG1
+PA12    OTG_FS_DP    OTG1
+
+# These are the pins for SWD debugging with a STlinkv2 or black-magic probe.
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# override following defines as needed
+define HAL_USE_ADC FALSE
+STORAGE_FLASH_PAGE 14
+define HAL_STORAGE_SIZE 32768
+
+# Ethernet
+PB11 ETH_RMII_TX_EN     ETH1
+PB12 ETH_RMII_TXD0      ETH1
+PB13 ETH_RMII_TXD1      ETH1
+PC4  ETH_RMII_RXD0      ETH1
+PC5  ETH_RMII_RXD1      ETH1
+PA7  ETH_RMII_CRS_DV    ETH1
+PA1  ETH_RMII_REF_CLK   ETH1
+PC1  ETH_MDC            ETH1
+PA2  ETH_MDIO           ETH1
+
+PA0 GPIO_ETH_ENABLE OUTPUT HIGH GPIO(113)
+define HAL_GPIO_ETH_ENABLE 113
+
+define BOARD_PHY_ID  MII_LAN8742A_ID
+define BOARD_PHY_RMII
+define HAL_PERIPH_ENABLE_NETWORKING
+
+# ---------------------------------------------------------------------------------------------
+# AP_Periph - boiler-plate configurations that all HW AP-Periph need
+# ---------------------------------------------------------------------------------------------
+define DISABLE_SERIAL_ESC_COMM TRUE
+define HAL_NO_RCIN_THREAD
+#define HAL_NO_GPIO_IRQ
+define HAL_DISABLE_LOOP_DELAY
+
+define HAL_BARO_ALLOW_INIT_NO_BARO
+define AP_INERTIALSENSOR_ENABLED 0
+
+define AP_NETWORKING_MAX_INSTANCES 4
+
+define AP_SCRIPTING_ENABLED 1
+define AP_FILESYSTEM_ROMFS_ENABLED 1
+
+# listen for reboot command from uploader.py script
+# undefine to disable. Use -1 to allow on all ports, otherwise serial number index defined in SERIAL_ORDER starting at 0
+define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
+#################################
