@@ -20,10 +20,10 @@ void AP_RCProtocol_UDP::set_default_pwm_input_values()
     pwm_input[1] = 1500;
     pwm_input[2] = 1000;
     pwm_input[3] = 1500;
-    pwm_input[4] = 1800;
-    pwm_input[5] = 1000;
-    pwm_input[6] = 1000;
-    pwm_input[7] = 1800;
+    pwm_input[4] = 1000;
+    pwm_input[5] = 1500;
+    pwm_input[6] = 1500;
+    pwm_input[7] = 1500;
 
 #if APM_BUILD_TYPE(APM_BUILD_Rover)
     // set correct default throttle for rover (allowing for reverse)

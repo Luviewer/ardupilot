@@ -32,8 +32,11 @@ void Copter::userhook_50Hz()
         delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
         aim_pitch_deg_last  = aim_pitch_deg;
 
-        hiwonder_l.set_position(SERVO_4, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
-        hiwonder_r.set_position(SERVO_2, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg / 150.0f * 4500);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg / 150.0f * 4500);
+
+        // hiwonder_l.set_position(SERVO_4, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+        // hiwonder_r.set_position(SERVO_2, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
 
     } else {
         delta_aim_pitch_deg = 0;
@@ -103,7 +106,7 @@ void Copter::userhook_SuperSlowLoop()
     // put your 1Hz code here
 
     pitch_b = degrees(ahrs.get_pitch()) + aim_pitch_deg;
-    gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));
+    // gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));
 }
 #endif
 
