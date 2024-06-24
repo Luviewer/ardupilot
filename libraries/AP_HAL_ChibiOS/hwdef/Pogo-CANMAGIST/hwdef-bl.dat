@@ -20,7 +20,7 @@ FLASH_SIZE_KB 128
 APP_START_OFFSET_KB 4
 
 # ---------------------------------------------
-PB9 LED_BOOTLOADER OUTPUT LOW  # blue
+PB0 LED_BOOTLOADER OUTPUT LOW  # blue
 define HAL_LED_ON 0
 
 # enable CAN support
@@ -55,4 +55,4 @@ define HAL_DISABLE_LOOP_DELAY
 PA13 JTMS-SWDIO SWD
 PA14 JTCK-SWCLK SWD
 
-define CAN_APP_NODE_NAME "pogo.canist"
+define CAN_APP_NODE_NAME "pogo.canmagist"
