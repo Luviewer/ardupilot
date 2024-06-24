@@ -209,6 +209,8 @@ public:
         k_motor30               = 177,
         k_motor31               = 178,
         k_motor32               = 179,
+        k_tilt2MotorLeft        = 180,            ///< vectored thrust, left tilt
+        k_tilt2MotorRight       = 181,            ///< vectored thrust, right tilt
         k_nr_aux_servo_functions         ///< This must be the last enum value (only add new values _before_ this one)
     } Function;
 
