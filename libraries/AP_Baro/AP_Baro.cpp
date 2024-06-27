@@ -248,7 +248,11 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("_OPTIONS", 24, AP_Baro, _options, 0),
 #endif
-    
+
+#ifdef HAL_BUILD_AP_PERIPH
+    AP_GROUPINFO("_OPTIONS", 24, AP_Baro, _options, 1),
+#endif
+
     AP_GROUPEND
 };
 
