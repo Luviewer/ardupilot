@@ -164,6 +164,8 @@ void AC_AttitudeControl_Multi_Tilt::input_quaternion(Quaternion& attitude_desire
     _motors.set_lateral(0.0f);
     _motors.set_forward(0.0f);
 
+    set_offset_roll_pitch(0, 0);
+
     AC_AttitudeControl_Multi::input_quaternion(attitude_desired_quat, ang_vel_target);
 }
 

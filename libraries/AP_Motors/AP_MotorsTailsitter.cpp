@@ -26,6 +26,8 @@
 
 extern const AP_HAL::HAL& hal;
 
+extern float aim_pitch_deg;
+
 #define SERVO_OUTPUT_RANGE     4500
 #define SEIRAL_SERVO_MAX_ANGLE 150
 #define SERVO_FACTOR           (4500.0f / 12000.0f)
@@ -131,6 +133,9 @@ void AP_MotorsTailsitter::output_to_motors()
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE * SERVO_FACTOR);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE * SERVO_FACTOR);
+
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg / 150.0f * 4500 + forward_thrust * 4500*0.5);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg / 150.0f * 4500 - forward_thrust * 4500*0.5);
 
     static uint16_t cnt = 0;
 
@@ -240,6 +245,9 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     // thrust vectoring
     _tilt_left  = -pitch_thrust + yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
+
+     forward_thrust = get_forward();
+
 }
 
 // output_test_seq - spin a motor at the pwm value specified

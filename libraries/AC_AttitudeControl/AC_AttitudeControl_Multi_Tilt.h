@@ -92,7 +92,7 @@ private:
     float pitch_offset_deg;
 
     bool forward_enable = true;
-    bool lateral_enable = true;
+    bool lateral_enable = false;
 
     static AC_AttitudeControl_Multi_Tilt* _singleton;
 };

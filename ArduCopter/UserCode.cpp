@@ -5,6 +5,44 @@ float delta_aim_pitch_deg;
 float aim_pitch_deg_last;
 float pitch_b;
 
+void Copter::trans_speed(uint16_t rc_ch)
+{
+    static uint8_t state = 0;
+    switch (state) {
+        case 0:
+            if (rc_ch > 1700) {
+                state = 1;
+            }
+            aim_pitch_deg       = 0;
+            delta_aim_pitch_deg = 0;
+            aim_pitch_deg_last  = 0;
+            break;
+
+        case 1:
+            aim_pitch_deg += g2.user_parameters.get_TiltSPParam();
+            if (aim_pitch_deg > g2.user_parameters.get_MaxDegParam())
+                aim_pitch_deg = g2.user_parameters.get_MaxDegParam();
+            if (rc_ch == 1500) {
+                state = 2;
+            }
+
+            break;
+
+        case 2:
+            aim_pitch_deg -=  g2.user_parameters.get_TiltSPParam();
+            if (aim_pitch_deg < 0.5)
+                state = 0;
+
+            break;
+
+        default:
+            break;
+    }
+
+    delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
+    aim_pitch_deg_last  = aim_pitch_deg;
+}
+
 #ifdef USERHOOK_INIT
 void Copter::userhook_init()
 {
@@ -26,17 +64,15 @@ void Copter::userhook_50Hz()
     // put your 50Hz code here
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         uint16_t chin = hal.rcin->read(CH_7);
-        if (chin > 1450 && chin < 1550) chin = 1500;
-        aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
+        // if (chin > 1450 && chin < 1550) chin = 1500;
+        // aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
 
-        delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
-        aim_pitch_deg_last  = aim_pitch_deg;
-
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg / 150.0f * 4500);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg / 150.0f * 4500);
+        // delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
+        // aim_pitch_deg_last  = aim_pitch_deg;
 
         // hiwonder_l.set_position(SERVO_4, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
         // hiwonder_r.set_position(SERVO_2, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+        trans_speed(chin);
 
     } else {
         delta_aim_pitch_deg = 0;
