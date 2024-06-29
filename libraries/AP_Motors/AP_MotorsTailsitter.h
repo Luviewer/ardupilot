@@ -58,4 +58,6 @@ protected:
     AP_Hiwonder_L* hiwonder_l;
     AP_Hiwonder_R* hiwonder_r;
 
+    float forward_thrust;
+
 };

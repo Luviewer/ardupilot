@@ -1127,6 +1127,8 @@ public:
     AP_Hiwonder_L hiwonder_l;
     AP_Hiwonder_R hiwonder_r;
 
+    void trans_speed(uint16_t rc_ch);
+
 };
 
 extern Copter copter;

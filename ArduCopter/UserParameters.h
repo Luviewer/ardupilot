@@ -15,6 +15,7 @@ public:
     AP_Float get_floatParam() const { return _float; }
 
     AP_Float get_MaxDegParam() const { return _maxDeg; }
+    AP_Float get_TiltSPParam() const { return _TILSP; }
 
 private:
     // Put your parameter variable definitions here
@@ -23,5 +24,5 @@ private:
     AP_Float _float;
 
     AP_Float _maxDeg;
-
+    AP_Float _TILSP;
 };
