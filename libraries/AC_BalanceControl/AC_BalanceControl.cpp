@@ -197,10 +197,10 @@ void AC_BalanceControl::update(void)
         return;
     }
 
-    if (balanceCAN == nullptr) {
-        gcs().send_text(MAV_SEVERITY_WARNING, "balanceCAN = nullptr");
-        return;
-    }
+    // if (balanceCAN == nullptr) {
+    //     gcs().send_text(MAV_SEVERITY_WARNING, "balanceCAN = nullptr");
+    //     return;
+    // }
     if (_ahrs == nullptr) {
         gcs().send_text(MAV_SEVERITY_WARNING, "_ahrs = nullptr");
         return;
