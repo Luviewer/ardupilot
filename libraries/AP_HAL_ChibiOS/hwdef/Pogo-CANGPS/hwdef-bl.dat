@@ -4,7 +4,7 @@
 MCU STM32L431 STM32L431xx
 
 # crystal frequency
-OSCILLATOR_HZ 8000000
+OSCILLATOR_HZ 0
 
 # board ID for firmware load
 APJ_BOARD_ID 1062
@@ -20,7 +20,7 @@ FLASH_SIZE_KB 256
 APP_START_OFFSET_KB 4
 
 # ---------------------------------------------
-PA6 LED_BOOTLOADER OUTPUT LOW  # blue
+PA7 LED_BOOTLOADER OUTPUT LOW  # blue
 define HAL_LED_ON 0
 
 # enable CAN support
