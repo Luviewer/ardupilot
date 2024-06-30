@@ -1252,6 +1252,13 @@ public:
 
     void do_not_use_GPS();
 
+    enum class SubMode {
+        TakeOff,
+        Land,
+    };
+
+    SubMode submode() const { return transition_mode; }
+
     // returns true if LAND mode is trying to control X/Y position
     bool controlling_position() const { return control_position; }
 
@@ -1264,10 +1271,14 @@ protected:
 
 private:
 
-    void gps_run();
-    void nogps_run();
+    void transition_takeoff_run();
+    void transition_land_gps_run();
+    void transition_land_nogps_run();
+
+    SubMode transition_mode = SubMode::TakeOff;
 
     bool control_position; // true if we are using an external reference to control position
+    bool transition_takeoff_complete;
 
     uint32_t transition_start_time;
     bool transition_pause;
