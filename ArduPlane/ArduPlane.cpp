@@ -81,7 +81,6 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_ServoRelayEvents, &plane.ServoRelayEvents, update_events, 50, 150,  63),
 #endif
     SCHED_TASK_CLASS(AP_BattMonitor, &plane.battery, read,   10, 300,  66),
-    SCHED_TASK_CLASS(AP_Baro, &plane.barometer, accumulate,  50, 150,  69),
     SCHED_TASK(read_rangefinder,       50,    100, 78),
 #if AP_ICENGINE_ENABLED
     SCHED_TASK_CLASS(AP_ICEngine,      &plane.g2.ice_control, update,     10, 100,  81),
@@ -701,7 +700,7 @@ bool Plane::trigger_land_abort(const float climb_to_alt_m)
         plane.is_land_command(mission_id);
     if (is_in_landing) {
         // fly a user planned abort pattern if available
-        if (plane.mission.jump_to_abort_landing_sequence()) {
+        if (plane.have_position && plane.mission.jump_to_abort_landing_sequence(plane.current_loc)) {
             return true;
         }
 
@@ -830,7 +829,7 @@ bool Plane::set_target_location(const Location &target_loc)
 #endif //AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
 #if AP_SCRIPTING_ENABLED
-// set target location (for use by scripting)
+// get target location (for use by scripting)
 bool Plane::get_target_location(Location& target_loc)
 {
     switch (control_mode->mode_number()) {

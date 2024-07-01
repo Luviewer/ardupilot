@@ -26,7 +26,6 @@ PA14 LED0 OUTPUT LOW GPIO(90) # blue marked as ACT
 PA13 LED1 OUTPUT LOW GPIO(91) # green marked as B/E
 define HAL_GPIO_A_LED_PIN 91
 define HAL_GPIO_B_LED_PIN 90
-define HAL_GPIO_LED_OFF 1
 
 
 # --------------------- PWM -----------------------
@@ -166,8 +165,6 @@ define HAL_BATT_CURR_SCALE 66.7
 
 define BOARD_RSSI_ANA_PIN 8
 define HAL_DEFAULT_AIRSPEED_PIN 10
-
-define HAL_GYROFFT_ENABLED 0
 
 # --------------------- save flash ----------------------
 # save some flash

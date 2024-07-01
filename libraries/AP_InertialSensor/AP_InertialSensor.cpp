@@ -721,7 +721,7 @@ AP_InertialSensor::AP_InertialSensor() :
 AP_InertialSensor *AP_InertialSensor::get_singleton()
 {
     if (!_singleton) {
-        _singleton = new AP_InertialSensor();
+        _singleton = NEW_NOTHROW AP_InertialSensor();
     }
     return _singleton;
 }
@@ -1157,7 +1157,7 @@ AP_InertialSensor::detect_backends(void)
     // if enabled, make the first IMU the external AHRS
     const int8_t serial_port = AP::externalAHRS().get_port(AP_ExternalAHRS::AvailableSensor::IMU);
     if (serial_port >= 0) {
-        ADD_BACKEND(new AP_InertialSensor_ExternalAHRS(*this, serial_port));
+        ADD_BACKEND(NEW_NOTHROW AP_InertialSensor_ExternalAHRS(*this, serial_port));
     }
 #endif
 
@@ -1850,7 +1850,9 @@ void AP_InertialSensor::HarmonicNotch::update_params(uint8_t instance, bool conv
         last_center_freq_hz[instance] = params.center_freq_hz();
         last_bandwidth_hz[instance] = params.bandwidth_hz();
         last_attenuation_dB[instance] = params.attenuation_dB();
-    } else if (params.tracking_mode() != HarmonicNotchDynamicMode::Fixed) {
+    }
+
+    if (params.tracking_mode() != HarmonicNotchDynamicMode::Fixed) {
         if (num_calculated_notch_frequencies > 1) {
             filter[instance].update(num_calculated_notch_frequencies, calculated_notch_freq_hz);
         } else {
@@ -1931,13 +1933,13 @@ void AP_InertialSensor::update(void)
         // set primary to first healthy accel and gyro
         for (uint8_t i=0; i<INS_MAX_INSTANCES; i++) {
             if (_gyro_healthy[i] && _use(i)) {
-                _primary_gyro = i;
+                _first_usable_gyro = i;
                 break;
             }
         }
         for (uint8_t i=0; i<INS_MAX_INSTANCES; i++) {
             if (_accel_healthy[i] && _use(i)) {
-                _primary_accel = i;
+                _first_usable_accel = i;
                 break;
             }
         }
@@ -2207,7 +2209,7 @@ void AP_InertialSensor::calc_vibration_and_clipping(uint8_t instance, const Vect
 // peak hold detector for slower mechanisms to detect spikes
 void AP_InertialSensor::set_accel_peak_hold(uint8_t instance, const Vector3f &accel)
 {
-    if (instance != _primary_accel) {
+    if (instance != _first_usable_accel) {
         // we only record for primary accel
         return;
     }
@@ -2277,10 +2279,10 @@ void AP_InertialSensor::acal_init()
 {
     // NOTE: these objects are never deallocated because the pre-arm checks force a reboot
     if (_acal == nullptr) {
-        _acal = new AP_AccelCal;
+        _acal = NEW_NOTHROW AP_AccelCal;
     }
     if (_accel_calibrator == nullptr) {
-        _accel_calibrator = new AccelCalibrator[INS_MAX_INSTANCES];
+        _accel_calibrator = NEW_NOTHROW AccelCalibrator[INS_MAX_INSTANCES];
     }
 }
 
@@ -2388,7 +2390,7 @@ void AP_InertialSensor::_acal_save_calibrations()
         case 1:
             // The first level step of accel cal will be taken as gnd truth,
             // i.e. trim will be set as per the output of primary accel from the level step
-            get_primary_accel_cal_sample_avg(0,aligned_sample);
+            get_first_usable_accel_cal_sample_avg(0,aligned_sample);
             _trim_rad.zero();
             _calculate_trim(aligned_sample, _trim_rad);
             _new_trim = true;
@@ -2396,7 +2398,7 @@ void AP_InertialSensor::_acal_save_calibrations()
         case 2:
             // Reference accel is truth, in this scenario there is a reference accel
             // as mentioned in ACC_BODY_ALIGNED
-            if (get_primary_accel_cal_sample_avg(0,misaligned_sample) && get_fixed_mount_accel_cal_sample(0,aligned_sample)) {
+            if (get_first_usable_accel_cal_sample_avg(0,misaligned_sample) && get_fixed_mount_accel_cal_sample(0,aligned_sample)) {
                 // determine trim from aligned sample vs misaligned sample
                 Vector3f cross = (misaligned_sample%aligned_sample);
                 float dot = (misaligned_sample*aligned_sample);
@@ -2460,7 +2462,7 @@ bool AP_InertialSensor::get_fixed_mount_accel_cal_sample(uint8_t sample_num, Vec
 /*
     Returns Primary accelerometer level data averaged during accel calibration's first step
 */
-bool AP_InertialSensor::get_primary_accel_cal_sample_avg(uint8_t sample_num, Vector3f& ret) const
+bool AP_InertialSensor::get_first_usable_accel_cal_sample_avg(uint8_t sample_num, Vector3f& ret) const
 {
     uint8_t count = 0;
     Vector3f avg = Vector3f(0,0,0);
@@ -2747,8 +2749,8 @@ void AP_InertialSensor::send_uart_data(void)
     data.length = sizeof(data);
     data.timestamp_us = AP_HAL::micros();
 
-    get_delta_angle(get_primary_gyro(), data.delta_angle, data.delta_angle_dt);
-    get_delta_velocity(get_primary_accel(), data.delta_velocity, data.delta_velocity_dt);
+    get_delta_angle(get_first_usable_gyro(), data.delta_angle, data.delta_angle_dt);
+    get_delta_velocity(get_first_usable_accel(), data.delta_velocity, data.delta_velocity_dt);
 
     data.counter = uart.counter++;
     data.crc = crc_xmodem((const uint8_t *)&data, sizeof(data)-sizeof(uint16_t));

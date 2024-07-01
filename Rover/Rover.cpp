@@ -157,8 +157,8 @@ Rover::Rover(void) :
 {
 }
 
-#if AP_SCRIPTING_ENABLED
-// set target location (for use by scripting)
+#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
+// set target location (for use by external control and scripting)
 bool Rover::set_target_location(const Location& target_loc)
 {
     // exit if vehicle is not in Guided mode or Auto-Guided mode
@@ -168,7 +168,9 @@ bool Rover::set_target_location(const Location& target_loc)
 
     return mode_guided.set_desired_location(target_loc);
 }
+#endif //AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
+#if AP_SCRIPTING_ENABLED
 // set target velocity (for use by scripting)
 bool Rover::set_target_velocity_NED(const Vector3f& vel_ned)
 {
@@ -244,19 +246,19 @@ bool Rover::get_control_output(AP_Vehicle::ControlOutput control_output, float &
         control_value = constrain_float(g2.motors.get_walking_height(), -1.0f, 1.0f);
         return true;
     case AP_Vehicle::ControlOutput::Throttle:
-        control_value = constrain_float(g2.motors.get_throttle() / 100.0f, -1.0f, 1.0f);
+        control_value = constrain_float(g2.motors.get_throttle() * 0.01f, -1.0f, 1.0f);
         return true;
     case AP_Vehicle::ControlOutput::Yaw:
         control_value = constrain_float(g2.motors.get_steering() / 4500.0f, -1.0f, 1.0f);
         return true;
     case AP_Vehicle::ControlOutput::Lateral:
-        control_value = constrain_float(g2.motors.get_lateral() / 100.0f, -1.0f, 1.0f);
+        control_value = constrain_float(g2.motors.get_lateral() * 0.01f, -1.0f, 1.0f);
         return true;
     case AP_Vehicle::ControlOutput::MainSail:
-        control_value = constrain_float(g2.motors.get_mainsail() / 100.0f, -1.0f, 1.0f);
+        control_value = constrain_float(g2.motors.get_mainsail() * 0.01f, -1.0f, 1.0f);
         return true;
     case AP_Vehicle::ControlOutput::WingSail:
-        control_value = constrain_float(g2.motors.get_wingsail() / 100.0f, -1.0f, 1.0f);
+        control_value = constrain_float(g2.motors.get_wingsail() * 0.01f, -1.0f, 1.0f);
         return true;
     default:
         return false;
@@ -290,17 +292,6 @@ void Rover::nav_script_time_done(uint16_t id)
     return mode_auto.nav_script_time_done(id);
 }
 #endif // AP_SCRIPTING_ENABLED
-
-#if AP_STATS_ENABLED
-/*
-  update AP_Stats
-*/
-void Rover::stats_update(void)
-{
-    AP::stats()->set_flying(g2.motors.active());
-}
-#endif
-
 
 // update AHRS system
 void Rover::ahrs_update()
@@ -466,6 +457,11 @@ void Rover::one_second_loop(void)
     g2.wp_nav.set_turn_params(g2.turn_radius, g2.motors.have_skid_steering());
     g2.pos_control.set_turn_params(g2.turn_radius, g2.motors.have_skid_steering());
     g2.wheel_rate_control.set_notch_sample_rate(AP::scheduler().get_filtered_loop_rate_hz());
+
+#if AP_STATS_ENABLED
+    // Update stats "flying" time
+    AP::stats()->set_flying(g2.motors.active());
+#endif
 }
 
 void Rover::update_current_mode(void)

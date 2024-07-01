@@ -79,7 +79,6 @@ const AP_Scheduler::Task Sub::scheduler_tasks[] = {
     SCHED_TASK(update_altitude,       10,    100,  18),
     SCHED_TASK(three_hz_loop,          3,     75,  21),
     SCHED_TASK(update_turn_counter,   10,     50,  24),
-    SCHED_TASK_CLASS(AP_Baro,             &sub.barometer,    accumulate,          50,  90,  27),
     SCHED_TASK(one_hz_loop,            1,    100,  33),
     SCHED_TASK_CLASS(GCS,                 (GCS*)&sub._gcs,   update_receive,     400, 180,  36),
     SCHED_TASK_CLASS(GCS,                 (GCS*)&sub._gcs,   update_send,        400, 550,  39),
@@ -159,10 +158,7 @@ void Sub::fifty_hz_loop()
 
     failsafe_sensors_check();
 
-    // Update rc input/output
     rc().read_input();
-    SRV_Channels::calc_pwm();
-    SRV_Channels::output_ch_all();
 }
 
 // update_batt_compass - read battery and compass
@@ -272,6 +268,9 @@ void Sub::three_hz_loop()
 // one_hz_loop - runs at 1Hz
 void Sub::one_hz_loop()
 {
+    // sync MAVLink system ID
+    mavlink_system.sysid = g.sysid_this_mav;
+
     bool arm_check = arming.pre_arm_checks(false);
     ap.pre_arm_check = arm_check;
     AP_Notify::flags.pre_arm_check = arm_check;
@@ -379,5 +378,55 @@ void Sub::stats_update(void)
     AP::stats()->set_flying(motors.armed());
 }
 #endif
+
+// get the altitude relative to the home position or the ekf origin
+float Sub::get_alt_rel() const
+{
+    if (!ap.depth_sensor_present) {
+        return 0;
+    }
+
+    // get relative position
+    float posD;
+    if (ahrs.get_relative_position_D_origin(posD)) {
+        if (ahrs.home_is_set()) {
+            // adjust to the home position
+            auto home = ahrs.get_home();
+            posD -= static_cast<float>(home.alt) * 0.01f;
+        }
+    } else {
+        // fall back to the barometer reading
+        posD = -AP::baro().get_altitude();
+    }
+
+    // convert down to up
+    return -posD;
+}
+
+// get the altitude above mean sea level
+float Sub::get_alt_msl() const
+{
+    if (!ap.depth_sensor_present) {
+        return 0;
+    }
+
+    Location origin;
+    if (!ahrs.get_origin(origin)) {
+        return 0;
+    }
+
+    // get relative position
+    float posD;
+    if (!ahrs.get_relative_position_D_origin(posD)) {
+        // fall back to the barometer reading
+        posD = -AP::baro().get_altitude();
+    }
+
+    // add in the ekf origin altitude
+    posD -= static_cast<float>(origin.alt) * 0.01f;
+
+    // convert down to up
+    return -posD;
+}
 
 AP_HAL_MAIN_CALLBACKS(&sub);

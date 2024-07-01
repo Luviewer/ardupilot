@@ -39,6 +39,14 @@
 class SocketAPM;
 #endif
 
+#ifndef AP_SCRIPTING_SERIALDEVICE_ENABLED
+#define AP_SCRIPTING_SERIALDEVICE_ENABLED AP_SERIALMANAGER_REGISTER_ENABLED && (BOARD_FLASH_SIZE>1024)
+#endif
+
+#if AP_SCRIPTING_SERIALDEVICE_ENABLED
+#include "AP_Scripting_SerialDevice.h"
+#endif
+
 class AP_Scripting
 {
 public:
@@ -48,6 +56,10 @@ public:
     CLASS_NO_COPY(AP_Scripting);
 
     void init(void);
+
+#if AP_SCRIPTING_SERIALDEVICE_ENABLED
+    void init_serialdevice_ports(void);
+#endif
 
     void update();
 
@@ -77,12 +89,6 @@ public:
 
    // User parameters for inputs into scripts 
    AP_Float _user[6];
-
-    struct terminal_s {
-        int output_fd;
-        off_t input_offset;
-        bool session;
-    } terminal;
 
     enum class SCR_DIR {
         ROMFS = 1 << 0,
@@ -144,10 +150,11 @@ public:
     command_block_list *mavlink_command_block_list;
     HAL_Semaphore mavlink_command_block_list_sem;
 
-private:
+    #if AP_SCRIPTING_SERIALDEVICE_ENABLED
+        AP_Scripting_SerialDevice _serialdevice;
+    #endif
 
-    bool repl_start(void);
-    void repl_stop(void);
+private:
 
     void thread(void); // main script execution thread
 

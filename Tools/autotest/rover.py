@@ -525,6 +525,27 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.disarm_vehicle()
         self.progress("RTL Mission OK (%fm)" % home_distance)
 
+    def RTL_SPEED(self, timeout=120):
+        '''Test RTL_SPEED is honoured'''
+
+        self.upload_simple_relhome_mission([
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 300, 0, 0),
+            (mavutil.mavlink.MAV_CMD_NAV_WAYPOINT, 1000, 0, 0),
+        ])
+
+        self.wait_ready_to_arm()
+        self.arm_vehicle()
+
+        self.change_mode('AUTO')
+        self.wait_current_waypoint(2, timeout=120)
+        for speed in 1, 5.5, 1.5, 7.5:
+            self.set_parameter("RTL_SPEED", speed)
+            self.change_mode('RTL')
+            self.wait_groundspeed(speed-0.1, speed+0.1, minimum_duration=10)
+            self.change_mode('HOLD')
+        self.do_RTL()
+        self.disarm_vehicle()
+
     def AC_Avoidance(self):
         '''Test AC Avoidance switch'''
         self.context_push()
@@ -2587,7 +2608,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             raise NotAchievedException("Unexpected mission type %u want=%u" %
                                        (m.mission_type, mission_type))
         if m.type != want_type:
-            raise NotAchievedException("Expected ack type got %u got %u" %
+            raise NotAchievedException("Expected ack type %u got %u" %
                                        (want_type, m.type))
 
     def assert_filepath_content(self, filepath, want):
@@ -3931,11 +3952,11 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
                 continue
             t = m.get_type()
             if t == "POSITION_TARGET_GLOBAL_INT":
-                print("Target: (%s)" % str(m))
+                self.progress("Target: (%s)" % str(m))
             elif t == "GLOBAL_POSITION_INT":
-                print("Position: (%s)" % str(m))
+                self.progress("Position: (%s)" % str(m))
             elif t == "FENCE_STATUS":
-                print("Fence: %s" % str(m))
+                self.progress("Fence: %s" % str(m))
                 if m.breach_status != 0:
                     seen_fence_breach = True
                     self.progress("Fence breach detected!")
@@ -5290,13 +5311,13 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         })
         self.install_test_modules_context()
         self.install_mavlink_module_context()
-        for script in [
-                "scripting_test.lua",
-                "math.lua",
-                "strings.lua",
-                "mavlink_test.lua",
-        ]:
-            self.install_test_script_context(script)
+
+        self.install_test_scripts_context([
+            "scripting_test.lua",
+            "math.lua",
+            "strings.lua",
+            "mavlink_test.lua",
+        ])
 
         self.context_collect('STATUSTEXT')
         self.context_collect('NAMED_VALUE_FLOAT')
@@ -5407,6 +5428,28 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.context_pop()
         self.reboot_sitl()
 
+    def test_scripting_serial_loopback(self):
+        self.start_subtest("Scripting serial loopback test")
+
+        self.context_push()
+        self.context_collect('STATUSTEXT')
+        self.set_parameters({
+            "SCR_ENABLE": 1,
+            "SCR_SDEV_EN": 1,
+            "SCR_SDEV1_PROTO": 28,
+        })
+        self.install_test_script_context("serial_loopback.lua")
+        self.reboot_sitl()
+
+        for success_text in [
+                "driver -> device good",
+                "device -> driver good",
+        ]:
+            self.wait_statustext(success_text, check_context=True)
+
+        self.context_pop()
+        self.reboot_sitl()
+
     def Scripting(self):
         '''Scripting test'''
         self.test_scripting_set_home_to_vehicle_location()
@@ -5415,6 +5458,7 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         self.test_scripting_simple_loop()
         self.test_scripting_internal_test()
         self.test_scripting_auxfunc()
+        self.test_scripting_serial_loopback()
 
     def test_mission_frame(self, frame, target_system=1, target_component=1):
         self.clear_mission(mavutil.mavlink.MAV_MISSION_TYPE_MISSION,
@@ -6728,6 +6772,172 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
         shutil.copy('build/sitl/bin/ardurover.noppp', 'build/sitl/bin/ardurover')
         self.reboot_sitl()
 
+    def FenceFullAndPartialTransfer(self, target_system=1, target_component=1):
+        '''ensure starting a fence transfer then a partial transfer behaves
+        appropriately'''
+        # start uploading a 10 item list:
+        self.mav.mav.mission_count_send(
+            target_system,
+            target_component,
+            10,
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE
+        )
+        self.assert_receive_mission_item_request(mavutil.mavlink.MAV_MISSION_TYPE_FENCE, 0)
+        # change our mind and try a partial mission upload:
+        self.mav.mav.mission_write_partial_list_send(
+            target_system,
+            target_component,
+            3,
+            3,
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE)
+        # should get denied for that one:
+        self.assert_receive_mission_ack(
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+            want_type=mavutil.mavlink.MAV_MISSION_DENIED,
+        )
+        # now wait for the original upload to be "cancelled"
+        self.assert_receive_mission_ack(
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+            want_type=mavutil.mavlink.MAV_MISSION_OPERATION_CANCELLED,
+        )
+
+    def MissionRetransfer(self, target_system=1, target_component=1):
+        '''torture-test with MISSION_COUNT'''
+#        self.send_debug_trap()
+        self.mav.mav.mission_count_send(
+            target_system,
+            target_component,
+            10,
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE
+        )
+        self.assert_receive_mission_item_request(mavutil.mavlink.MAV_MISSION_TYPE_FENCE, 0)
+        self.context_push()
+        self.context_collect('STATUSTEXT')
+        self.mav.mav.mission_count_send(
+            target_system,
+            target_component,
+            10000,
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE
+        )
+        self.wait_statustext('Only [0-9]+ items are supported', regex=True, check_context=True)
+        self.context_pop()
+        self.assert_not_receive_message('MISSION_REQUEST')
+        self.mav.mav.mission_count_send(
+            target_system,
+            target_component,
+            10,
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE
+        )
+        self.assert_receive_mission_item_request(mavutil.mavlink.MAV_MISSION_TYPE_FENCE, 0)
+        self.assert_receive_mission_ack(
+            mavutil.mavlink.MAV_MISSION_TYPE_FENCE,
+            want_type=mavutil.mavlink.MAV_MISSION_OPERATION_CANCELLED,
+        )
+
+    def MissionPolyEnabledPreArm(self):
+        '''check Polygon porearm checks'''
+        self.set_parameters({
+            'FENCE_ENABLE': 1,
+        })
+        self.progress("Ensure that we can arm if polyfence is enabled but we have no polyfence")
+        self.assert_parameter_value('FENCE_TYPE', 6)
+        self.wait_ready_to_arm()
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        self.progress("Ensure we can arm when we have an inclusion fence we are inside of")
+        here = self.mav.location()
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            [
+                [ # over the top of the vehicle
+                    self.offset_location_ne(here, -50, -50), # bl
+                    self.offset_location_ne(here, -50, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, -50), # tl,
+                ]
+            ]
+        )
+        self.delay_sim_time(5)
+        self.wait_ready_to_arm()
+
+        self.reboot_sitl()
+        self.wait_ready_to_arm()
+
+        self.progress("Ensure we can't arm when we are in breacnh of a polyfence")
+        self.clear_fence()
+
+        self.progress("Now create a fence we are in breach of")
+        here = self.mav.location()
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            [
+                [ # over the top of the vehicle
+                    self.offset_location_ne(here, 20, 20), # bl
+                    self.offset_location_ne(here, 20, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, 20), # tl,
+                ]
+            ]
+        )
+
+        self.assert_prearm_failure('vehicle outside fence', other_prearm_failures_fatal=False)
+        self.reboot_sitl()
+
+        self.assert_prearm_failure('vehicle outside fence', other_prearm_failures_fatal=False, timeout=120)
+
+        self.progress("Ensure we can arm when a polyfence fence is cleared when we've previously been in breach")
+        self.clear_fence()
+        self.wait_ready_to_arm()
+
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            [
+                [ # over the top of the vehicle
+                    self.offset_location_ne(here, 20, 20), # bl
+                    self.offset_location_ne(here, 20, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, 20), # tl,
+                ]
+            ]
+        )
+        self.reboot_sitl()
+        self.assert_prearm_failure('vehicle outside fence', other_prearm_failures_fatal=False, timeout=120)
+        self.clear_fence()
+        self.wait_ready_to_arm()
+
+        self.progress("Ensure we can arm after clearing polygon fence type enabled")
+        self.upload_fences_from_locations(
+            mavutil.mavlink.MAV_CMD_NAV_FENCE_POLYGON_VERTEX_INCLUSION,
+            [
+                [ # over the top of the vehicle
+                    self.offset_location_ne(here, 20, 20), # bl
+                    self.offset_location_ne(here, 20, 50), # br
+                    self.offset_location_ne(here, 50, 50), # tr
+                    self.offset_location_ne(here, 50, 20), # tl,
+                ]
+            ]
+        )
+        self.assert_prearm_failure('vehicle outside fence', other_prearm_failures_fatal=False, timeout=120)
+        self.set_parameter('FENCE_TYPE', 2)
+        self.wait_ready_to_arm()
+        self.set_parameter('FENCE_TYPE', 6)
+        self.assert_prearm_failure('vehicle outside fence', other_prearm_failures_fatal=False, timeout=120)
+
+    def OpticalFlow(self):
+        '''lightly test OpticalFlow'''
+        self.wait_sensor_state(mavutil.mavlink.MAV_SYS_STATUS_SENSOR_OPTICAL_FLOW, False, False, False, verbose=True)
+
+        self.context_push()
+        self.set_parameter("SIM_FLOW_ENABLE", 1)
+        self.set_parameter("FLOW_TYPE", 10)
+
+        self.reboot_sitl()
+        self.wait_sensor_state(mavutil.mavlink.MAV_SYS_STATUS_SENSOR_OPTICAL_FLOW, True, True, True, verbose=True)
+
+        self.context_pop()
+        self.reboot_sitl()
+
     def tests(self):
         '''return list of all tests'''
         ret = super(AutoTestRover, self).tests()
@@ -6814,12 +7024,18 @@ Brakes have negligible effect (with=%0.2fm without=%0.2fm delta=%0.2fm)
             self.MAV_CMD_BATTERY_RESET,
             self.NetworkingWebServer,
             self.NetworkingWebServerPPP,
+            self.RTL_SPEED,
+            self.MissionRetransfer,
+            self.FenceFullAndPartialTransfer,
+            self.MissionPolyEnabledPreArm,
+            self.OpticalFlow,
         ])
         return ret
 
     def disabled_tests(self):
         return {
             "SlewRate": "got timing report failure on CI",
+            "MAV_CMD_NAV_SET_YAW_SPEED": "compiled out of code by default",
         }
 
     def rc_defaults(self):
