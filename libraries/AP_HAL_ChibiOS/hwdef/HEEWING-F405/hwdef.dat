@@ -27,8 +27,6 @@ PC15 LED1 OUTPUT LOW GPIO(91) # green marked as B/E
 define HAL_GPIO_A_LED_PIN 91
 define HAL_GPIO_B_LED_PIN 90
 
-define HAL_GPIO_LED_OFF 1
-
 
 # --------------------- PWM -----------------------
 
@@ -156,7 +154,6 @@ define HAL_BATT_CURR_SCALE 26.7
 #define HAL_DEFAULT_AIRSPEED_PIN 10
 
 define HAL_WITH_DSP FALSE
-define HAL_GYROFFT_ENABLED 0
 
 include ../include/minimize_fpv_osd.inc
 

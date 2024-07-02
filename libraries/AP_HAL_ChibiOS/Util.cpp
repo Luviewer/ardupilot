@@ -227,7 +227,7 @@ void Util::toneAlarm_set_buzzer_tone(float frequency, float volume, uint32_t dur
 #endif // HAL_USE_PWM
 #if HAL_DSHOT_ALARM_ENABLED
     // don't play the motors while flying
-    if (!(_toneAlarm_types & AP_Notify::Notify_Buzz_DShot) || get_soft_armed() || hal.rcout->get_dshot_esc_type() == RCOutput::DSHOT_ESC_NONE) {
+    if (!(_toneAlarm_types & uint8_t(AP_Notify::BuzzerType::DSHOT)) || get_soft_armed() || hal.rcout->get_dshot_esc_type() == RCOutput::DSHOT_ESC_NONE) {
         return;
     }
 
@@ -682,21 +682,49 @@ extern ChibiOS::UARTDriver uart_io;
 // request information on uart I/O
 void Util::uart_info(ExpandingString &str)
 {
+    // Calculate time since last call
+    const uint32_t now_ms = AP_HAL::millis();
+    const uint32_t dt_ms = now_ms - sys_uart_stats.last_ms;
+    sys_uart_stats.last_ms = now_ms;
+
     // a header to allow for machine parsers to determine format
     str.printf("UARTV1\n");
     for (uint8_t i = 0; i < HAL_UART_NUM_SERIAL_PORTS; i++) {
         auto *uart = hal.serial(i);
         if (uart) {
             str.printf("SERIAL%u ", i);
-            uart->uart_info(str);
+            uart->uart_info(str, sys_uart_stats.serial[i], dt_ms);
         }
     }
 #if HAL_WITH_IO_MCU
     str.printf("IOMCU   ");
-    uart_io.uart_info(str);
+    uart_io.uart_info(str, sys_uart_stats.io, dt_ms);
 #endif
 }
+
+// Log UART message for each serial port
+#if HAL_LOGGING_ENABLED
+void Util::uart_log()
+{
+    // Calculate time since last call
+    const uint32_t now_ms = AP_HAL::millis();
+    const uint32_t dt_ms = now_ms - log_uart_stats.last_ms;
+    log_uart_stats.last_ms = now_ms;
+
+    // Loop over all numbered ports
+    for (uint8_t i = 0; i < HAL_UART_NUM_SERIAL_PORTS; i++) {
+        auto *uart = hal.serial(i);
+        if (uart) {
+            uart->log_stats(i, log_uart_stats.serial[i], dt_ms);
+        }
+    }
+#if HAL_WITH_IO_MCU
+    // Use magic instance 100 for IOMCU
+    uart_io.log_stats(100, log_uart_stats.io, dt_ms);
 #endif
+}
+#endif // HAL_LOGGING_ENABLED
+#endif // HAL_UART_STATS_ENABLED
 
 // request information on uart I/O
 #if HAL_USE_PWM == TRUE

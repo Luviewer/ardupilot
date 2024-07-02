@@ -86,6 +86,8 @@
 #define STM32_PWR_CR2                       (PWR_CR2_BREN)
 #ifdef SMPS_PWR
 #define STM32_PWR_CR3                       (PWR_CR3_SMPSEN | PWR_CR3_USB33DEN)
+#elif defined(SMPS_EXT)
+#define STM32_PWR_CR3                       (PWR_CR3_BYPASS | PWR_CR3_USB33DEN)
 #else
 #define STM32_PWR_CR3                       (PWR_CR3_LDOEN | PWR_CR3_USB33DEN)
 #endif
@@ -200,6 +202,9 @@
 #if HAL_CUSTOM_MCU_CLOCKRATE == 480000000
 #define STM32_PLL1_DIVN_VALUE               120
 #define STM32_PLL1_DIVQ_VALUE               12
+#elif HAL_CUSTOM_MCU_CLOCKRATE == 200000000
+#define STM32_PLL1_DIVN_VALUE               50
+#define STM32_PLL1_DIVQ_VALUE               5
 #else
 #error "Unable to configure custom clockrate"
 #endif

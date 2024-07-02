@@ -83,6 +83,9 @@ public:
     // ESC_TELEM_DATA_TIMEOUT_MS
     uint32_t get_active_esc_mask() const;
 
+    // return an active ESC with the highest RPM for the purposes of reporting (e.g. in the OSD)
+    uint8_t get_max_rpm_esc() const;
+
     // return the last time telemetry data was received in ms for the given ESC or 0 if never
     uint32_t get_last_telem_data_ms(uint8_t esc_index) const {
         if (esc_index >= ESC_TELEM_MAX_ESCS) {return 0;}
@@ -117,6 +120,12 @@ private:
     // helper that validates RPM data
     static bool rpm_data_within_timeout (const volatile AP_ESC_Telem_Backend::RpmData &instance, const uint32_t now_us, const uint32_t timeout_us);
     static bool was_rpm_data_ever_reported (const volatile AP_ESC_Telem_Backend::RpmData &instance);
+
+#if AP_EXTENDED_DSHOT_TELEM_V2_ENABLED
+    // helpers that aggregate data in EDTv2 messages
+    static uint16_t merge_edt2_status(uint16_t old_status, uint16_t new_status);
+    static uint16_t merge_edt2_stress(uint16_t old_stress, uint16_t new_stress);
+#endif
 
     // rpm data
     volatile AP_ESC_Telem_Backend::RpmData _rpm_data[ESC_TELEM_MAX_ESCS];

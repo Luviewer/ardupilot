@@ -591,8 +591,8 @@ void AP_AHRS::update_EKF2(void)
             // Use the primary EKF to select the primary gyro
             const AP_InertialSensor &_ins = AP::ins();
             const int8_t primary_imu = EKF2.getPrimaryCoreIMUIndex();
-            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_primary_gyro();
-            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_primary_accel();
+            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_first_usable_gyro();
+            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_first_usable_accel();
 
             // get gyro bias for primary EKF and change sign to give gyro drift
             // Note sign convention used by EKF is bias = measurement - truth
@@ -660,8 +660,8 @@ void AP_AHRS::update_EKF3(void)
 
             // Use the primary EKF to select the primary gyro
             const int8_t primary_imu = EKF3.getPrimaryCoreIMUIndex();
-            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_primary_gyro();
-            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_primary_accel();
+            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_first_usable_gyro();
+            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_first_usable_accel();
 
             // get gyro bias for primary EKF and change sign to give gyro drift
             // Note sign convention used by EKF is bias = measurement - truth
@@ -1413,36 +1413,45 @@ bool AP_AHRS::set_origin(const Location &loc)
 #endif
 
     // return success if active EKF's origin was set
+    bool success = false;
     switch (active_EKF_type()) {
 #if AP_AHRS_DCM_ENABLED
     case EKFType::DCM:
-        return false;
+        break;
 #endif
 
 #if HAL_NAVEKF2_AVAILABLE
     case EKFType::TWO:
-        return ret2;
+        success = ret2;
+        break;
 #endif
 
 #if HAL_NAVEKF3_AVAILABLE
     case EKFType::THREE:
-        return ret3;
+        success = ret3;
+        break;
 #endif
 
 #if AP_AHRS_SIM_ENABLED
     case EKFType::SIM:
         // never allow origin set in SITL. The origin is set by the
         // simulation backend
-        return false;
+        break;
 #endif
 #if AP_AHRS_EXTERNAL_ENABLED
     case EKFType::EXTERNAL:
         // don't allow origin set with external AHRS
-        return false;
+        break;
 #endif
     }
-    // since there is no default case above, this is unreachable
-    return false;
+
+    if (success) {
+        state.origin_ok = _get_origin(state.origin);
+#if HAL_LOGGING_ENABLED
+        Log_Write_Home_And_Origin();
+#endif
+    }
+    return success;
 }
 
 #if AP_AHRS_POSITION_RESET_ENABLED
@@ -1813,7 +1822,7 @@ void AP_AHRS::get_relative_position_D_home(float &posD) const
         const auto &gps = AP::gps();
         if (_gps_use == GPSUse::EnableWithHeight &&
             gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
-            posD = (get_home().alt - gps.location().alt) * 0.01;
+            posD = (_home.alt - gps.location().alt) * 0.01;
             return;
         }
 #endif
@@ -3206,7 +3215,7 @@ uint8_t AP_AHRS::_get_primary_IMU_index() const
 #endif
     }
     if (imu == -1) {
-        imu = AP::ins().get_primary_gyro();
+        imu = AP::ins().get_first_usable_gyro();
     }
     return imu;
 }
@@ -3527,7 +3536,7 @@ bool AP_AHRS::get_velocity_NED(Vector3f &vec) const
 
 // return location corresponding to vector relative to the
 // vehicle's origin
-bool AP_AHRS::get_location_from_origin_offset(Location &loc, const Vector3p &offset_ned) const
+bool AP_AHRS::get_location_from_origin_offset_NED(Location &loc, const Vector3p &offset_ned) const
 {
     if (!get_origin(loc)) {
         return false;
@@ -3539,7 +3548,7 @@ bool AP_AHRS::get_location_from_origin_offset(Location &loc, const Vector3p &off
 
 // return location corresponding to vector relative to the
 // vehicle's home location
-bool AP_AHRS::get_location_from_home_offset(Location &loc, const Vector3p &offset_ned) const
+bool AP_AHRS::get_location_from_home_offset_NED(Location &loc, const Vector3p &offset_ned) const
 {
     if (!home_is_set()) {
         return false;
@@ -3548,6 +3557,24 @@ bool AP_AHRS::get_location_from_home_offset(Location &loc, const Vector3p &offse
     loc.offset(offset_ned);
 
     return true;
+}
+
+/*
+  get EAS to TAS scaling
+ */
+float AP_AHRS::get_EAS2TAS(void) const
+{
+    if (is_positive(state.EAS2TAS)) {
+        return state.EAS2TAS;
+    }
+    return 1.0;
+}
+
+// get air density / sea level density - decreases as altitude climbs
+float AP_AHRS::get_air_density_ratio(void) const
+{
+    const float eas2tas = get_EAS2TAS();
+    return 1.0 / sq(eas2tas);
 }
 
 // singleton instance

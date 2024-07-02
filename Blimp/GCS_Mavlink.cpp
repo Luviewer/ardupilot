@@ -40,6 +40,9 @@ MAV_STATE GCS_MAVLINK_Blimp::vehicle_system_status() const
     if (blimp.ap.land_complete) {
         return MAV_STATE_STANDBY;
     }
+    if (!blimp.ap.initialised) {
+    	return MAV_STATE_BOOT;
+    }
 
     return MAV_STATE_ACTIVE;
 }
@@ -446,15 +449,6 @@ MAV_RESULT GCS_MAVLINK_Blimp::handle_command_do_set_roi(const Location &roi_loc)
     }
     // blimp.flightmode->auto_yaw.set_roi(roi_loc);
     return MAV_RESULT_ACCEPTED;
-}
-
-bool GCS_MAVLINK_Blimp::set_home_to_current_location(bool _lock)
-{
-    return blimp.set_home_to_current_location(_lock);
-}
-bool GCS_MAVLINK_Blimp::set_home(const Location& loc, bool _lock)
-{
-    return blimp.set_home(loc, _lock);
 }
 
 MAV_RESULT GCS_MAVLINK_Blimp::handle_command_int_do_reposition(const mavlink_command_int_t &packet)

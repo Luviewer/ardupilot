@@ -40,10 +40,9 @@ uint32_t lua_scripts::loaded_checksum;
 uint32_t lua_scripts::running_checksum;
 HAL_Semaphore lua_scripts::crc_sem;
 
-lua_scripts::lua_scripts(const AP_Int32 &vm_steps, const AP_Int32 &heap_size, const AP_Int8 &debug_options, struct AP_Scripting::terminal_s &_terminal)
+lua_scripts::lua_scripts(const AP_Int32 &vm_steps, const AP_Int32 &heap_size, const AP_Int8 &debug_options)
     : _vm_steps(vm_steps),
-      _debug_options(debug_options),
-     terminal(_terminal)
+      _debug_options(debug_options)
 {
     _heap.create(heap_size, 4);
 }
@@ -458,19 +457,6 @@ void *lua_scripts::alloc(void *ud, void *ptr, size_t osize, size_t nsize) {
     return _heap.change_size(ptr, osize, nsize);
 }
 
-void lua_scripts::repl_cleanup (void) {
-    if (terminal.session) {
-        terminal.session = false;
-        if (terminal.output_fd != -1) {
-            AP::FS().close(terminal.output_fd);
-            terminal.output_fd = -1;
-            AP::FS().unlink(REPL_DIRECTORY "/in");
-            AP::FS().unlink(REPL_DIRECTORY "/out");
-            AP::FS().unlink(REPL_DIRECTORY);
-        }
-    }
-}
-
 void lua_scripts::run(void) {
     bool succeeded_initial_load = false;
 
@@ -493,8 +479,6 @@ void lua_scripts::run(void) {
         }
         scripts = nullptr;
         overtime = false;
-        // end any open REPL sessions
-        repl_cleanup();
     }
 
     lua_state = lua_newstate(alloc, NULL);
@@ -539,12 +523,6 @@ void lua_scripts::run(void) {
 #endif // __clang_analyzer__
 
     while (AP_Scripting::get_singleton()->should_run()) {
-        // handle terminal data if we have any
-        if (terminal.session) {
-            doREPL(L);
-            continue;
-        }
-
 #if defined(AP_SCRIPTING_CHECKS) && AP_SCRIPTING_CHECKS >= 1
         if (lua_gettop(L) != 0) {
             AP_HAL::panic("Lua: Stack should be empty before running scripts");
@@ -572,8 +550,11 @@ void lua_scripts::run(void) {
             if ((_debug_options.get() & uint8_t(DebugLevel::RUNTIME_MSG)) != 0) {
                 GCS_SEND_TEXT(MAV_SEVERITY_DEBUG, "Lua: Running %s", scripts->name);
             }
-            // copy name for logging, cant do it after as script reschedule moves the pointers
-            const char * script_name = scripts->name;
+            // take a copy of the script name for the purposes of
+            // logging statistics.  "scripts" may become invalid
+            // during the "run_next_script" call, below.
+            char script_name[128+1] {};
+            strncpy_noterm(script_name, scripts->name, 128);
 
 #if DISABLE_INTERRUPTS_FOR_SCRIPT_RUN
             void *istate = hal.scheduler->disable_interrupts_save();
@@ -582,6 +563,10 @@ void lua_scripts::run(void) {
             const int startMem = lua_gc(L, LUA_GCCOUNT, 0) * 1024 + lua_gc(L, LUA_GCCOUNTB, 0);
             const uint32_t loadEnd = AP_HAL::micros();
 
+            // NOTE!  the base pointer of our scripts linked list,
+            // *and all its contents* may become invalid as part of
+            // "run_next_script"!  So do *NOT* attempt to access
+            // anything that was in *scripts after this call.
             run_next_script(L);
 
             const uint32_t runEnd = AP_HAL::micros();
