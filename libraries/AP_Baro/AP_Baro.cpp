@@ -266,6 +266,11 @@ const AP_Param::GroupInfo AP_Baro::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("1_THST_SCALE", 25, AP_Baro, sensors[0].mot_scale, 0),
 #endif  // AP_BARO_THST_COMP_ENABLED
+
+#ifdef HAL_BUILD_AP_PERIPH
+    AP_GROUPINFO("_OPTIONS", 24, AP_Baro, _options, 0),
+#endif
+
     AP_GROUPEND
 };
 
