@@ -28,7 +28,8 @@ extern const AP_HAL::HAL& hal;
 
 extern float aim_pitch_deg;
 
-#define SERVO_OUTPUT_RANGE     4500
+#define SERVO1_OUTPUT_RANGE    9000
+#define SERVO2_OUTPUT_RANGE    13500
 #define SEIRAL_SERVO_MAX_ANGLE 150
 #define SERVO_FACTOR           (4500.0f / 12000.0f)
 
@@ -46,22 +47,28 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
 
     // right servo defaults to servo output 3
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tilt2MotorRight, CH_3);
-    SRV_Channels::set_angle(SRV_Channel::k_tilt2MotorRight, SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_angle(SRV_Channel::k_tilt2MotorRight, SERVO2_OUTPUT_RANGE + 50);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_tilt2MotorRight, 500, 2500);
 
     // left servo defaults to servo output 4
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tilt2MotorLeft, CH_4);
-    SRV_Channels::set_angle(SRV_Channel::k_tilt2MotorLeft, SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_angle(SRV_Channel::k_tilt2MotorLeft, SERVO2_OUTPUT_RANGE + 50);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_tilt2MotorLeft, 500, 2500);
 
     // right servo defaults to servo output 3
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorRight, CH_5);
-    SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRight, SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRight, SERVO1_OUTPUT_RANGE + 50);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_tiltMotorRight, 500, 2500);
 
     // left servo defaults to servo output 4
     SRV_Channels::set_aux_channel_default(SRV_Channel::k_tiltMotorLeft, CH_6);
-    SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeft, SERVO_OUTPUT_RANGE);
+    SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeft, SERVO1_OUTPUT_RANGE + 50);
+    SRV_Channels::set_output_min_max(SRV_Channel::k_tiltMotorLeft, 500, 2500);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, 0);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, 0);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 9000);
 
     hiwonder_l = AP_Hiwonder_L::get_singleton();
     hiwonder_r = AP_Hiwonder_R::get_singleton();
@@ -131,11 +138,16 @@ void AP_MotorsTailsitter::output_to_motors()
     // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2] * 100);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE * SERVO_FACTOR);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE * SERVO_FACTOR);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO1_OUTPUT_RANGE);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO1_OUTPUT_RANGE);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg / 150.0f * 4500 + forward_thrust * 4500*0.5);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg / 150.0f * 4500 - forward_thrust * 4500*0.5);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg + forward_thrust);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg - forward_thrust);
+
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 9000);
 
     static uint16_t cnt = 0;
 
@@ -246,8 +258,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     _tilt_left  = -pitch_thrust + yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
 
-     forward_thrust = get_forward();
-
+    forward_thrust = get_forward();
 }
 
 // output_test_seq - spin a motor at the pwm value specified
