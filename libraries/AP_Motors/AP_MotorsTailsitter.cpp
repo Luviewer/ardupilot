@@ -138,16 +138,11 @@ void AP_MotorsTailsitter::output_to_motors()
     // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2] * 100);
 
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO1_OUTPUT_RANGE);
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO1_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO1_OUTPUT_RANGE);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO1_OUTPUT_RANGE);
 
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg + forward_thrust);
-    // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg - forward_thrust);
-
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, 9000);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, 9000);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 9000);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 9000);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, aim_pitch_deg + forward_thrust);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, -aim_pitch_deg - forward_thrust);
 
     static uint16_t cnt = 0;
 
