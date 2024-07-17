@@ -14,6 +14,11 @@ const AP_Param::GroupInfo UserParameters::var_info[] = {
     AP_GROUPINFO("_MaxDeg", 3, UserParameters, _maxDeg, 0),
     AP_GROUPINFO("_TILSP", 4, UserParameters, _TILSP, 0),
 
+    AP_GROUPINFO("_tilt2R", 5, UserParameters, _tilt2R, 0),
+    AP_GROUPINFO("_tilt2L", 6, UserParameters, _tilt2L, 0),
+    AP_GROUPINFO("_tiltR", 7, UserParameters, _tiltR, 0),
+    AP_GROUPINFO("_tiltL", 8, UserParameters, _tiltL, 0),
+
     AP_GROUPEND
 };
 

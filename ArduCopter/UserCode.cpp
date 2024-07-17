@@ -5,6 +5,9 @@ float delta_aim_pitch_deg;
 float aim_pitch_deg_last;
 float pitch_b;
 
+float tilt_cdeg_R, tilt_cdeg_L;
+float tilt2_cdeg_R, tilt2_cdeg_L;
+
 void Copter::trans_speed(uint16_t rc_ch)
 {
     static uint8_t state = 0;
@@ -29,7 +32,7 @@ void Copter::trans_speed(uint16_t rc_ch)
             break;
 
         case 2:
-            aim_pitch_deg -=  g2.user_parameters.get_TiltSPParam();
+            aim_pitch_deg -= g2.user_parameters.get_TiltSPParam();
             if (aim_pitch_deg < 0.5)
                 state = 0;
 
@@ -48,6 +51,7 @@ void Copter::userhook_init()
 {
     // put your initialisation code here
     // this will be called once at start-up
+
 }
 #endif
 
@@ -140,7 +144,11 @@ void Copter::userhook_SlowLoop()
 void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
-
+    tilt_cdeg_R  = g2.user_parameters.get_tiltR_Param() * 100.0f;
+    tilt_cdeg_L  = g2.user_parameters.get_tiltL_Param() * 100.0f;
+    tilt2_cdeg_R = g2.user_parameters.get_tilt2R_Param() * 100.0f;
+    tilt2_cdeg_L = g2.user_parameters.get_tilt2L_Param() * 100.0f;
+    
     pitch_b = degrees(ahrs.get_pitch()) + aim_pitch_deg;
     // gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));
 }
