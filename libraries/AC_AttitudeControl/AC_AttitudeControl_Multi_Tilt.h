@@ -91,7 +91,7 @@ private:
     float roll_offset_deg;
     float pitch_offset_deg;
 
-    bool forward_enable = true;
+    bool forward_enable = false;
     bool lateral_enable = false;
 
     static AC_AttitudeControl_Multi_Tilt* _singleton;
