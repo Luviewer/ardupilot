@@ -8,6 +8,8 @@ float pitch_b;
 float tilt_cdeg_R, tilt_cdeg_L;
 float tilt2_cdeg_R, tilt2_cdeg_L;
 
+#define MANUAL_TILT
+
 void Copter::trans_speed(uint16_t rc_ch)
 {
     static uint8_t state = 0;
@@ -71,16 +73,16 @@ void Copter::userhook_50Hz()
     // put your 50Hz code here
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         uint16_t chin = hal.rcin->read(CH_7);
-        // if (chin > 1450 && chin < 1550) chin = 1500;
-        // aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
 
-        // delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
-        // aim_pitch_deg_last  = aim_pitch_deg;
+#ifdef MANUAL_TILT
+        if (chin > 1450 && chin < 1550) chin = 1500;
+        aim_pitch_deg = ((float)chin - 1500) / 500.0f * g2.user_parameters.get_MaxDegParam();
 
-        // hiwonder_l.set_position(SERVO_4, int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
-        // hiwonder_r.set_position(SERVO_2, -int(aim_pitch_deg / 120.0f * 500.0f) + 1500, 0);
+        delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
+        aim_pitch_deg_last  = aim_pitch_deg;
+#else
         trans_speed(chin);
-
+#endif
     } else {
         delta_aim_pitch_deg = 0;
         aim_pitch_deg_last  = 0;
