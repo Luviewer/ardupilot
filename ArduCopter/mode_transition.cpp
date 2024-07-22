@@ -84,10 +84,10 @@ void ModeTransition::run()
 //      called by guided_run at 100hz or more
 void ModeTransition::transition_takeoff_run()
 {
-    auto_takeoff_run();
-    if (auto_takeoff_complete && !transition_takeoff_complete) {
-        transition_takeoff_complete = true;
-    }
+    // auto_takeoff_run();
+    // if (auto_takeoff_complete && !transition_takeoff_complete) {
+    //     transition_takeoff_complete = true;
+    // }
 }
 
 // land_gps_run - runs the land controller
