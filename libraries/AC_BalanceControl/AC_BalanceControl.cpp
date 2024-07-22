@@ -122,11 +122,12 @@ float AC_BalanceControl::velocity_controller(float encoder_left, float encoder_r
 
     //================速度PI控制器=====================//
 
-    // 获取最新速度偏差=目标速度（此处为零）-测量速度（左右编码器之和）
+    // 获取最新速度偏差=测量速度（左右编码器之和）- 目标速度
     encoder_error = (encoder_left + encoder_right) - encoder_movement;
-
-    // ��ȡ�����ٶ�ƫ��=Ŀ���ٶȣ��˴�Ϊ�㣩-�����ٶȣ����ұ�����֮�ͣ�
+    //对速度偏差进行一阶低通滤波
+    encoder_error_filter = speed_low_pass_filter.apply(encoder_error, _dt);
     //更新速度输出
+    velocity_out = _pid_speed.update_all(0.0f, encoder_error_filter, _dt);
 
     if (stop_balance_control || Flag_Stop || force_stop_balance_control) {
         _pid_speed.reset_I();
@@ -184,22 +185,13 @@ void AC_BalanceControl::hight_controller()
 
     float high_out;
 
-    float roll_target = (float)_movement_y / 500.0f * radians(45.0f);
+    high_out = (float)_movement_h / 500.0f * radians(30.0f);
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    roll_out = _pid_roll.update_all(roll_target, roll, _dt);
-=======
-    _motors->set_high_out(S_FG * high_out); // -1 ~ 1
-=======
     _motors->set_high_out(JT * high_out); // -1 ~ 1
->>>>>>> 25898b6cb4... 优化空陆过渡策略
 }
->>>>>>> 52b72e01b6... 完善过渡切换
 
-    _motors->set_high_out(JT * high_out); // -1 ~ 1
 void AC_BalanceControl::update(void)
+{
     if (_motors == nullptr) {
         gcs().send_text(MAV_SEVERITY_WARNING, "_motors = nullptr");
         return;
@@ -251,8 +243,11 @@ void AC_BalanceControl::update(void)
     balanceCAN->setCurrent(0, S_FG * (int16_t)motor_target_left_int);
     balanceCAN->setCurrent(1, S_FG * (int16_t)motor_target_right_int);
 
-    // 腿部舵机控制
+    // 腿部滚转控制
     roll_controller(_ahrs->roll);
+
+    // 腿部高度控制
+    hight_controller();
 
     // 设置模式
     // set_control_mode();
@@ -361,115 +356,10 @@ void AC_BalanceControl::check_Acceleration(){
             JT = 1;      //关节舵机影响因子置1，开启
             _motors->set_fac_out(JT);   //输出飞行部分影响因子，方便调用
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-// void AC_BalanceControl::function_s()
-// {
-//     if (_motors == nullptr) return;
-
-//     switch (balanceMode) {
-//         case BalanceMode::ground:{
-//             S_GF = 0.0f;
-//             S_FG = 1.0f;
-//             _motors->set_fac_out(S_GF);
-
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "ground");
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
-
-//             if ((hal.rcin->read(CH_7) > 1300) && (hal.rcin->read(CH_7) < 1700)) { // 通道7切换到二档，进入过渡模式
-//                 balanceMode = BalanceMode::transition;
-//             }
-//             break;}
-
-//         case BalanceMode::transition:{
-//             int16_t T = hal.rcin->read(CH_3);
-//             S_GF      = 1 / (1 + expf(-((T - Target_Offset_SGF_B) / Target_Slope_SGF_R)));     // 0 ~ 1
-//             S_FG      = 1 - 1 / (1 + expf(-((T - Target_Offset_SFG_B) / Target_Slope_SFG_R))); // 0 ~ 1
-//             _motors->set_fac_out(S_GF);
-
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "transition");
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
-
-//             if (hal.rcin->read(CH_7) > 1700) { // 通道7切换到3档，进入空中模式
-//                 balanceMode = BalanceMode::aerial;
-//             }
-
-//             if ((hal.rcin->read(CH_7) < 1300) && (hal.rcin->read(CH_3) < 1200)) { // 防止无人机在空中的时候误切到地面模式直接掉落
-//                 balanceMode = BalanceMode::ground;
-//             }
-//             break;}
-
-//         case BalanceMode::aerial:{
-//             S_GF = 1.0f;
-//             S_FG = 0.0f;
-//             _motors->set_fac_out(S_GF);
-
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "aerial");
-//             // gcs().send_text(MAV_SEVERITY_NOTICE, "*****************");
-
-//             if ((hal.rcin->read(CH_7) > 1300) && (hal.rcin->read(CH_7) < 1700)) { // 通道7切换到2档，进入过渡模式，准备降落
-//                 balanceMode = BalanceMode::transition;
-//             }
-//             break;}
-
-//         default:
-//             break;
-//     }
-// }
-
-// void AC_BalanceControl::checkAcc_func(){
-// uint32_t timems_start = AP_HAL::millis64();
-// while((AP_HAL::millis64() - timems_start) > 2){
-    
-// }
-
-// }
-
-void AC_BalanceControl::check_Acceleration(){
-    accelData =  _ahrs->get_accel_ef().z + 9.8f; //获取当前加速度值
-    int16_t T = hal.rcin->read(CH_3); //获取当前油门输入值
-    switch(balanceMode){
-        case BalanceMode::ground:{
-            S_GF = 1.0f; //飞行部分影响因子置1，正常
-            S_FG = 1.0f; //轮足电机影响因子置1，开启
-            JT = 1;      //关节舵机影响因子置1，开启
-            _motors->set_fac_out(JT);   //输出飞行部分影响因子，方便调用
-
             if((fabsf(accelData) > _take_off_acc) && (hal.rcin->read(CH_3) > _take_off_thr) && (hal.rcin->read(CH_7) < 1500)){ //当反馈的加速度值大于设定的起飞加速度，油门输入大于设定的起飞油门并且当前处于地空过渡时，则进入过渡
             gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
             gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is taking off, accel = %f", accelData);
             gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
-
-            S_GF = 1.0f;    //起飞，飞行部分影响因子置1
-            S_FG = 0.0f;    //轮足电机影响因子置0，关闭
-            JT = 0.0f;      //关节舵机影响因子置0，关闭
-            _motors->set_fac_out(JT);
-
-            balanceMode = BalanceMode::aerial; //进入飞行模式
-=======
-void AC_BalanceControl::set_control_mode(void)
-{
-    switch (balanceMode) {
-        case BalanceMode::ground:
-            if ((alt_cm < 10) && (hal.rcin->read(CH_8) < 1600)) {
-                balanceMode = BalanceMode::balance_car;
-                gcs().send_text(MAV_SEVERITY_NOTICE, "balance_car");
->>>>>>> 88d77efda4... 添加转换因子
-            }
-            break;
-=======
-            if((fabsf(accelData) > _take_off_acc) && (hal.rcin->read(CH_3) > _take_off_thr) && (hal.rcin->read(CH_7) < 1500)){
-=======
-            if((fabsf(accelData) > _take_off_acc) && (hal.rcin->read(CH_3) > _take_off_thr) && (hal.rcin->read(CH_7) < 1500)){ //当反馈的加速度值大于设定的起飞加速度，油门输入大于设定的起飞油门并且当前处于地空过渡时，则进入过渡
->>>>>>> 25898b6cb4... 优化空陆过渡策略
-            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
-            gcs().send_text(MAV_SEVERITY_NOTICE, "Balance_Copter is taking off, accel = %f", accelData);
-            gcs().send_text(MAV_SEVERITY_NOTICE, "*************************************");
->>>>>>> d1a1dd30fc... 添加加速度检测函数
 
             S_GF = 1.0f;    //起飞，飞行部分影响因子置1
             S_FG = 0.0f;    //轮足电机影响因子置0，关闭
@@ -604,27 +494,11 @@ void AC_BalanceControl::set_control_mode(void)
 
 void AC_BalanceControl::pilot_control()
 {
-<<<<<<< HEAD
-    int16_t pwm_x = hal.rcin->read(CH_1) - 1500;
-    int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
-<<<<<<< HEAD
-    int16_t pwm_y = hal.rcin->read(CH_2) - 1500;
-
-=======
-    int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
-=======
     int16_t pwm_x = hal.rcin->read(CH_2) - 1500;
-<<<<<<< HEAD
-    int16_t pwm_z = hal.rcin->read(CH_1) - 1500;
-    int16_t pwm_y = hal.rcin->read(CH_4) - 1500;
->>>>>>> d1a1dd30fc... 添加加速度检测函数
-=======
     int16_t pwm_z = hal.rcin->read(CH_4) - 1500;
     int16_t pwm_y = hal.rcin->read(CH_1) - 1500;
->>>>>>> 25898b6cb4... 优化空陆过渡策略
     int16_t pwm_h = hal.rcin->read(CH_6) - 1500;
     
->>>>>>> 88d77efda4... 添加转换因子
     if (pwm_x < 50 && pwm_x > -50) {
         _movement_x = 0;
     } else if (abs(pwm_x) > 500) {
@@ -641,14 +515,13 @@ void AC_BalanceControl::pilot_control()
         _movement_z = pwm_z;
     }
 
-    if (pwm_y < 50 && pwm_y > -50) {
+    if (pwm_y < 20 && pwm_y > -20) {
         _movement_y = 0;
     } else if (abs(pwm_y) > 500) {
         _movement_y = 0;
     } else {
         _movement_y = pwm_y;
     }
-}
 
     if (pwm_h < 20 && pwm_h > -20) {
         _movement_h = 0;
@@ -659,22 +532,6 @@ void AC_BalanceControl::pilot_control()
     }
 }
 
-<<<<<<< HEAD
-    // 调试用
-    static uint16_t cnt = 0;
-    cnt++;
-    if (cnt > 400) {
-        cnt = 0;
-        gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
-        gcs().send_text(MAV_SEVERITY_NOTICE, "left_real_speed=%d", balanceCAN->getSpeed(0));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "right_real_speed=%d", balanceCAN->getSpeed(1));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "left_target_current=%d", balanceCAN->getCurrent(0));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "right_target_current=%d", balanceCAN->getCurrent(1));
-        gcs().send_text(MAV_SEVERITY_NOTICE, "altok=%d, alt_cm=%f", alt_ok, alt_cm);
-        gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
-    }
-}
-=======
 // void AC_BalanceControl::debug_info()
 // {
 
@@ -692,7 +549,6 @@ void AC_BalanceControl::pilot_control()
 //         gcs().send_text(MAV_SEVERITY_NOTICE, "--------------------");
 //     }
 // }
->>>>>>> d1a1dd30fc... 添加加速度检测函数
 
 /**************************************************************************
 Function: Check whether the car is picked up
@@ -739,31 +595,6 @@ Output  : 1：put down  0：No action
 入口参数：平衡角度；左编码器读数；右编码器读数
 返回  值：1：小车放下   0：小车未放下
 **************************************************************************/
-<<<<<<< HEAD
-bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
-{
-    static uint16_t flag, count;
-    if (Flag_Stop == false) // 防止误检
-        return 0;
-    if (flag == 0) {
-        if ((fabsf(Angle) - 10) < 0 && abs(encoder_left) < 20 && abs(encoder_right) < 20) // 条件1，小车是在0度附近的
-            flag = 1;
-    }
-    if (flag == 1) {
-        if (++count > 50) // 超时不再等待 500ms
-        {
-            count = 0;
-            flag  = 0;
-        }
-        if (abs(encoder_left) > 50 && abs(encoder_right) > 50) // 条件2，小车的轮胎在未上电的时候被人为转动
-        {
-            flag = 0;
-            return true; // 检测到小车被放下
-        }
-    }
-    return false;
-}
-=======
 // bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_right)
 // {
 //     static uint16_t flag, count;
@@ -787,4 +618,3 @@ bool AC_BalanceControl::Put_Down(float Angle, int encoder_left, int encoder_righ
 //     }
 //     return false;
 // }
->>>>>>> 88d77efda4... 添加转换因子
