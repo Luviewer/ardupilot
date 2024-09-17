@@ -406,7 +406,7 @@ public:
 
     // See WS2812B spec for expected pulse widths
     static constexpr uint32_t NEOP_BIT_WIDTH_TICKS = 8;
-    static constexpr uint32_t NEOP_BIT_0_TICKS = 3;
+    static constexpr uint32_t NEOP_BIT_0_TICKS = 2;
     static constexpr uint32_t NEOP_BIT_1_TICKS = 6;
     // neopixel does not use pulse widths at all
     static constexpr uint32_t PROFI_BIT_0_TICKS = 7;
@@ -422,6 +422,6 @@ protected:
     void append_to_banner(char banner_msg[], uint8_t banner_msg_len, output_mode out_mode, uint8_t low_ch, uint8_t high_ch) const;
     const char* get_output_mode_string(enum output_mode out_mode) const;
 
-    uint16_t _esc_pwm_min;
-    uint16_t _esc_pwm_max;
+    uint16_t _esc_pwm_min = 1000;
+    uint16_t _esc_pwm_max = 2000;
 };

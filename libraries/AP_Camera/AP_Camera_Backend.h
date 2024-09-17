@@ -37,9 +37,12 @@ public:
     CLASS_NO_COPY(AP_Camera_Backend);
 
     // camera options parameter values
-    enum class Options : int8_t {
+    enum class Option : uint8_t {
         RecordWhileArmed = (1 << 0U)
     };
+    bool option_is_enabled(Option option) const {
+        return ((uint8_t)_params.options.get() & (uint8_t)option) != 0;
+    }
 
     // init - performs any required initialisation
     virtual void init() {};
@@ -82,10 +85,10 @@ public:
     // p1,p2 are in range 0 to 1.  0 is left or top, 1 is right or bottom
     virtual bool set_tracking(TrackingType tracking_type, const Vector2f& p1, const Vector2f& p2) { return false; }
 
-#if AP_CAMERA_SET_CAMERA_SOURCE_ENABLED
     // set camera lens as a value from 0 to 5
     virtual bool set_lens(uint8_t lens) { return false; }
 
+#if AP_CAMERA_SET_CAMERA_SOURCE_ENABLED
     // set_camera_source is functionally the same as set_lens except primary and secondary lenses are specified by type
     virtual bool set_camera_source(AP_Camera::CameraSource primary_source, AP_Camera::CameraSource secondary_source) { return false; }
 #endif
@@ -123,10 +126,18 @@ public:
     // send camera capture status message to GCS
     virtual void send_camera_capture_status(mavlink_channel_t chan) const;
 
+#if AP_CAMERA_SEND_THERMAL_RANGE_ENABLED
+    // send camera thermal range message to GCS
+    virtual void send_camera_thermal_range(mavlink_channel_t chan) const {};
+#endif
+
 #if AP_CAMERA_SCRIPTING_ENABLED
     // accessor to allow scripting backend to retrieve state
     // returns true on success and cam_state is filled in
     virtual bool get_state(AP_Camera::camera_state_t& cam_state) { return false; }
+
+    // change camera settings not normally used by autopilot
+    virtual bool change_setting(CameraSetting setting, float value) { return false; }
 #endif
 
 protected:

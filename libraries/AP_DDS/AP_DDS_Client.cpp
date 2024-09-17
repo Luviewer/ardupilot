@@ -32,7 +32,9 @@
 static constexpr uint8_t ENABLED_BY_DEFAULT = 1;
 static constexpr uint16_t DELAY_TIME_TOPIC_MS = 10;
 static constexpr uint16_t DELAY_BATTERY_STATE_TOPIC_MS = 1000;
+#if AP_DDS_IMU_PUB_ENABLED
 static constexpr uint16_t DELAY_IMU_TOPIC_MS = 5;
+#endif // AP_DDS_IMU_PUB_ENABLED
 static constexpr uint16_t DELAY_LOCAL_POSE_TOPIC_MS = 33;
 static constexpr uint16_t DELAY_LOCAL_VELOCITY_TOPIC_MS = 33;
 static constexpr uint16_t DELAY_GEO_POSE_TOPIC_MS = 33;
@@ -74,8 +76,24 @@ const AP_Param::GroupInfo AP_DDS_Client::var_info[] {
 
 #endif
 
+    // @Param: _DOMAIN_ID
+    // @DisplayName: DDS DOMAIN ID
+    // @Description: Set the ROS_DOMAIN_ID
+    // @Range: 0 232
+    // @RebootRequired: True
+    // @User: Standard
+    AP_GROUPINFO("_DOMAIN_ID", 4, AP_DDS_Client, domain_id, 0),
+
     AP_GROUPEND
 };
+
+static void initialize(geometry_msgs_msg_Quaternion& q)
+{
+    q.x = 0.0;
+    q.y = 0.0;
+    q.z = 0.0;
+    q.w = 1.0;
+}
 
 AP_DDS_Client::~AP_DDS_Client()
 {
@@ -106,11 +124,6 @@ bool AP_DDS_Client::update_topic(sensor_msgs_msg_NavSatFix& msg, const uint8_t i
     // Make it constexpr if possible
     // https://www.fluentcpp.com/2021/12/13/the-evolutions-of-lambdas-in-c14-c17-and-c20/
     // constexpr auto times2 = [] (sensor_msgs_msg_NavSatFix* msg) { return n * 2; };
-
-    // assert(instance >= GPS_MAX_RECEIVERS);
-    if (instance >= GPS_MAX_RECEIVERS) {
-        return false;
-    }
 
     auto &gps = AP::gps();
     WITH_SEMAPHORE(gps.get_semaphore());
@@ -226,6 +239,9 @@ void AP_DDS_Client::populate_static_transforms(tf2_msgs_msg_TFMessage& msg)
         msg.transforms[i].transform.translation.y = -1 * offset[1];
         msg.transforms[i].transform.translation.z = -1 * offset[2];
 
+        // Ensure rotation is initialized.
+        initialize(msg.transforms[i].transform.rotation);
+
         msg.transforms_size++;
     }
 
@@ -288,8 +304,11 @@ void AP_DDS_Client::update_topic(sensor_msgs_msg_BatteryState& msg, const uint8_
     msg.power_supply_technology = 0; //POWER_SUPPLY_TECHNOLOGY_UNKNOWN
 
     if (battery.has_cell_voltages(instance)) {
-        const uint16_t* cellVoltages = battery.get_cell_voltages(instance).cells;
-        std::copy(cellVoltages, cellVoltages + AP_BATT_MONITOR_CELLS_MAX, msg.cell_voltage);
+        const auto &cells = battery.get_cell_voltages(instance);
+        const uint8_t ncells_max = MIN(ARRAY_SIZE(msg.cell_voltage), ARRAY_SIZE(cells.cells));
+        for (uint8_t i=0; i< ncells_max; i++) {
+            msg.cell_voltage[i] = cells.cells[i] * 0.001;
+        }
     }
 }
 
@@ -337,6 +356,8 @@ void AP_DDS_Client::update_topic(geometry_msgs_msg_PoseStamped& msg)
         msg.pose.orientation.x = orientation[1];
         msg.pose.orientation.y = orientation[2];
         msg.pose.orientation.z = orientation[3];
+    } else {
+        initialize(msg.pose.orientation);
     }
 }
 
@@ -416,9 +437,12 @@ void AP_DDS_Client::update_topic(geographic_msgs_msg_GeoPoseStamped& msg)
         msg.pose.orientation.x = orientation[1];
         msg.pose.orientation.y = orientation[2];
         msg.pose.orientation.z = orientation[3];
+    } else {
+        initialize(msg.pose.orientation);
     }
 }
 
+#if AP_DDS_IMU_PUB_ENABLED
 void AP_DDS_Client::update_topic(sensor_msgs_msg_Imu& msg)
 {
     update_topic(msg.header.stamp);
@@ -435,6 +459,8 @@ void AP_DDS_Client::update_topic(sensor_msgs_msg_Imu& msg)
         msg.orientation.y = orientation[1];
         msg.orientation.z = orientation[2];
         msg.orientation.w = orientation[3];
+    } else {
+        initialize(msg.orientation);
     }
     msg.orientation_covariance[0] = -1;
 
@@ -454,6 +480,7 @@ void AP_DDS_Client::update_topic(sensor_msgs_msg_Imu& msg)
     msg.angular_velocity_covariance[0] = -1;
     msg.linear_acceleration_covariance[0] = -1;
 }
+#endif // AP_DDS_IMU_PUB_ENABLED
 
 void AP_DDS_Client::update_topic(rosgraph_msgs_msg_Clock& msg)
 {
@@ -774,8 +801,8 @@ bool AP_DDS_Client::init_session()
     }
 
     // setup reliable stream buffers
-    input_reliable_stream = new uint8_t[DDS_BUFFER_SIZE];
-    output_reliable_stream = new uint8_t[DDS_BUFFER_SIZE];
+    input_reliable_stream = NEW_NOTHROW uint8_t[DDS_BUFFER_SIZE];
+    output_reliable_stream = NEW_NOTHROW uint8_t[DDS_BUFFER_SIZE];
     if (input_reliable_stream == nullptr || output_reliable_stream == nullptr) {
         GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "%s Allocation failed", msg_prefix);
         return false;
@@ -798,8 +825,9 @@ bool AP_DDS_Client::create()
         .id = 0x01,
         .type = UXR_PARTICIPANT_ID
     };
-    const char* participant_ref = "participant_profile";
-    const auto participant_req_id = uxr_buffer_create_participant_ref(&session, reliable_out, participant_id,0,participant_ref,UXR_REPLACE);
+    const char* participant_name = "ardupilot_dds";
+    const auto participant_req_id = uxr_buffer_create_participant_bin(&session, reliable_out, participant_id,
+                                    static_cast<uint16_t>(domain_id), participant_name, UXR_REPLACE);
 
     //Participant requests
     constexpr uint8_t nRequestsParticipant = 1;
@@ -820,8 +848,8 @@ bool AP_DDS_Client::create()
             .id = topics[i].topic_id,
             .type = UXR_TOPIC_ID
         };
-        const char* topic_ref = topics[i].topic_profile_label;
-        const auto topic_req_id = uxr_buffer_create_topic_ref(&session,reliable_out,topic_id,participant_id,topic_ref,UXR_REPLACE);
+        const auto topic_req_id = uxr_buffer_create_topic_bin(&session, reliable_out, topic_id,
+                                  participant_id, topics[i].topic_name, topics[i].type_name, UXR_REPLACE);
 
         // Status requests
         constexpr uint8_t nRequests = 3;
@@ -829,18 +857,18 @@ bool AP_DDS_Client::create()
         constexpr uint16_t requestTimeoutMs = nRequests * maxTimeMsPerRequestMs;
         uint8_t status[nRequests];
 
-        if (strlen(topics[i].dw_profile_label) > 0) {
+        if (topics[i].topic_rw == Topic_rw::DataWriter) {
             // Publisher
             const uxrObjectId pub_id = {
                 .id = topics[i].pub_id,
                 .type = UXR_PUBLISHER_ID
             };
-            const char* pub_xml = "";
-            const auto pub_req_id = uxr_buffer_create_publisher_xml(&session,reliable_out,pub_id,participant_id,pub_xml,UXR_REPLACE);
+            const auto pub_req_id = uxr_buffer_create_publisher_bin(&session, reliable_out, pub_id,
+                                    participant_id, UXR_REPLACE);
 
             // Data Writer
-            const char* data_writer_ref = topics[i].dw_profile_label;
-            const auto dwriter_req_id = uxr_buffer_create_datawriter_ref(&session,reliable_out,topics[i].dw_id,pub_id,data_writer_ref,UXR_REPLACE);
+            const auto dwriter_req_id = uxr_buffer_create_datawriter_bin(&session, reliable_out, topics[i].dw_id,
+                                        pub_id, topic_id, topics[i].qos, UXR_REPLACE);
 
             // save the request statuses
             requests[0] = topic_req_id;
@@ -857,18 +885,18 @@ bool AP_DDS_Client::create()
             } else {
                 GCS_SEND_TEXT(MAV_SEVERITY_INFO, "%s Topic/Pub/Writer session pass for index '%u'", msg_prefix, i);
             }
-        } else if (strlen(topics[i].dr_profile_label) > 0) {
+        } else if (topics[i].topic_rw == Topic_rw::DataReader) {
             // Subscriber
             const uxrObjectId sub_id = {
                 .id = topics[i].sub_id,
                 .type = UXR_SUBSCRIBER_ID
             };
-            const char* sub_xml = "";
-            const auto sub_req_id = uxr_buffer_create_subscriber_xml(&session,reliable_out,sub_id,participant_id,sub_xml,UXR_REPLACE);
+            const auto sub_req_id = uxr_buffer_create_subscriber_bin(&session, reliable_out, sub_id,
+                                    participant_id, UXR_REPLACE);
 
             // Data Reader
-            const char* data_reader_ref = topics[i].dr_profile_label;
-            const auto dreader_req_id = uxr_buffer_create_datareader_ref(&session,reliable_out,topics[i].dr_id,sub_id,data_reader_ref,UXR_REPLACE);
+            const auto dreader_req_id = uxr_buffer_create_datareader_bin(&session, reliable_out, topics[i].dr_id,
+                                        sub_id, topic_id, topics[i].qos, UXR_REPLACE);
 
             // save the request statuses
             requests[0] = topic_req_id;
@@ -895,13 +923,14 @@ bool AP_DDS_Client::create()
 
         constexpr uint16_t requestTimeoutMs = maxTimeMsPerRequestMs;
 
-        if (strlen(services[i].rep_profile_label) > 0) {
+        if (services[i].service_rr == Service_rr::Replier) {
             const uxrObjectId rep_id = {
                 .id = services[i].rep_id,
                 .type = UXR_REPLIER_ID
             };
-            const char* replier_ref = services[i].rep_profile_label;
-            const auto  replier_req_id = uxr_buffer_create_replier_ref(&session, reliable_out, rep_id, participant_id, replier_ref, UXR_REPLACE);
+            const auto replier_req_id = uxr_buffer_create_replier_bin(&session, reliable_out, rep_id,
+                                        participant_id, services[i].service_name, services[i].request_type, services[i].reply_type,
+                                        services[i].request_topic_name, services[i].reply_topic_name, services[i].qos, UXR_REPLACE);
 
             uint16_t request = replier_req_id;
             uint8_t status;
@@ -916,7 +945,7 @@ bool AP_DDS_Client::create()
                 uxr_buffer_request_data(&session, reliable_out, rep_id, reliable_in, &delivery_control);
             }
 
-        } else if (strlen(services[i].req_profile_label) > 0) {
+        } else if (services[i].service_rr == Service_rr::Requester) {
             // TODO : Add Similar Code for Requester Profile
         }
     }
@@ -1014,6 +1043,7 @@ void AP_DDS_Client::write_tx_local_velocity_topic()
     }
 }
 
+#if AP_DDS_IMU_PUB_ENABLED
 void AP_DDS_Client::write_imu_topic()
 {
     WITH_SEMAPHORE(csem);
@@ -1028,6 +1058,7 @@ void AP_DDS_Client::write_imu_topic()
         }
     }
 }
+#endif // AP_DDS_IMU_PUB_ENABLED
 
 void AP_DDS_Client::write_geo_pose_topic()
 {
@@ -1107,12 +1138,13 @@ void AP_DDS_Client::update()
         last_local_velocity_time_ms = cur_time_ms;
         write_tx_local_velocity_topic();
     }
-
+#if AP_DDS_IMU_PUB_ENABLED
     if (cur_time_ms - last_imu_time_ms > DELAY_IMU_TOPIC_MS) {
         update_topic(imu_topic);
         last_imu_time_ms = cur_time_ms;
         write_imu_topic();
     }
+#endif
 
     if (cur_time_ms - last_geo_pose_time_ms > DELAY_GEO_POSE_TOPIC_MS) {
         update_topic(geo_pose_topic);

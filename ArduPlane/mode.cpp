@@ -54,7 +54,7 @@ bool Mode::enter()
     plane.guided_state.last_forced_rpy_ms.zero();
     plane.guided_state.last_forced_throttle_ms = 0;
 
-#if OFFBOARD_GUIDED == ENABLED
+#if AP_PLANE_OFFBOARD_GUIDED_SLEW_ENABLED
     plane.guided_state.target_heading = -4; // radians here are in range -3.14 to 3.14, so a default value needs to be outside that range
     plane.guided_state.target_heading_type = GUIDED_HEADING_NONE;
     plane.guided_state.target_airspeed_cm = -1; // same as above, although an airspeed of -1 is rare on plane.
@@ -100,6 +100,9 @@ bool Mode::enter()
 #if AP_TERRAIN_AVAILABLE
     plane.target_altitude.terrain_following_pending = false;
 #endif
+
+    // disable auto mode servo idle during altitude wait command
+    plane.auto_state.idle_mode = false;
 
     bool enter_result = _enter();
 
@@ -168,7 +171,9 @@ void Mode::update_target_altitude()
         plane.set_target_altitude_location(plane.next_WP_loc);
     } else if (plane.landing.is_on_approach()) {
         plane.landing.setup_landing_glide_slope(plane.prev_WP_loc, plane.next_WP_loc, plane.current_loc, plane.target_altitude.offset_cm);
+#if AP_RANGEFINDER_ENABLED
         plane.landing.adjust_landing_slope_for_rangefinder_bump(plane.rangefinder_state, plane.prev_WP_loc, plane.next_WP_loc, plane.current_loc, plane.auto_state.wp_distance, plane.target_altitude.offset_cm);
+#endif
     } else if (plane.landing.get_target_altitude_location(target_location)) {
         plane.set_target_altitude_location(target_location);
 #if HAL_SOARING_ENABLED
@@ -191,8 +196,6 @@ void Mode::update_target_altitude()
     } else {
         plane.set_target_altitude_location(plane.next_WP_loc);
     }
-
-    plane.altitude_error_cm = plane.calc_altitude_error_cm();
 }
 
 // returns true if the vehicle can be armed in this mode

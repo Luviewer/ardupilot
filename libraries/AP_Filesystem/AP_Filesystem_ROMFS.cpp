@@ -192,11 +192,14 @@ struct dirent *AP_Filesystem_ROMFS::readdir(void *dirp)
     const char* slash = strchr(name, '/');
     if (slash == nullptr) {
         // File
+#if AP_FILESYSTEM_HAVE_DIRENT_DTYPE
         dir[idx].de.d_type = DT_REG;
-
+#endif
     } else {
         // Directory
+#if AP_FILESYSTEM_HAVE_DIRENT_DTYPE
         dir[idx].de.d_type = DT_DIR;
+#endif
 
         // Add null termination after directory name
         const size_t index = slash - name;
@@ -239,15 +242,17 @@ bool AP_Filesystem_ROMFS::set_mtime(const char *filename, const uint32_t mtime_s
 }
 
 /*
-  load a full file. Use delete to free the data
-  we override this in ROMFS to avoid taking twice the memory
+  Load a file's contents into memory. Returned object must be `delete`d to free
+  the data. The data is guaranteed to be null-terminated such that it can be
+  treated as a string. Overridden in ROMFS to avoid taking twice the memory.
 */
 FileData *AP_Filesystem_ROMFS::load_file(const char *filename)
 {
-    FileData *fd = new FileData(this);
+    FileData *fd = NEW_NOTHROW FileData(this);
     if (!fd) {
         return nullptr;
     }
+    // AP_ROMFS adds the guaranteed termination so we don't have to.
     fd->data = AP_ROMFS::find_decompress(filename, fd->length);
     if (fd->data == nullptr) {
         delete fd;

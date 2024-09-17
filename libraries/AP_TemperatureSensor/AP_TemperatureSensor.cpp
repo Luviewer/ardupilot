@@ -40,12 +40,14 @@ const AP_Param::GroupInfo AP_TemperatureSensor::var_info[] = {
 
     // SKIP INDEX 0
 
+#if HAL_LOGGING_ENABLED
     // @Param: _LOG
     // @DisplayName: Logging
     // @Description: Enables temperature sensor logging
-    // @Values: 0:Disabled, 1:Enabled
+    // @Values: 0:Disabled, 1:Log all instances, 2: Log only instances with sensor source set to None
     // @User: Standard
-    AP_GROUPINFO("_LOG", 1, AP_TemperatureSensor, _log_flag, 0),
+    AP_GROUPINFO("_LOG", 1, AP_TemperatureSensor, _logging_type, 0),
+#endif
 
     // SKIP Index 2-9 to be for parameters that apply to every sensor
 
@@ -174,32 +176,32 @@ void AP_TemperatureSensor::init()
         switch (get_type(instance)) {
 #if AP_TEMPERATURE_SENSOR_TSYS01_ENABLED
             case AP_TemperatureSensor_Params::Type::TSYS01:
-                drivers[instance] = new AP_TemperatureSensor_TSYS01(*this, _state[instance], _params[instance]);
+                drivers[instance] = NEW_NOTHROW AP_TemperatureSensor_TSYS01(*this, _state[instance], _params[instance]);
                 break;
 #endif
 #if AP_TEMPERATURE_SENSOR_MCP9600_ENABLED
             case AP_TemperatureSensor_Params::Type::MCP9600:
-                drivers[instance] = new AP_TemperatureSensor_MCP9600(*this, _state[instance], _params[instance]);
+                drivers[instance] = NEW_NOTHROW AP_TemperatureSensor_MCP9600(*this, _state[instance], _params[instance]);
                 break;
 #endif
 #if AP_TEMPERATURE_SENSOR_MAX31865_ENABLED
             case AP_TemperatureSensor_Params::Type::MAX31865:
-                drivers[instance] = new AP_TemperatureSensor_MAX31865(*this, _state[instance], _params[instance]);
+                drivers[instance] = NEW_NOTHROW AP_TemperatureSensor_MAX31865(*this, _state[instance], _params[instance]);
                 break;
 #endif
 #if AP_TEMPERATURE_SENSOR_TSYS03_ENABLED
             case AP_TemperatureSensor_Params::Type::TSYS03:
-                drivers[instance] = new AP_TemperatureSensor_TSYS03(*this, _state[instance], _params[instance]);
+                drivers[instance] = NEW_NOTHROW AP_TemperatureSensor_TSYS03(*this, _state[instance], _params[instance]);
                 break;
 #endif
 #if AP_TEMPERATURE_SENSOR_ANALOG_ENABLED
             case AP_TemperatureSensor_Params::Type::ANALOG:
-                drivers[instance] = new AP_TemperatureSensor_Analog(*this, _state[instance], _params[instance]);
+                drivers[instance] = NEW_NOTHROW AP_TemperatureSensor_Analog(*this, _state[instance], _params[instance]);
                 break;
 #endif
 #if AP_TEMPERATURE_SENSOR_DRONECAN_ENABLED
             case AP_TemperatureSensor_Params::Type::DRONECAN:
-                drivers[instance] = new AP_TemperatureSensor_DroneCAN(*this, _state[instance], _params[instance]);
+                drivers[instance] = NEW_NOTHROW AP_TemperatureSensor_DroneCAN(*this, _state[instance], _params[instance]);
                 break;
 #endif
             case AP_TemperatureSensor_Params::Type::NONE:
@@ -239,7 +241,9 @@ void AP_TemperatureSensor::update()
 
 #if HAL_LOGGING_ENABLED
             const AP_Logger *logger = AP_Logger::get_singleton();
-            if (logger != nullptr && _log_flag) {
+            const bool should_log = (_logging_type == LoggingType::All) ||
+                                    ((_logging_type == LoggingType::SourceNone) && (_params[i].source == AP_TemperatureSensor_Params::Source::None));
+            if (logger != nullptr && should_log) {
                 drivers[i]->Log_Write_TEMP();
             }
 #endif

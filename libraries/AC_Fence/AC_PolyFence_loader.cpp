@@ -227,7 +227,7 @@ bool AC_PolyFence_loader::breached() const
 //   returns true if location is outside the boundary
 bool AC_PolyFence_loader::breached(const Location& loc) const
 {
-    if (!loaded()) {
+    if (!loaded() || total_fence_count() == 0) {
         return false;
     }
 
@@ -493,16 +493,18 @@ bool AC_PolyFence_loader::index_eeprom()
     if (!count_eeprom_fences()) {
         return false;
     }
+
+    void_index();
+
     if (_eeprom_fence_count == 0) {
+        _num_fences = 0;
         _load_attempted = false;
         return true;
     }
 
-    void_index();
-
     Debug("Fence: Allocating %u bytes for index",
           (unsigned)(_eeprom_fence_count*sizeof(FenceIndex)));
-    _index = new FenceIndex[_eeprom_fence_count];
+    _index = NEW_NOTHROW FenceIndex[_eeprom_fence_count];
     if (_index == nullptr) {
         return false;
     }
@@ -636,8 +638,8 @@ bool AC_PolyFence_loader::load_from_eeprom()
         const uint16_t count = sum_of_polygon_point_counts_and_returnpoint();
         Debug("Fence: Allocating %u bytes for points",
               (unsigned)(count * sizeof(Vector2f)));
-        _loaded_offsets_from_origin = new Vector2f[count];
-        _loaded_points_lla = new Vector2l[count];
+        _loaded_offsets_from_origin = NEW_NOTHROW Vector2f[count];
+        _loaded_points_lla = NEW_NOTHROW Vector2l[count];
         if (_loaded_offsets_from_origin == nullptr || _loaded_points_lla == nullptr) {
             unload();
             get_loaded_fence_semaphore().give();
@@ -651,7 +653,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
         const uint8_t count = index_fence_count(AC_PolyFenceType::POLYGON_INCLUSION);
         Debug("Fence: Allocating %u bytes for inc. fences",
               (unsigned)(count * sizeof(InclusionBoundary)));
-        _loaded_inclusion_boundary = new InclusionBoundary[count];
+        _loaded_inclusion_boundary = NEW_NOTHROW InclusionBoundary[count];
         if (_loaded_inclusion_boundary == nullptr) {
             unload();
             get_loaded_fence_semaphore().give();
@@ -663,7 +665,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
         const uint8_t count = index_fence_count(AC_PolyFenceType::POLYGON_EXCLUSION);
         Debug("Fence: Allocating %u bytes for exc. fences",
               (unsigned)(count * sizeof(ExclusionBoundary)));
-        _loaded_exclusion_boundary = new ExclusionBoundary[count];
+        _loaded_exclusion_boundary = NEW_NOTHROW ExclusionBoundary[count];
         if (_loaded_exclusion_boundary == nullptr) {
             unload();
             get_loaded_fence_semaphore().give();
@@ -676,7 +678,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
         count += index_fence_count(AC_PolyFenceType::CIRCLE_INCLUSION_INT)
         Debug("Fence: Allocating %u bytes for circ. inc. fences",
               (unsigned)(count * sizeof(InclusionCircle)));
-        _loaded_circle_inclusion_boundary = new InclusionCircle[count];
+        _loaded_circle_inclusion_boundary = NEW_NOTHROW InclusionCircle[count];
         if (_loaded_circle_inclusion_boundary == nullptr) {
             unload();
             get_loaded_fence_semaphore().give();
@@ -689,7 +691,7 @@ bool AC_PolyFence_loader::load_from_eeprom()
         count += index_fence_count(AC_PolyFenceType::CIRCLE_EXCLUSION_INT)
         Debug("Fence: Allocating %u bytes for circ. exc. fences",
               (unsigned)(count * sizeof(ExclusionCircle)));
-        _loaded_circle_exclusion_boundary = new ExclusionCircle[count];
+        _loaded_circle_exclusion_boundary = NEW_NOTHROW ExclusionCircle[count];
         if (_loaded_circle_exclusion_boundary == nullptr) {
             unload();
             get_loaded_fence_semaphore().give();

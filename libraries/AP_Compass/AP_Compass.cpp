@@ -13,6 +13,7 @@
 #include <AP_ExternalAHRS/AP_ExternalAHRS.h>
 #include <AP_CustomRotations/AP_CustomRotations.h>
 #include <GCS_MAVLink/GCS.h>
+#include <AP_AHRS/AP_AHRS.h>
 
 #include "AP_Compass_config.h"
 
@@ -1323,7 +1324,7 @@ void Compass::_detect_backends(void)
 #if AP_COMPASS_EXTERNALAHRS_ENABLED
     const int8_t serial_port = AP::externalAHRS().get_port(AP_ExternalAHRS::AvailableSensor::COMPASS);
     if (serial_port >= 0) {
-        ADD_BACKEND(DRIVER_EXTERNALAHRS, new AP_Compass_ExternalAHRS(serial_port));
+        ADD_BACKEND(DRIVER_EXTERNALAHRS, NEW_NOTHROW AP_Compass_ExternalAHRS(serial_port));
     }
 #endif
     
@@ -1337,7 +1338,7 @@ void Compass::_detect_backends(void)
 #endif
 
 #if AP_COMPASS_SITL_ENABLED && !AP_TEST_DRONECAN_DRIVERS
-    ADD_BACKEND(DRIVER_SITL, new AP_Compass_SITL());
+    ADD_BACKEND(DRIVER_SITL, NEW_NOTHROW AP_Compass_SITL());
 #endif
 
 #if AP_COMPASS_DRONECAN_ENABLED
@@ -1356,7 +1357,7 @@ void Compass::_detect_backends(void)
 #if AP_COMPASS_MSP_ENABLED
     for (uint8_t i=0; i<8; i++) {
         if (msp_instance_mask & (1U<<i)) {
-            ADD_BACKEND(DRIVER_MSP, new AP_Compass_MSP(i));
+            ADD_BACKEND(DRIVER_MSP, NEW_NOTHROW AP_Compass_MSP(i));
         }
     }
 #endif
@@ -1561,7 +1562,7 @@ void Compass::probe_dronecan_compasses(void)
                 }
                 // We have found a replacement mag, let's replace the existing one
                 // with this by setting the priority to zero and calling uavcan probe
-                gcs().send_text(MAV_SEVERITY_ALERT, "Mag: Compass #%d with DEVID %lu replaced", uint8_t(i), (unsigned long)_priority_did_list[i]);
+                GCS_SEND_TEXT(MAV_SEVERITY_ALERT, "Mag: Compass #%d with DEVID %lu replaced", uint8_t(i), (unsigned long)_priority_did_list[i]);
                 _priority_did_stored_list[i].set_and_save(0);
                 _priority_did_list[i] = 0;
 
@@ -1743,7 +1744,7 @@ Compass::read(void)
 #if COMPASS_LEARN_ENABLED
     if (_learn == LEARN_INFLIGHT && !learn_allocated) {
         learn_allocated = true;
-        learn = new CompassLearn(*this);
+        learn = NEW_NOTHROW CompassLearn(*this);
     }
     if (_learn == LEARN_INFLIGHT && learn != nullptr) {
         learn->update();

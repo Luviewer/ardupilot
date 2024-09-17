@@ -42,6 +42,7 @@
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
 #include <SITL/SITL.h>
 #endif
+#include <AP_NavEKF3/AP_NavEKF3_feature.h>
 
 #define ATTITUDE_CHECK_THRESH_ROLL_PITCH_RAD radians(10)
 #define ATTITUDE_CHECK_THRESH_YAW_RAD radians(20)
@@ -591,8 +592,8 @@ void AP_AHRS::update_EKF2(void)
             // Use the primary EKF to select the primary gyro
             const AP_InertialSensor &_ins = AP::ins();
             const int8_t primary_imu = EKF2.getPrimaryCoreIMUIndex();
-            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_primary_gyro();
-            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_primary_accel();
+            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_first_usable_gyro();
+            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_first_usable_accel();
 
             // get gyro bias for primary EKF and change sign to give gyro drift
             // Note sign convention used by EKF is bias = measurement - truth
@@ -615,6 +616,22 @@ void AP_AHRS::update_EKF2(void)
             nav_filter_status filt_state;
             EKF2.getFilterStatus(filt_state);
             update_notify_from_filter_status(filt_state);
+        }
+
+        /*
+          if we now have an origin then set in all backends
+        */
+        if (!done_common_origin) {
+            Location new_origin;
+            if (EKF2.getOriginLLH(new_origin)) {
+                done_common_origin = true;
+#if HAL_NAVEKF3_AVAILABLE
+                EKF3.setOriginLLH(new_origin);
+#endif
+#if AP_AHRS_EXTERNAL_ENABLED
+                external.set_origin(new_origin);
+#endif
+            }
         }
     }
 }
@@ -660,8 +677,8 @@ void AP_AHRS::update_EKF3(void)
 
             // Use the primary EKF to select the primary gyro
             const int8_t primary_imu = EKF3.getPrimaryCoreIMUIndex();
-            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_primary_gyro();
-            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_primary_accel();
+            const uint8_t primary_gyro = primary_imu>=0?primary_imu:_ins.get_first_usable_gyro();
+            const uint8_t primary_accel = primary_imu>=0?primary_imu:_ins.get_first_usable_accel();
 
             // get gyro bias for primary EKF and change sign to give gyro drift
             // Note sign convention used by EKF is bias = measurement - truth
@@ -685,6 +702,21 @@ void AP_AHRS::update_EKF3(void)
             EKF3.getFilterStatus(filt_state);
             update_notify_from_filter_status(filt_state);
         }
+        /*
+          if we now have an origin then set in all backends
+        */
+        if (!done_common_origin) {
+            Location new_origin;
+            if (EKF3.getOriginLLH(new_origin)) {
+                done_common_origin = true;
+#if HAL_NAVEKF2_AVAILABLE
+                EKF2.setOriginLLH(new_origin);
+#endif
+#if AP_AHRS_EXTERNAL_ENABLED
+                external.set_origin(new_origin);
+#endif
+            }
+        }
     }
 }
 #endif
@@ -697,6 +729,22 @@ void AP_AHRS::update_external(void)
 
     if (_active_EKF_type() == EKFType::EXTERNAL) {
         copy_estimates_from_backend_estimates(external_estimates);
+    }
+
+    /*
+      if we now have an origin then set in all backends
+    */
+    if (!done_common_origin) {
+        Location new_origin;
+        if (external.get_origin(new_origin)) {
+            done_common_origin = true;
+#if HAL_NAVEKF2_AVAILABLE
+            EKF2.setOriginLLH(new_origin);
+#endif
+#if HAL_NAVEKF3_AVAILABLE
+            EKF3.setOriginLLH(new_origin);
+#endif
+        }
     }
 }
 #endif // AP_AHRS_EXTERNAL_ENABLED
@@ -1411,38 +1459,50 @@ bool AP_AHRS::set_origin(const Location &loc)
 #if HAL_NAVEKF3_AVAILABLE
     const bool ret3 = EKF3.setOriginLLH(loc);
 #endif
+#if AP_AHRS_EXTERNAL_ENABLED
+    const bool ret_ext = external.set_origin(loc);
+#endif
 
     // return success if active EKF's origin was set
+    bool success = false;
     switch (active_EKF_type()) {
 #if AP_AHRS_DCM_ENABLED
     case EKFType::DCM:
-        return false;
+        break;
 #endif
 
 #if HAL_NAVEKF2_AVAILABLE
     case EKFType::TWO:
-        return ret2;
+        success = ret2;
+        break;
 #endif
 
 #if HAL_NAVEKF3_AVAILABLE
     case EKFType::THREE:
-        return ret3;
+        success = ret3;
+        break;
 #endif
 
 #if AP_AHRS_SIM_ENABLED
     case EKFType::SIM:
         // never allow origin set in SITL. The origin is set by the
         // simulation backend
-        return false;
+        break;
 #endif
 #if AP_AHRS_EXTERNAL_ENABLED
     case EKFType::EXTERNAL:
-        // don't allow origin set with external AHRS
-        return false;
+        success = ret_ext;
+        break;
 #endif
     }
-    // since there is no default case above, this is unreachable
-    return false;
+
+    if (success) {
+        state.origin_ok = _get_origin(state.origin);
+#if HAL_LOGGING_ENABLED
+        Log_Write_Home_And_Origin();
+#endif
+    }
+    return success;
 }
 
 #if AP_AHRS_POSITION_RESET_ENABLED
@@ -1813,7 +1873,7 @@ void AP_AHRS::get_relative_position_D_home(float &posD) const
         const auto &gps = AP::gps();
         if (_gps_use == GPSUse::EnableWithHeight &&
             gps.status() >= AP_GPS::GPS_OK_FIX_3D) {
-            posD = (get_home().alt - gps.location().alt) * 0.01;
+            posD = (_home.alt - gps.location().alt) * 0.01;
             return;
         }
 #endif
@@ -2329,7 +2389,7 @@ void  AP_AHRS::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vector2f &ra
 #if HAL_NAVEKF2_AVAILABLE
     EKF2.writeOptFlowMeas(rawFlowQuality, rawFlowRates, rawGyroRates, msecFlowMeas, posOffset, heightOverride);
 #endif
-#if HAL_NAVEKF3_AVAILABLE
+#if EK3_FEATURE_OPTFLOW_FUSION
     EKF3.writeOptFlowMeas(rawFlowQuality, rawFlowRates, rawGyroRates, msecFlowMeas, posOffset, heightOverride);
 #endif
 }
@@ -2337,7 +2397,7 @@ void  AP_AHRS::writeOptFlowMeas(const uint8_t rawFlowQuality, const Vector2f &ra
 // retrieve latest corrected optical flow samples (used for calibration)
 bool AP_AHRS::getOptFlowSample(uint32_t& timeStamp_ms, Vector2f& flowRate, Vector2f& bodyRate, Vector2f& losPred) const
 {
-#if HAL_NAVEKF3_AVAILABLE
+#if EK3_FEATURE_OPTFLOW_FUSION
     return EKF3.getOptFlowSample(timeStamp_ms, flowRate, bodyRate, losPred);
 #endif
     return false;
@@ -3161,7 +3221,7 @@ uint8_t AP_AHRS::get_active_airspeed_index() const
 #if HAL_NAVEKF3_AVAILABLE
     if (active_EKF_type() == EKFType::THREE) {
         uint8_t ret = EKF3.getActiveAirspeed();
-        if (ret != 255 && airspeed->healthy(ret) && airspeed->use(ret)) {
+        if (ret != UINT8_MAX && airspeed->healthy(ret) && airspeed->use(ret)) {
             return ret;
         }
     }
@@ -3206,7 +3266,7 @@ uint8_t AP_AHRS::_get_primary_IMU_index() const
 #endif
     }
     if (imu == -1) {
-        imu = AP::ins().get_primary_gyro();
+        imu = AP::ins().get_first_usable_gyro();
     }
     return imu;
 }
@@ -3325,10 +3385,10 @@ void AP_AHRS::request_yaw_reset(void)
 }
 
 // set position, velocity and yaw sources to either 0=primary, 1=secondary, 2=tertiary
-void AP_AHRS::set_posvelyaw_source_set(uint8_t source_set_idx)
+void AP_AHRS::set_posvelyaw_source_set(AP_NavEKF_Source::SourceSetSelection source_set_idx)
 {
 #if HAL_NAVEKF3_AVAILABLE
-    EKF3.setPosVelYawSourceSet(source_set_idx);
+    EKF3.setPosVelYawSourceSet((uint8_t)source_set_idx);
 #endif
 }
 
@@ -3527,7 +3587,7 @@ bool AP_AHRS::get_velocity_NED(Vector3f &vec) const
 
 // return location corresponding to vector relative to the
 // vehicle's origin
-bool AP_AHRS::get_location_from_origin_offset(Location &loc, const Vector3p &offset_ned) const
+bool AP_AHRS::get_location_from_origin_offset_NED(Location &loc, const Vector3p &offset_ned) const
 {
     if (!get_origin(loc)) {
         return false;
@@ -3539,7 +3599,7 @@ bool AP_AHRS::get_location_from_origin_offset(Location &loc, const Vector3p &off
 
 // return location corresponding to vector relative to the
 // vehicle's home location
-bool AP_AHRS::get_location_from_home_offset(Location &loc, const Vector3p &offset_ned) const
+bool AP_AHRS::get_location_from_home_offset_NED(Location &loc, const Vector3p &offset_ned) const
 {
     if (!home_is_set()) {
         return false;
@@ -3548,6 +3608,24 @@ bool AP_AHRS::get_location_from_home_offset(Location &loc, const Vector3p &offse
     loc.offset(offset_ned);
 
     return true;
+}
+
+/*
+  get EAS to TAS scaling
+ */
+float AP_AHRS::get_EAS2TAS(void) const
+{
+    if (is_positive(state.EAS2TAS)) {
+        return state.EAS2TAS;
+    }
+    return 1.0;
+}
+
+// get air density / sea level density - decreases as altitude climbs
+float AP_AHRS::get_air_density_ratio(void) const
+{
+    const float eas2tas = get_EAS2TAS();
+    return 1.0 / sq(eas2tas);
 }
 
 // singleton instance

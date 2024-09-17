@@ -47,6 +47,7 @@ class AP_Mount_Siyi;
 class AP_Mount_Scripting;
 class AP_Mount_Xacti;
 class AP_Mount_Viewpro;
+class AP_Mount_Topotek;
 
 /*
   This is a workaround to allow the MAVLink backend access to the
@@ -67,6 +68,7 @@ class AP_Mount
     friend class AP_Mount_Scripting;
     friend class AP_Mount_Xacti;
     friend class AP_Mount_Viewpro;
+    friend class AP_Mount_Topotek;
 
 public:
     AP_Mount();
@@ -115,6 +117,9 @@ public:
 #if HAL_MOUNT_VIEWPRO_ENABLED
         Viewpro = 11,        /// Viewpro gimbal using a custom serial protocol
 #endif
+#if HAL_MOUNT_TOPOTEK_ENABLED
+        Topotek = 12,        /// Topotek gimbal using a custom serial protocol
+#endif
     };
 
     // init - detect and initialise all mounts
@@ -157,6 +162,7 @@ public:
     void set_yaw_lock(uint8_t instance, bool yaw_lock);
 
     // set angle target in degrees
+    // roll and pitch are in earth-frame
     // yaw_is_earth_frame (aka yaw_lock) should be true if yaw angle is earth-frame, false if body-frame
     void set_angle_target(float roll_deg, float pitch_deg, float yaw_deg, bool yaw_is_earth_frame) { set_angle_target(_primary, roll_deg, pitch_deg, yaw_deg, yaw_is_earth_frame); }
     void set_angle_target(uint8_t instance, float roll_deg, float pitch_deg, float yaw_deg, bool yaw_is_earth_frame);
@@ -264,6 +270,15 @@ public:
 
     // send camera capture status message to GCS
     void send_camera_capture_status(uint8_t instance, mavlink_channel_t chan) const;
+
+#if AP_MOUNT_SEND_THERMAL_RANGE_ENABLED
+    // send camera thermal range message to GCS
+    void send_camera_thermal_range(uint8_t instance, mavlink_channel_t chan) const;
+#endif
+
+    // change camera settings not normally used by autopilot
+    // setting values from AP_Camera::Setting enum
+    bool change_setting(uint8_t instance, CameraSetting setting, float value);
 
     //
     // rangefinder

@@ -52,6 +52,7 @@ class RTCM3_Parser;
 /// GPS driver main class
 class AP_GPS
 {
+    friend class AP_GPS_Blended;
     friend class AP_GPS_ERB;
     friend class AP_GPS_GSOF;
     friend class AP_GPS_MAV;
@@ -197,12 +198,12 @@ public:
         uint16_t time_week;                 ///< GPS week number
         Location location;                  ///< last fix location
         float ground_speed;                 ///< ground speed in m/s
-        float ground_course;                ///< ground course in degrees
+        float ground_course;                ///< ground course in degrees, wrapped 0-360
         float gps_yaw;                      ///< GPS derived yaw information, if available (degrees)
         uint32_t gps_yaw_time_ms;           ///< timestamp of last GPS yaw reading
         bool  gps_yaw_configured;           ///< GPS is configured to provide yaw
-        uint16_t hdop;                      ///< horizontal dilution of precision in cm
-        uint16_t vdop;                      ///< vertical dilution of precision in cm
+        uint16_t hdop;                      ///< horizontal dilution of precision, scaled by a factor of 100 (155 means the HDOP value is 1.55)
+        uint16_t vdop;                      ///< vertical dilution of precision, scaled by a factor of 100 (155 means the VDOP value is 1.55)
         uint8_t num_sats;                   ///< Number of visible satellites
         Vector3f velocity;                  ///< 3D velocity in m/s, in NED format
         float speed_accuracy;               ///< 3D velocity RMS accuracy estimate in m/s
@@ -512,9 +513,6 @@ public:
     // pre-arm check that all GPSs are close to each other.  farthest distance between GPSs (in meters) is returned
     bool all_consistent(float &distance) const;
 
-    // pre-arm check of GPS blending.  False if blending is unhealthy, True if healthy or blending is not being used
-    bool blend_health_check() const;
-
     // handle sending of initialisation strings to the GPS - only used by backends
     void send_blob_start(uint8_t instance);
     void send_blob_start(uint8_t instance, const char *_blob, uint16_t size);
@@ -551,9 +549,10 @@ public:
     // returns true if all GPS instances have passed all final arming checks/state changes
     bool prepare_for_arming(void);
 
-    // returns true if all GPS backend drivers haven't seen any failure
-    // this is for backends to be able to spout pre arm error messages
-    bool backends_healthy(char failure_msg[], uint16_t failure_msg_len);
+    // returns true if all GPS backend drivers are OK with the concept
+    // of the vehicle arming.  this is for backends to be able to
+    // spout pre arm error messages
+    bool pre_arm_checks(char failure_msg[], uint16_t failure_msg_len);
 
     // returns false if any GPS drivers are not performing their logging appropriately
     bool logging_failed(void) const;
@@ -594,7 +593,7 @@ public:
 #if GPS_MOVING_BASELINE
     // methods used by UAVCAN GPS driver and AP_Periph for moving baseline
     void inject_MBL_data(uint8_t* data, uint16_t length);
-    void get_RelPosHeading(uint32_t &timestamp, float &relPosHeading, float &relPosLength, float &relPosD, float &accHeading);
+    bool get_RelPosHeading(uint32_t &timestamp, float &relPosHeading, float &relPosLength, float &relPosD, float &accHeading) WARN_IF_UNUSED;
     bool get_RTCMV3(const uint8_t *&bytes, uint16_t &len);
     void clear_RTCMV3();
 #endif // GPS_MOVING_BASELINE
@@ -606,7 +605,7 @@ public:
 protected:
 
     // configuration parameters
-    Params params[GPS_MAX_RECEIVERS];
+    Params params[GPS_MAX_INSTANCES];
     AP_Int8 _navfilter;
     AP_Int8 _auto_switch;
     AP_Int16 _sbp_logmask;
@@ -668,7 +667,7 @@ private:
     // Note allowance for an additional instance to contain blended data
     GPS_timing timing[GPS_MAX_INSTANCES];
     GPS_State state[GPS_MAX_INSTANCES];
-    AP_GPS_Backend *drivers[GPS_MAX_RECEIVERS];
+    AP_GPS_Backend *drivers[GPS_MAX_INSTANCES];
     AP_HAL::UARTDriver *_port[GPS_MAX_RECEIVERS];
 
     /// primary GPS instance
@@ -686,12 +685,24 @@ private:
         uint8_t current_baud;
         uint32_t probe_baud;
         bool auto_detected_baud;
+#if AP_GPS_UBLOX_ENABLED
         struct UBLOX_detect_state ublox_detect_state;
+#endif
+#if AP_GPS_SIRF_ENABLED
         struct SIRF_detect_state sirf_detect_state;
+#endif
+#if AP_GPS_NMEA_ENABLED
         struct NMEA_detect_state nmea_detect_state;
+#endif
+#if AP_GPS_SBP_ENABLED
         struct SBP_detect_state sbp_detect_state;
+#endif
+#if AP_GPS_SBP2_ENABLED
         struct SBP2_detect_state sbp2_detect_state;
+#endif
+#if AP_GPS_ERB_ENABLED
         struct ERB_detect_state erb_detect_state;
+#endif
     } detect_state[GPS_MAX_RECEIVERS];
 
     struct {
@@ -744,18 +755,7 @@ private:
     void inject_data(uint8_t instance, const uint8_t *data, uint16_t len);
 
 #if AP_GPS_BLENDED_ENABLED
-    // GPS blending and switching
-    Vector3f _blended_antenna_offset; // blended antenna offset
-    float _blended_lag_sec; // blended receiver lag in seconds
-    float _blend_weights[GPS_MAX_RECEIVERS]; // blend weight for each GPS. The blend weights must sum to 1.0 across all instances.
     bool _output_is_blended; // true when a blended GPS solution being output
-    uint8_t _blend_health_counter;  // 0 = perfectly health, 100 = very unhealthy
-
-    // calculate the blend weight.  Returns true if blend could be calculated, false if not
-    bool calc_blend_weights(void);
-
-    // calculate the blended state
-    void calc_blended_state(void);
 #endif
 
     bool should_log() const;

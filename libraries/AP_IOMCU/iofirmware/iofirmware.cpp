@@ -91,7 +91,7 @@ static void setup_tx_dma(hal_uart_driver* uart)
     dmaStreamSetMode(uart->dmatx, uart->dmatxmode    | STM32_DMA_CR_DIR_M2P |
                      STM32_DMA_CR_MINC | STM32_DMA_CR_TCIE);
     // enable transmission complete interrupt
-    uart->usart->SR = ~USART_SR_TC;
+    uart->usart->SR &= ~USART_SR_TC;
     uart->usart->CR1 |= USART_CR1_TCIE;
 
     dmaStreamEnable(uart->dmatx);
@@ -303,7 +303,7 @@ void AP_IOMCU_FW::init()
     thread_ctx = chThdGetSelfX();
 
 #if AP_HAL_SHARED_DMA_ENABLED
-    tx_dma_handle = new ChibiOS::Shared_DMA(STM32_UART_USART2_TX_DMA_STREAM, SHARED_DMA_NONE,
+    tx_dma_handle = NEW_NOTHROW ChibiOS::Shared_DMA(STM32_UART_USART2_TX_DMA_STREAM, SHARED_DMA_NONE,
                         FUNCTOR_BIND_MEMBER(&AP_IOMCU_FW::tx_dma_allocate, void, Shared_DMA *),
                         FUNCTOR_BIND_MEMBER(&AP_IOMCU_FW::tx_dma_deallocate, void, Shared_DMA *));
     tx_dma_handle->lock();
@@ -635,25 +635,34 @@ void AP_IOMCU_FW::telem_update()
     uint32_t now_ms = AP_HAL::millis();
 
     for (uint8_t i = 0; i < IOMCU_MAX_TELEM_CHANNELS/4; i++) {
+        struct page_dshot_telem &dshot_i = dshot_telem[i];
         for (uint8_t j = 0; j < 4; j++) {
             const uint8_t esc_id = (i * 4 + j);
             if (esc_id >= IOMCU_MAX_TELEM_CHANNELS) {
                 continue;
             }
-            dshot_telem[i].error_rate[j] = uint16_t(roundf(hal.rcout->get_erpm_error_rate(esc_id) * 100.0));
+            dshot_i.error_rate[j] = uint16_t(roundf(hal.rcout->get_erpm_error_rate(esc_id) * 100.0));
 #if HAL_WITH_ESC_TELEM
             const volatile AP_ESC_Telem_Backend::TelemetryData& telem = esc_telem.get_telem_data(esc_id);
             // if data is stale then set to zero to avoid phantom data appearing in mavlink
             if (now_ms - telem.last_update_ms > ESC_TELEM_DATA_TIMEOUT_MS) {
-                dshot_telem[i].voltage_cvolts[j] = 0;
-                dshot_telem[i].current_camps[j] = 0;
-                dshot_telem[i].temperature_cdeg[j] = 0;
+                dshot_i.voltage_cvolts[j] = 0;
+                dshot_i.current_camps[j] = 0;
+                dshot_i.temperature_cdeg[j] = 0;
+#if AP_EXTENDED_DSHOT_TELEM_V2_ENABLED
+                dshot_i.edt2_status[j] = 0;
+                dshot_i.edt2_stress[j] = 0;
+#endif
                 continue;
             }
-            dshot_telem[i].voltage_cvolts[j] = uint16_t(roundf(telem.voltage * 100));
-            dshot_telem[i].current_camps[j] = uint16_t(roundf(telem.current * 100));
-            dshot_telem[i].temperature_cdeg[j] = telem.temperature_cdeg;
-            dshot_telem[i].types[j] = telem.types;
+            dshot_i.voltage_cvolts[j] = uint16_t(roundf(telem.voltage * 100));
+            dshot_i.current_camps[j] = uint16_t(roundf(telem.current * 100));
+            dshot_i.temperature_cdeg[j] = telem.temperature_cdeg;
+#if AP_EXTENDED_DSHOT_TELEM_V2_ENABLED
+            dshot_i.edt2_status[j] = uint8_t(telem.edt2_status);
+            dshot_i.edt2_stress[j] = uint8_t(telem.edt2_stress);
+#endif
+            dshot_i.types[j] = telem.types;
 #endif
         }
     }
@@ -911,6 +920,7 @@ bool AP_IOMCU_FW::handle_code_write()
             mode_out.mode = rx_io_packet.regs[1];
             mode_out.bdmask = rx_io_packet.regs[2];
             mode_out.esc_type = rx_io_packet.regs[3];
+            mode_out.reversible_mask = rx_io_packet.regs[4];
             break;
 
         case PAGE_REG_SETUP_HEATER_DUTY_CYCLE:
@@ -966,7 +976,7 @@ bool AP_IOMCU_FW::handle_code_write()
         }
         /* copy channel data */
         uint16_t i = 0, num_values = rx_io_packet.count;
-        while ((i < IOMCU_MAX_CHANNELS) && (num_values > 0)) {
+        while ((i < IOMCU_MAX_RC_CHANNELS) && (num_values > 0)) {
             /* XXX range-check value? */
             if (rx_io_packet.regs[i] != PWM_IGNORE_THIS_CHANNEL) {
                 reg_direct_pwm.pwm[i] = rx_io_packet.regs[i];
@@ -1088,6 +1098,8 @@ void AP_IOMCU_FW::safety_update(void)
             hal.rcout->force_safety_on();
         }
     }
+    // update the armed state
+    hal.util->set_soft_armed((reg_setup.arming & P_SETUP_ARMING_FMU_ARMED) != 0);
 
 #if IOMCU_ENABLE_RESET_TEST
     {
@@ -1166,6 +1178,7 @@ void AP_IOMCU_FW::rcout_config_update(void)
     // see if there is anything to do, we only support setting the mode for a particular channel once
     if ((last_output_mode_mask & mode_out.mask) == mode_out.mask
         && (last_output_bdmask & mode_out.bdmask) == mode_out.bdmask
+        && (last_output_reversible_mask & mode_out.reversible_mask) == mode_out.reversible_mask
         && last_output_esc_type == mode_out.esc_type) {
         return;
     }
@@ -1178,13 +1191,15 @@ void AP_IOMCU_FW::rcout_config_update(void)
 #endif
 #ifdef HAL_WITH_BIDIR_DSHOT
         hal.rcout->set_bidir_dshot_mask(mode_out.bdmask);
-        hal.rcout->set_dshot_esc_type(AP_HAL::RCOutput::DshotEscType(mode_out.esc_type));
 #endif
+        hal.rcout->set_reversible_mask(mode_out.reversible_mask);
+        hal.rcout->set_dshot_esc_type(AP_HAL::RCOutput::DshotEscType(mode_out.esc_type));
         hal.rcout->set_output_mode(mode_out.mask, (AP_HAL::RCOutput::output_mode)mode_out.mode);
         // enabling dshot changes the memory allocation
         reg_status.freemem = hal.util->available_memory();
         last_output_mode_mask |= mode_out.mask;
         last_output_bdmask |= mode_out.bdmask;
+        last_output_reversible_mask |= mode_out.reversible_mask;
         last_output_esc_type = mode_out.esc_type;
         break;
     case AP_HAL::RCOutput::MODE_PWM_ONESHOT:
@@ -1216,7 +1231,7 @@ void AP_IOMCU_FW::rcout_config_update(void)
  */
 void AP_IOMCU_FW::fill_failsafe_pwm(void)
 {
-    for (uint8_t i=0; i<IOMCU_MAX_CHANNELS; i++) {
+    for (uint8_t i=0; i<IOMCU_MAX_RC_CHANNELS; i++) {
         if (reg_status.flag_safety_off) {
             reg_direct_pwm.pwm[i] = reg_failsafe_pwm.pwm[i];
         } else {

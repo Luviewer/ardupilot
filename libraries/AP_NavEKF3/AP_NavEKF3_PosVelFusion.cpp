@@ -141,7 +141,7 @@ void NavEKF3_core::ResetPosition(resetDataSource posResetSource)
 
     // clear the timeout flags and counters
     posTimeout = false;
-    lastPosPassTime_ms = imuSampleTime_ms;
+    lastGpsPosPassTime_ms = imuSampleTime_ms;
 }
 
 #if EK3_FEATURE_POSITION_RESET
@@ -150,7 +150,7 @@ void NavEKF3_core::ResetPosition(resetDataSource posResetSource)
 // Returns true if the set was successful
 bool NavEKF3_core::setLatLng(const Location &loc, float posAccuracy, uint32_t timestamp_ms)
 {
-    if ((imuSampleTime_ms - lastPosPassTime_ms) < frontend->deadReckonDeclare_ms ||
+    if ((imuSampleTime_ms - lastGpsPosPassTime_ms) < frontend->deadReckonDeclare_ms ||
         (PV_AidingMode == AID_NONE)
         || !validOrigin) {
         return false;
@@ -494,13 +494,14 @@ void NavEKF3_core::SelectVelPosFusion()
     readGpsYawData();
 
     // get data that has now fallen behind the fusion time horizon
-    gpsDataToFuse = storedGPS.recall(gpsDataDelayed,imuDataDelayed.time_ms);
+    gpsDataToFuse = storedGPS.recall(gpsDataDelayed,imuDataDelayed.time_ms) && !waitingForGpsChecks;
+
     if (gpsDataToFuse) {
         CorrectGPSForAntennaOffset(gpsDataDelayed);
         // calculate innovations and variances for reporting purposes only
         CalculateVelInnovationsAndVariances(gpsDataDelayed.vel, frontend->_gpsHorizVelNoise, frontend->gpsNEVelVarAccScale, gpsVelInnov, gpsVelVarInnov);
-        // record time innovations were calculated (for timeout checks)
-        gpsVelInnovTime_ms = dal.millis();
+        // record time GPS data was retrieved from the buffer (for timeout checks)
+        gpsRetrieveTime_ms = dal.millis();
     }
 
     // detect position source changes.  Trigger position reset if position source is valid
@@ -774,17 +775,17 @@ void NavEKF3_core::FuseVelPosNED()
             posTestRatio = (sq(innovVelPos[3]) + sq(innovVelPos[4])) / maxPosInnov2;
             if (posTestRatio < 1.0f || (PV_AidingMode == AID_NONE)) {
                 posCheckPassed = true;
-                lastPosPassTime_ms = imuSampleTime_ms;
+                lastGpsPosPassTime_ms = imuSampleTime_ms;
             } else if ((frontend->_gpsGlitchRadiusMax <= 0) && (PV_AidingMode != AID_NONE)) {
                 // Handle the special case where the glitch radius parameter has been set to a non-positive number.
                 // The innovation variance is increased to limit the state update to an amount corresponding
                 // to a test ratio of 1.
                 posCheckPassed = true;
-                lastPosPassTime_ms = imuSampleTime_ms;
+                lastGpsPosPassTime_ms = imuSampleTime_ms;
                 varInnovVelPos[3] *= posTestRatio;
                 varInnovVelPos[4] *= posTestRatio;
                 posCheckPassed = true;
-                lastPosPassTime_ms = imuSampleTime_ms;
+                lastGpsPosPassTime_ms = imuSampleTime_ms;
             }
 
             // Use position data if healthy or timed out or bad IMU data
@@ -794,7 +795,7 @@ void NavEKF3_core::FuseVelPosNED()
                 // if timed out or outside the specified uncertainty radius, reset to the external sensor
                 // if velocity drift is being constrained, dont reset until gps passes quality checks
                 const bool posVarianceIsTooLarge = (frontend->_gpsGlitchRadiusMax > 0) && (P[8][8] + P[7][7]) > sq(ftype(frontend->_gpsGlitchRadiusMax));
-                if (posTimeout || posVarianceIsTooLarge) {
+                if ((posTimeout || posVarianceIsTooLarge) && (!velAiding || gpsGoodToAlign)) {
                     // reset the position to the current external sensor position
                     ResetPosition(resetDataSource::DEFAULT);
 
@@ -855,7 +856,7 @@ void NavEKF3_core::FuseVelPosNED()
                 // The innovation variance is increased to limit the state update to an amount corresponding
                 // to a test ratio of 1.
                 posCheckPassed = true;
-                lastPosPassTime_ms = imuSampleTime_ms;
+                lastGpsPosPassTime_ms = imuSampleTime_ms;
                 for (uint8_t i = 0; i<=imax; i++) {
                     varInnovVelPos[i] *= velTestRatio;
                 }
@@ -903,7 +904,7 @@ void NavEKF3_core::FuseVelPosNED()
                 // The innovation variance is increased to limit the state update to an amount corresponding
                 // to a test ratio of 1.
                 posCheckPassed = true;
-                lastPosPassTime_ms = imuSampleTime_ms;
+                lastGpsPosPassTime_ms = imuSampleTime_ms;
                 varInnovVelPos[5] *= hgtTestRatio;
                 hgtCheckPassed = true;
                 lastHgtPassTime_ms = imuSampleTime_ms;
@@ -1045,7 +1046,7 @@ void NavEKF3_core::FuseVelPosNED()
                 }
 
                 // inhibit wind state estimation by setting Kalman gains to zero
-                if (!inhibitWindStates) {
+                if (!inhibitWindStates && !treatWindStatesAsTruth) {
                     Kfusion[22] = P[22][stateIndex]*SK;
                     Kfusion[23] = P[23][stateIndex]*SK;
                 } else {
@@ -1127,6 +1128,7 @@ void NavEKF3_core::FuseVelPosNED()
 // select the height measurement to be fused from the available baro, range finder and GPS sources
 void NavEKF3_core::selectHeightForFusion()
 {
+#if AP_RANGEFINDER_ENABLED
     // Read range finder data and check for new data in the buffer
     // This data is used by both height and optical flow fusion processing
     readRangeFinder();
@@ -1146,6 +1148,7 @@ void NavEKF3_core::selectHeightForFusion()
             }
         }
     }
+#endif  // AP_RANGEFINDER_ENABLED
 
     // read baro height data from the sensor and check for new data in the buffer
     readBaroData();
@@ -1159,6 +1162,7 @@ void NavEKF3_core::selectHeightForFusion()
     if ((frontend->sources.getPosZSource() == AP_NavEKF_Source::SourceZ::NONE)) {
         // user has specified no height sensor
         activeHgtSource = AP_NavEKF_Source::SourceZ::NONE;
+#if AP_RANGEFINDER_ENABLED
     } else if ((frontend->sources.getPosZSource() == AP_NavEKF_Source::SourceZ::RANGEFINDER) && _rng && rangeFinderDataIsFresh) {
         // user has specified the range finder as a primary height source
         activeHgtSource = AP_NavEKF_Source::SourceZ::RANGEFINDER;
@@ -1200,6 +1204,7 @@ void NavEKF3_core::selectHeightForFusion()
             // reliable terrain and range finder so start using range finder height
             activeHgtSource = AP_NavEKF_Source::SourceZ::RANGEFINDER;
         }
+#endif
     } else if (frontend->sources.getPosZSource() == AP_NavEKF_Source::SourceZ::BARO) {
         activeHgtSource = AP_NavEKF_Source::SourceZ::BARO;
     } else if ((frontend->sources.getPosZSource() == AP_NavEKF_Source::SourceZ::GPS) && ((imuSampleTime_ms - lastTimeGpsReceived_ms) < 500) && validOrigin && gpsAccuracyGood) {
@@ -1278,6 +1283,11 @@ void NavEKF3_core::selectHeightForFusion()
             hgtMea  = MAX(rangeDataDelayed.rng * prevTnb.c.z, rngOnGnd);
             // correct for terrain position relative to datum
             hgtMea -= terrainState;
+            // correct sensor so that local position height adjusts to match GPS
+            if (frontend->_originHgtMode & (1 << 1) && frontend->_originHgtMode & (1 << 2)) {
+                // offset has to be applied to the measurement, not the NED origin
+                hgtMea += (float)(ekfGpsRefHgt - 0.01 * (double)EKF_origin.alt);
+            }
             velPosObs[5] = -hgtMea;
             // enable fusion
             fuseHgtData = true;
@@ -1304,6 +1314,10 @@ void NavEKF3_core::selectHeightForFusion()
     } else if (baroDataToFuse && (activeHgtSource == AP_NavEKF_Source::SourceZ::BARO)) {
         // using Baro data
         hgtMea = baroDataDelayed.hgt - baroHgtOffset;
+        // correct sensor so that local position height adjusts to match GPS
+        if (frontend->_originHgtMode & (1 << 0) && frontend->_originHgtMode & (1 << 2)) {
+            hgtMea += (float)(ekfGpsRefHgt - 0.01 * (double)EKF_origin.alt);
+        }
         // enable fusion
         fuseHgtData = true;
         // set the observation noise
@@ -1553,7 +1567,7 @@ void NavEKF3_core::FuseBodyVel()
                 zero_range(&Kfusion[0], 16, 21);
             }
 
-            if (!inhibitWindStates) {
+            if (!inhibitWindStates && !treatWindStatesAsTruth) {
                 Kfusion[22] = t77*(P[22][5]*t4+P[22][4]*t9+P[22][0]*t14-P[22][6]*t11+P[22][1]*t18-P[22][2]*t21+P[22][3]*t24);
                 Kfusion[23] = t77*(P[23][5]*t4+P[23][4]*t9+P[23][0]*t14-P[23][6]*t11+P[23][1]*t18-P[23][2]*t21+P[23][3]*t24);
             } else {
@@ -1730,7 +1744,7 @@ void NavEKF3_core::FuseBodyVel()
                 zero_range(&Kfusion[0], 16, 21);
             }
 
-            if (!inhibitWindStates) {
+            if (!inhibitWindStates && !treatWindStatesAsTruth) {
                 Kfusion[22] = t77*(-P[22][4]*t3+P[22][5]*t8+P[22][0]*t15+P[22][6]*t12+P[22][1]*t18+P[22][2]*t22-P[22][3]*t25);
                 Kfusion[23] = t77*(-P[23][4]*t3+P[23][5]*t8+P[23][0]*t15+P[23][6]*t12+P[23][1]*t18+P[23][2]*t22-P[23][3]*t25);
             } else {
@@ -1908,7 +1922,7 @@ void NavEKF3_core::FuseBodyVel()
                 zero_range(&Kfusion[0], 16, 21);
             }
 
-            if (!inhibitWindStates) {
+            if (!inhibitWindStates && !treatWindStatesAsTruth) {
                 Kfusion[22] = t77*(P[22][4]*t4+P[22][0]*t14+P[22][6]*t9-P[22][5]*t11-P[22][1]*t17+P[22][2]*t20+P[22][3]*t24);
                 Kfusion[23] = t77*(P[23][4]*t4+P[23][0]*t14+P[23][6]*t9-P[23][5]*t11-P[23][1]*t17+P[23][2]*t20+P[23][3]*t24);
             } else {

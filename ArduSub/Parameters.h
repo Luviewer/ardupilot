@@ -185,6 +185,7 @@ public:
         k_param_fs_batt_voltage,          // unused - moved to AP_BattMonitor
         k_param_failsafe_pilot_input,
         k_param_failsafe_pilot_input_timeout,
+        k_param_failsafe_gcs_timeout,
 
 
         // Misc Sub settings
@@ -243,7 +244,7 @@ public:
 
     AP_Float        throttle_filt;
 
-#if RANGEFINDER_ENABLED == ENABLED
+#if AP_RANGEFINDER_ENABLED
     AP_Int8         rangefinder_signal_min;     // minimum signal quality for good rangefinder readings
     AP_Float        surftrak_depth;             // surftrak will try to keep sub below this depth
 #endif
@@ -257,6 +258,7 @@ public:
     AP_Int8         failsafe_terrain;
     AP_Int8         failsafe_pilot_input;       // pilot input failsafe behavior
     AP_Float        failsafe_pilot_input_timeout;
+    AP_Float        failsafe_gcs_timeout;       // ground station failsafe timeout (seconds)
 
     AP_Int8         xtrack_angle_limit;
 
@@ -366,6 +368,9 @@ public:
     // control over servo output ranges
     SRV_Channels servo_channels;
 
+    AP_Float backup_origin_lat;
+    AP_Float backup_origin_lon;
+    AP_Float backup_origin_alt;
 };
 
 extern const AP_Param::Info        var_info[];
@@ -382,9 +387,11 @@ static const struct AP_Param::defaults_table_struct defaults_table[] = {
     { "RC3_TRIM",            1100},
     { "COMPASS_OFFS_MAX",    1000},
     { "INS_GYR_CAL",         0},
+#if HAL_MOUNT_ENABLED
     { "MNT1_TYPE",           1},
     { "MNT1_DEFLT_MODE",     MAV_MOUNT_MODE_RC_TARGETING},
     { "MNT1_RC_RATE",        30},
+#endif
     { "RC7_OPTION",          214},   // MOUNT1_YAW
     { "RC8_OPTION",          213},   // MOUNT1_PITCH
     { "MOT_PWM_MIN",         1100},
@@ -395,7 +402,9 @@ static const struct AP_Param::defaults_table_struct defaults_table[] = {
     { "PSC_VELXY_P",         6.0f},
     { "EK3_SRC1_VELZ",       0},
 #if CONFIG_HAL_BOARD_SUBTYPE == HAL_BOARD_SUBTYPE_LINUX_NAVIGATOR
+#if AP_BARO_PROBE_EXT_PARAMETER_ENABLED
     { "BARO_PROBE_EXT",      0},
+#endif
     { "BATT_MONITOR",        4},
     { "BATT_CAPACITY",       0},
     { "LEAK1_PIN",           27},
@@ -405,7 +414,9 @@ static const struct AP_Param::defaults_table_struct defaults_table[] = {
     { "SERVO16_FUNCTION",    7},     // k_mount_tilt
     { "SERVO16_REVERSED",    1},
 #else
+#if AP_BARO_PROBE_EXT_PARAMETER_ENABLED
     { "BARO_PROBE_EXT",      768},
+#endif
     { "SERVO9_FUNCTION",     59},    // k_rcin9, lights 1
     { "SERVO10_FUNCTION",    7},     // k_mount_tilt
 #endif

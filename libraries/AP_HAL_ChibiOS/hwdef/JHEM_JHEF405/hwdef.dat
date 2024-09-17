@@ -108,9 +108,9 @@ PC8 TIM8_CH3 TIM8 PWM(8) GPIO(57)       # M8
 # LEDs
 PA9 TIM1_CH2 TIM1 PWM(9) GPIO(58) # LED
 
+define AP_NOTIFY_GPIO_LED_1_ENABLED 1
 PC14 LED0 OUTPUT LOW GPIO(90)
-define HAL_GPIO_A_LED_PIN 90
-define HAL_GPIO_LED_OFF 1
+define AP_NOTIFY_GPIO_LED_1_PIN 90
 
 # Dataflash setup
 SPIDEV dataflash SPI3 DEVID1 FLASH1_CS     MODE3 104*MHZ 104*MHZ
@@ -135,6 +135,9 @@ SPIDEV icm42688   SPI1 DEVID1 GYRO1_CS   MODE3   1*MHZ   8*MHZ
 IMU Invensensev3 SPI:icm42688 ROTATION_PITCH_180
 DMA_NOSHARE TIM3_UP TIM2_UP TIM4_UP TIM8_UP SPI1*
 DMA_PRIORITY TIM3_UP TIM2_UP TIM4_UP TIM8_UP SPI1*
+# IMU for the older version of the board
+SPIDEV mpu6000 SPI1 DEVID1 GYRO1_CS MODE3 1*MHZ 4*MHZ
+IMU Invensense SPI:mpu6000 ROTATION_YAW_90
 
 # no built-in compass, but probe the i2c bus for all possible
 # external compass types
@@ -149,4 +152,3 @@ define HAL_FRAME_TYPE_DEFAULT 12
 include ../include/minimize_common.inc
 # define AP_GPS_NMEA_ENABLED 1
 
-AUTOBUILD_TARGETS Copter

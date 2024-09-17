@@ -40,6 +40,9 @@ MAV_STATE GCS_MAVLINK_Blimp::vehicle_system_status() const
     if (blimp.ap.land_complete) {
         return MAV_STATE_STANDBY;
     }
+    if (!blimp.ap.initialised) {
+    	return MAV_STATE_BOOT;
+    }
 
     return MAV_STATE_ACTIVE;
 }
@@ -215,7 +218,7 @@ bool GCS_MAVLINK_Blimp::try_send_message(enum ap_message id)
 const AP_Param::GroupInfo GCS_MAVLINK_Parameters::var_info[] = {
     // @Param: RAW_SENS
     // @DisplayName: Raw sensor stream rate
-    // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_IMU3, SCALED_PRESSURE, SCALED_PRESSURE2, SCALED_PRESSURE3 and SENSOR_OFFSETS to ground station
+    // @Description: Stream rate of RAW_IMU, SCALED_IMU2, SCALED_IMU3, SCALED_PRESSURE, SCALED_PRESSURE2, SCALED_PRESSURE3, AIRSPEED and SENSOR_OFFSETS to ground station
     // @Units: Hz
     // @Range: 0 10
     // @Increment: 1
@@ -312,6 +315,7 @@ static const ap_message STREAM_RAW_SENSORS_msgs[] = {
     MSG_SCALED_PRESSURE,
     MSG_SCALED_PRESSURE2,
     MSG_SCALED_PRESSURE3,
+    MSG_AIRSPEED,
 };
 static const ap_message STREAM_EXTENDED_STATUS_msgs[] = {
     MSG_SYS_STATUS,
@@ -340,7 +344,9 @@ static const ap_message STREAM_POSITION_msgs[] = {
 static const ap_message STREAM_RC_CHANNELS_msgs[] = {
     MSG_SERVO_OUTPUT_RAW,
     MSG_RC_CHANNELS,
+#if AP_MAVLINK_MSG_RC_CHANNELS_RAW_ENABLED
     MSG_RC_CHANNELS_RAW, // only sent on a mavlink1 connection
+#endif
 };
 static const ap_message STREAM_EXTRA1_msgs[] = {
     MSG_ATTITUDE,
@@ -446,15 +452,6 @@ MAV_RESULT GCS_MAVLINK_Blimp::handle_command_do_set_roi(const Location &roi_loc)
     }
     // blimp.flightmode->auto_yaw.set_roi(roi_loc);
     return MAV_RESULT_ACCEPTED;
-}
-
-bool GCS_MAVLINK_Blimp::set_home_to_current_location(bool _lock)
-{
-    return blimp.set_home_to_current_location(_lock);
-}
-bool GCS_MAVLINK_Blimp::set_home(const Location& loc, bool _lock)
-{
-    return blimp.set_home(loc, _lock);
 }
 
 MAV_RESULT GCS_MAVLINK_Blimp::handle_command_int_do_reposition(const mavlink_command_int_t &packet)
