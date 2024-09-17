@@ -37,9 +37,12 @@ public:
     CLASS_NO_COPY(AP_Camera_Backend);
 
     // camera options parameter values
-    enum class Options : int8_t {
+    enum class Option : uint8_t {
         RecordWhileArmed = (1 << 0U)
     };
+    bool option_is_enabled(Option option) const {
+        return ((uint8_t)_params.options.get() & (uint8_t)option) != 0;
+    }
 
     // init - performs any required initialisation
     virtual void init() {};
@@ -123,10 +126,18 @@ public:
     // send camera capture status message to GCS
     virtual void send_camera_capture_status(mavlink_channel_t chan) const;
 
+#if AP_CAMERA_SEND_THERMAL_RANGE_ENABLED
+    // send camera thermal range message to GCS
+    virtual void send_camera_thermal_range(mavlink_channel_t chan) const {};
+#endif
+
 #if AP_CAMERA_SCRIPTING_ENABLED
     // accessor to allow scripting backend to retrieve state
     // returns true on success and cam_state is filled in
     virtual bool get_state(AP_Camera::camera_state_t& cam_state) { return false; }
+
+    // change camera settings not normally used by autopilot
+    virtual bool change_setting(CameraSetting setting, float value) { return false; }
 #endif
 
 protected:

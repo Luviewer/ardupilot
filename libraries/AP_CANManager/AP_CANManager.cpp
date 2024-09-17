@@ -199,8 +199,9 @@ void AP_CANManager::init()
         }
 
         // Allocate the set type of Driver
+        switch (drv_type[drv_num]) {
 #if HAL_ENABLE_DRONECAN_DRIVERS
-        if (drv_type[drv_num] == AP_CAN::Protocol::DroneCAN) {
+        case AP_CAN::Protocol::DroneCAN:
             _drivers[drv_num] = _drv_param[drv_num]._uavcan = NEW_NOTHROW AP_DroneCAN(drv_num);
 
             if (_drivers[drv_num] == nullptr) {
@@ -209,10 +210,10 @@ void AP_CANManager::init()
             }
 
             AP_Param::load_object_from_eeprom((AP_DroneCAN*)_drivers[drv_num], AP_DroneCAN::var_info);
-        } else
+            break;
 #endif
 #if HAL_PICCOLO_CAN_ENABLE
-         if (drv_type[drv_num] == AP_CAN::Protocol::PiccoloCAN) {
+        case AP_CAN::Protocol::PiccoloCAN:
             _drivers[drv_num] = _drv_param[drv_num]._piccolocan = NEW_NOTHROW AP_PiccoloCAN;
 
             if (_drivers[drv_num] == nullptr) {
@@ -221,9 +222,9 @@ void AP_CANManager::init()
             }
 
             AP_Param::load_object_from_eeprom((AP_PiccoloCAN*)_drivers[drv_num], AP_PiccoloCAN::var_info);
-        } else
+            break;
 #endif
-        {
+        default:
             continue;
         }
 
@@ -427,8 +428,8 @@ bool AP_CANManager::handle_can_forward(mavlink_channel_t chan, const mavlink_com
     const int8_t bus = int8_t(packet.param1)-1;
     if (bus == -1) {
         for (auto can_iface : hal.can) {
-            if (can_iface) {
-                can_iface->register_frame_callback(nullptr);
+            if (can_iface && can_forward.callback_id != 0) {
+                can_iface->unregister_frame_callback(can_forward.callback_id);
             }
         }
         return true;
@@ -436,8 +437,9 @@ bool AP_CANManager::handle_can_forward(mavlink_channel_t chan, const mavlink_com
     if (bus >= HAL_NUM_CAN_IFACES || hal.can[bus] == nullptr) {
         return false;
     }
-    if (!hal.can[bus]->register_frame_callback(
-            FUNCTOR_BIND_MEMBER(&AP_CANManager::can_frame_callback, void, uint8_t, const AP_HAL::CANFrame &))) {
+    if (can_forward.callback_id == 0 &&
+        !hal.can[bus]->register_frame_callback(
+            FUNCTOR_BIND_MEMBER(&AP_CANManager::can_frame_callback, void, uint8_t, const AP_HAL::CANFrame &), can_forward.callback_id)) {
         return false;
     }
     can_forward.last_callback_enable_ms = AP_HAL::millis();
@@ -447,8 +449,8 @@ bool AP_CANManager::handle_can_forward(mavlink_channel_t chan, const mavlink_com
 
     // remove registration on other buses, allowing for bus change in the GUI tool
     for (uint8_t i=0; i<HAL_NUM_CAN_IFACES; i++) {
-        if (i != bus && hal.can[i] != nullptr) {
-            hal.can[i]->register_frame_callback(nullptr);
+        if (i != bus && hal.can[i] != nullptr && can_forward.callback_id != 0) {
+            hal.can[i]->unregister_frame_callback(can_forward.callback_id);
         }
     }
 
@@ -642,8 +644,9 @@ void AP_CANManager::can_frame_callback(uint8_t bus, const AP_HAL::CANFrame &fram
         // check every 100 frames for disabling CAN_FRAME send
         // we stop sending after 5s if the client stops
         // sending MAV_CMD_CAN_FORWARD requests
-        if (AP_HAL::millis() - can_forward.last_callback_enable_ms > 5000) {
-            hal.can[bus]->register_frame_callback(nullptr);
+        if (can_forward.callback_id != 0 &&
+            AP_HAL::millis() - can_forward.last_callback_enable_ms > 5000) {
+            hal.can[bus]->unregister_frame_callback(can_forward.callback_id);
             return;
         }
         can_forward.frame_counter = 0;

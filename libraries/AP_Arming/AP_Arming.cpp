@@ -603,7 +603,7 @@ bool AP_Arming::gps_checks(bool report)
 
         // Any failure messages from GPS backends
         char failure_msg[50] = {};
-        if (!AP::gps().backends_healthy(failure_msg, ARRAY_SIZE(failure_msg))) {
+        if (!AP::gps().pre_arm_checks(failure_msg, ARRAY_SIZE(failure_msg))) {
             if (failure_msg[0] != '\0') {
                 check_failed(ARMING_CHECK_GPS, report, "%s", failure_msg);
             }
@@ -649,12 +649,6 @@ bool AP_Arming::gps_checks(bool report)
                          (double)distance_m);
             return false;
         }
-#if AP_GPS_BLENDED_ENABLED
-        if (!gps.blend_health_check()) {
-            check_failed(ARMING_CHECK_GPS, report, "GPS blending unhealthy");
-            return false;
-        }
-#endif
 
         // check AHRS and GPS are within 10m of each other
         if (gps.num_sensors() > 0) {
@@ -916,6 +910,7 @@ bool AP_Arming::mission_checks(bool report)
 
 bool AP_Arming::rangefinder_checks(bool report)
 {
+#if AP_RANGEFINDER_ENABLED
     if (check_enabled(ARMING_CHECK_RANGEFINDER)) {
         RangeFinder *range = RangeFinder::get_singleton();
         if (range == nullptr) {
@@ -928,6 +923,7 @@ bool AP_Arming::rangefinder_checks(bool report)
             return false;
         }
     }
+#endif
 
     return true;
 }
@@ -1278,16 +1274,12 @@ bool AP_Arming::fence_checks(bool display_failure)
     }
 
     // check fence is ready
-    const char *fail_msg = nullptr;
-    if (fence->pre_arm_check(fail_msg)) {
+    char fail_msg[MAVLINK_MSG_STATUSTEXT_FIELD_TEXT_LEN+1];
+    if (fence->pre_arm_check(fail_msg, ARRAY_SIZE(fail_msg))) {
         return true;
     }
 
-    if (fail_msg == nullptr) {
-        check_failed(display_failure, "Check fence");
-    } else {
-        check_failed(display_failure, "%s", fail_msg);
-    }
+    check_failed(display_failure, "%s", fail_msg);
 
 #if AP_SDCARD_STORAGE_ENABLED
     if (fence->failed_sdcard_storage() || StorageManager::storage_failed()) {
@@ -1795,11 +1787,7 @@ bool AP_Arming::arm(AP_Arming::Method method, const bool do_arming_checks)
     if (armed) {
         auto *fence = AP::fence();
         if (fence != nullptr) {
-            // If a fence is set to auto-enable, turn on the fence
-            if (fence->auto_enabled() == AC_Fence::AutoEnable::ONLY_WHEN_ARMED) {
-                fence->enable(true);
-                GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Fence: auto-enabled");
-            }
+            fence->auto_enable_fence_on_arming();
         }
     }
 #endif
@@ -1842,9 +1830,7 @@ bool AP_Arming::disarm(const AP_Arming::Method method, bool do_disarm_checks)
 #if AP_FENCE_ENABLED
     AC_Fence *fence = AP::fence();
     if (fence != nullptr) {
-        if(fence->auto_enabled() == AC_Fence::AutoEnable::ONLY_WHEN_ARMED) {
-            fence->enable(false);
-        }
+        fence->auto_disable_fence_on_disarming();
     }
 #endif
 #if defined(HAL_ARM_GPIO_PIN)

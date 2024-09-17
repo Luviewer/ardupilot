@@ -294,6 +294,7 @@ void NavEKF3_core::SelectMagFusion()
                 have_fused_gps_yaw = true;
                 lastSynthYawTime_ms = imuSampleTime_ms;
                 last_gps_yaw_fuse_ms = imuSampleTime_ms;
+                recordYawResetsCompleted();
             } else if (tiltAlignComplete && yawAlignComplete) {
                 have_fused_gps_yaw = fuseEulerYaw(yawFusionMethod::GPS);
                 if (have_fused_gps_yaw) {
@@ -425,12 +426,14 @@ void NavEKF3_core::SelectMagFusion()
     if (dataReady) {
         // use the simple method of declination to maintain heading if we cannot use the magnetic field states
         if(inhibitMagStates || magStateResetRequest || !magStateInitComplete) {
+            magFusionSel = MagFuseSel::FUSE_YAW;
             fuseEulerYaw(yawFusionMethod::MAGNETOMETER);
 
             // zero the test ratio output from the inactive 3-axis magnetometer fusion
             magTestRatio.zero();
 
         } else {
+            magFusionSel = MagFuseSel::FUSE_MAG;
             // if we are not doing aiding with earth relative observations (eg GPS) then the declination is
             // maintained by fusing declination as a synthesised observation
             // We also fuse declination if we are using the WMM tables

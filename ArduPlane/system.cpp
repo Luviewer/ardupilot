@@ -36,14 +36,18 @@ void Plane::init_ardupilot()
     // init baro
     barometer.init();
 
+#if AP_RANGEFINDER_ENABLED
     // initialise rangefinder
     rangefinder.set_log_rfnd_bit(MASK_LOG_SONAR);
     rangefinder.init(ROTATION_PITCH_270);
+#endif
 
     // initialise battery monitoring
     battery.init();
 
+#if AP_RSSI_ENABLED
     rssi.init();
+#endif
 
 #if AP_RPM_ENABLED
     rpm_sensor.init();
@@ -53,7 +57,7 @@ void Plane::init_ardupilot()
     gcs().setup_uarts();
 
 
-#if OSD_ENABLED == ENABLED
+#if OSD_ENABLED
     osd.init();
 #endif
 
@@ -160,6 +164,11 @@ void Plane::init_ardupilot()
 #if AC_PRECLAND_ENABLED
     g2.precland.init(scheduler.get_loop_rate_hz());
 #endif
+
+#if AP_ICENGINE_ENABLED
+    g2.ice_control.init();
+#endif
+
 }
 
 #if AP_FENCE_ENABLED

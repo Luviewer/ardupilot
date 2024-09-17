@@ -701,6 +701,7 @@ void AP_BattMonitor::read()
     }
 #endif
 
+    const uint32_t now_ms = AP_HAL::millis();
     for (uint8_t i=0; i<_num_instances; i++) {
             if (drivers[i] == nullptr) {
                 continue;
@@ -718,6 +719,11 @@ void AP_BattMonitor::read()
 #if AP_BATTERY_ESC_TELEM_OUTBOUND_ENABLED
             drivers[i]->update_esc_telem_outbound();
 #endif
+
+            // Update last heathy timestamp
+            if (state[i].healthy) {
+                state[i].last_healthy_ms = now_ms;
+            }
 
 #if HAL_LOGGING_ENABLED
             if (logger != nullptr && logger->should_log(_log_battery_bit)) {
@@ -769,6 +775,14 @@ float AP_BattMonitor::gcs_voltage(uint8_t instance) const
         return voltage_resting_estimate(instance);
     }
     return state[instance].voltage;
+}
+
+bool AP_BattMonitor::option_is_set(uint8_t instance, AP_BattMonitor_Params::Options option) const
+{
+    if (instance >= _num_instances || drivers[instance] == nullptr) {
+        return false;
+    }
+    return drivers[instance]->option_is_set(option);
 }
 
 /// current_amps - returns the instantaneous current draw in amperes
@@ -852,6 +866,11 @@ void AP_BattMonitor::check_failsafes(void)
             switch (type) {
                 case Failsafe::None:
                     continue; // should not have been called in this case
+                case Failsafe::Unhealthy:
+                    // Report only for unhealthy, could add action param in the future
+                    action = 0;
+                    type_str = "missing, last:";
+                    break;
                 case Failsafe::Low:
                     action = _params[i]._failsafe_low_action;
                     type_str = "low";
@@ -1026,7 +1045,7 @@ void AP_BattMonitor::checkPoweringOff(void)
             cmd_msg.command = MAV_CMD_POWER_OFF_INITIATED;
             cmd_msg.param1 = i+1;
             GCS_MAVLINK::send_to_components(MAVLINK_MSG_ID_COMMAND_LONG, (char*)&cmd_msg, sizeof(cmd_msg));
-            gcs().send_text(MAV_SEVERITY_WARNING, "Vehicle %d battery %d is powering off", mavlink_system.sysid, i+1);
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Vehicle %d battery %d is powering off", mavlink_system.sysid, i+1);
 #endif
 
             // only send this once
@@ -1079,6 +1098,7 @@ MAV_BATTERY_CHARGE_STATE AP_BattMonitor::get_mavlink_charge_state(const uint8_t 
     switch (state[instance].failsafe) {
 
     case Failsafe::None:
+    case Failsafe::Unhealthy:
         if (get_mavlink_fault_bitmask(instance) != 0 || !healthy()) {
             return MAV_BATTERY_CHARGE_STATE_UNHEALTHY;
         }

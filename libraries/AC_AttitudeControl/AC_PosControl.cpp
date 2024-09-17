@@ -611,7 +611,7 @@ void AC_PosControl::stop_vel_xy_stabilisation()
     _pid_vel_xy.reset_I();
 }
 
-// is_active_xy - returns true if the xy position controller has bee n run in the previous 5 loop times
+// is_active_xy - returns true if the xy position controller has been run in the previous loop
 bool AC_PosControl::is_active_xy() const
 {
     const uint32_t dt_ticks = AP::scheduler().ticks32() - _last_update_xy_ticks;
@@ -942,7 +942,7 @@ void AC_PosControl::update_pos_offset_z(float pos_offset_z)
         _jerk_max_z_cmsss, _dt, false);
 }
 
-// is_active_z - returns true if the z position controller has been run in the previous 5 loop times
+// is_active_z - returns true if the z position controller has been run in the previous loop
 bool AC_PosControl::is_active_z() const
 {
     const uint32_t dt_ticks = AP::scheduler().ticks32() - _last_update_z_ticks;
@@ -995,7 +995,7 @@ void AC_PosControl::update_z_controller()
 
     // ensure imax is always large enough to overpower hover throttle
     if (_motors.get_throttle_hover() * 1000.0f > _pid_accel_z.imax()) {
-        _pid_accel_z.imax(_motors.get_throttle_hover() * 1000.0f);
+        _pid_accel_z.set_imax(_motors.get_throttle_hover() * 1000.0f);
     }
     float thr_out;
     if (_vibe_comp_enabled) {

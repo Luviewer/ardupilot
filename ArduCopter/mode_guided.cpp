@@ -1,6 +1,6 @@
 #include "Copter.h"
 
-#if MODE_GUIDED_ENABLED == ENABLED
+#if MODE_GUIDED_ENABLED
 
 /*
  * Init and run calls for guided flight mode
@@ -114,7 +114,7 @@ bool ModeGuided::allows_arming(AP_Arming::Method method) const
     return option_is_enabled(Option::AllowArmingFromTX);
 };
 
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
 bool ModeGuided::allows_weathervaning() const
 {
     return option_is_enabled(Option::AllowWeatherVaning);
@@ -128,6 +128,7 @@ bool ModeGuided::do_user_takeoff_start(float takeoff_alt_cm)
     // calculate target altitude and frame (either alt-above-ekf-origin or alt-above-terrain)
     int32_t alt_target_cm;
     bool alt_target_terrain = false;
+#if AP_RANGEFINDER_ENABLED
     if (wp_nav->rangefinder_used_and_healthy() &&
         wp_nav->get_terrain_source() == AC_WPNav::TerrainSource::TERRAIN_FROM_RANGEFINDER &&
         takeoff_alt_cm < copter.rangefinder.max_distance_cm_orient(ROTATION_PITCH_270)) {
@@ -138,7 +139,9 @@ bool ModeGuided::do_user_takeoff_start(float takeoff_alt_cm)
         // provide target altitude as alt-above-terrain
         alt_target_cm = takeoff_alt_cm;
         alt_target_terrain = true;
-    } else {
+    } else
+#endif
+    {
         // interpret altitude as alt-above-home
         Location target_loc = copter.current_loc;
         target_loc.set_alt_cm(takeoff_alt_cm, Location::AltFrame::ABOVE_HOME);
@@ -682,6 +685,9 @@ void ModeGuided::takeoff_run()
     auto_takeoff.run();
     if (auto_takeoff.complete && !takeoff_complete) {
         takeoff_complete = true;
+#if AP_FENCE_ENABLED
+        copter.fence.auto_enable_fence_after_takeoff();
+#endif
 #if AP_LANDINGGEAR_ENABLED
         // optionally retract landing gear
         copter.landinggear.retract_after_takeoff();

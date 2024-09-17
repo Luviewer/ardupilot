@@ -15,7 +15,7 @@ class _AutoTakeoff {
 public:
     void run();
     void start(float complete_alt_cm, bool terrain_alt);
-    bool get_position(Vector3p& completion_pos);
+    bool get_completion_pos(Vector3p& pos_neu_cm);
 
     bool complete;          // true when takeoff is complete
 
@@ -128,6 +128,7 @@ public:
     virtual bool allows_save_trim() const { return false; }
     virtual bool allows_autotune() const { return false; }
     virtual bool allows_flip() const { return false; }
+    virtual bool crash_check_enabled() const { return true; }
 
 #if FRAME_CONFIG == HELI_FRAME
     virtual bool allows_inverted() const { return false; };
@@ -185,8 +186,11 @@ public:
     virtual bool pause() { return false; };
     virtual bool resume() { return false; };
 
+    // handle situations where the vehicle is on the ground waiting for takeoff
+    void make_safe_ground_handling(bool force_throttle_unlimited = false);
+
     // true if weathervaning is allowed in the current mode
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     virtual bool allows_weathervaning() const { return false; }
 #endif
 
@@ -196,7 +200,6 @@ protected:
     bool is_disarmed_or_landed() const;
     void zero_throttle_and_relax_ac(bool spool_up = false);
     void zero_throttle_and_hold_attitude();
-    void make_safe_ground_handling(bool force_throttle_unlimited = false);
 
     // Return stopping point as a location with above origin alt frame
     Location get_stopping_point() const;
@@ -328,7 +331,7 @@ public:
 
         bool reached_fixed_yaw_target();
 
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
         void update_weathervane(const int16_t pilot_yaw_cds);
 #endif
 
@@ -387,7 +390,7 @@ public:
 };
 
 
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED
 class ModeAcro : public Mode {
 
 public:
@@ -418,6 +421,7 @@ public:
     void air_mode_aux_changed();
     bool allows_save_trim() const override { return true; }
     bool allows_flip() const override { return true; }
+    bool crash_check_enabled() const override { return false; }
 
 protected:
 
@@ -471,7 +475,9 @@ public:
     }
     bool allows_autotune() const override { return true; }
     bool allows_flip() const override { return true; }
-
+#if FRAME_CONFIG == HELI_FRAME
+    bool allows_inverted() const override { return true; };
+#endif
 protected:
 
     const char *name() const override { return "ALT_HOLD"; }
@@ -499,6 +505,9 @@ public:
     bool allows_arming(AP_Arming::Method method) const override;
     bool is_autopilot() const override { return true; }
     bool in_guided_mode() const override { return _mode == SubMode::NAVGUIDED || _mode == SubMode::NAV_SCRIPT_TIME; }
+#if FRAME_CONFIG == HELI_FRAME
+    bool allows_inverted() const override { return true; };
+#endif
 
     // Auto modes
     enum class SubMode : uint8_t {
@@ -573,7 +582,7 @@ public:
     AP_Mission_ChangeDetector mis_change_detector;
 
     // true if weathervaning is allowed in auto
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     bool allows_weathervaning(void) const override;
 #endif
 
@@ -589,12 +598,13 @@ protected:
 
 private:
 
-    enum class Options : int32_t {
+    enum class Option : int32_t {
         AllowArming                        = (1 << 0U),
         AllowTakeOffWithoutRaisingThrottle = (1 << 1U),
         IgnorePilotYaw                     = (1 << 2U),
         AllowWeatherVaning                 = (1 << 7U),
     };
+    bool option_is_enabled(Option option) const;
 
     // Enter auto rtl pseudo mode
     bool enter_auto_rtl(ModeReason reason);
@@ -631,7 +641,7 @@ private:
     void do_loiter_to_alt(const AP_Mission::Mission_Command& cmd);
     void do_spline_wp(const AP_Mission::Mission_Command& cmd);
     void get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc, Location& dest_loc, Location& next_dest_loc, bool& next_dest_loc_is_spline);
-#if AC_NAV_GUIDED == ENABLED
+#if AC_NAV_GUIDED
     void do_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
     void do_guided_limits(const AP_Mission::Mission_Command& cmd);
 #endif
@@ -643,7 +653,7 @@ private:
     void do_set_home(const AP_Mission::Mission_Command& cmd);
     void do_roi(const AP_Mission::Mission_Command& cmd);
     void do_mount_control(const AP_Mission::Mission_Command& cmd);
-#if PARACHUTE == ENABLED
+#if HAL_PARACHUTE_ENABLED
     void do_parachute(const AP_Mission::Mission_Command& cmd);
 #endif
 #if AP_WINCH_ENABLED
@@ -669,7 +679,7 @@ private:
     bool verify_nav_wp(const AP_Mission::Mission_Command& cmd);
     bool verify_circle(const AP_Mission::Mission_Command& cmd);
     bool verify_spline_wp(const AP_Mission::Mission_Command& cmd);
-#if AC_NAV_GUIDED == ENABLED
+#if AC_NAV_GUIDED
     bool verify_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
 #endif
     bool verify_nav_delay(const AP_Mission::Mission_Command& cmd);
@@ -742,7 +752,7 @@ private:
     } desired_speed_override;
 };
 
-#if AUTOTUNE_ENABLED == ENABLED
+#if AUTOTUNE_ENABLED
 /*
   wrapper class for AC_AutoTune
  */
@@ -786,18 +796,12 @@ public:
     bool allows_arming(AP_Arming::Method method) const override { return false; }
     bool is_autopilot() const override { return false; }
 
-    void save_tuning_gains();
-    void reset();
+    AutoTune autotune;
 
 protected:
 
     const char *name() const override { return "AUTOTUNE"; }
     const char *name4() const override { return "ATUN"; }
-
-private:
-
-    AutoTune autotune;
-
 };
 #endif
 
@@ -903,6 +907,7 @@ public:
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return false; };
     bool is_autopilot() const override { return false; }
+    bool crash_check_enabled() const override { return false; }
 
 protected:
 
@@ -930,7 +935,7 @@ private:
 };
 
 
-#if MODE_FLOWHOLD_ENABLED == ENABLED
+#if MODE_FLOWHOLD_ENABLED
 /*
   class to support FLOWHOLD mode, which is a position hold mode using
   optical flow directly, avoiding the need for a rangefinder
@@ -973,7 +978,7 @@ private:
     // calculate attitude from flow data
     void flow_to_angle(Vector2f &bf_angle);
 
-    LowPassFilterVector2f flow_filter;
+    LowPassFilterConstDtVector2f flow_filter;
 
     bool flowhold_init(bool ignore_checks);
     void flowhold_run();
@@ -1111,7 +1116,7 @@ public:
     bool resume() override;
 
     // true if weathervaning is allowed in guided
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     bool allows_weathervaning(void) const override;
 #endif
 
@@ -1249,6 +1254,10 @@ public:
     bool is_autopilot() const override { return false; }
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
+
+#if FRAME_CONFIG == HELI_FRAME
+    bool allows_inverted() const override { return true; };
+#endif
 
 #if AC_PRECLAND_ENABLED
     void set_precision_loiter_enabled(bool value) { _precision_loiter_enabled = value; }
@@ -1411,8 +1420,8 @@ public:
 
     // enum for RTL_ALT_TYPE parameter
     enum class RTLAltType : int8_t {
-        RTL_ALTTYPE_RELATIVE = 0,
-        RTL_ALTTYPE_TERRAIN = 1
+        RELATIVE = 0,
+        TERRAIN = 1
     };
     ModeRTL::RTLAltType get_alt_type() const;
 
@@ -1529,6 +1538,10 @@ private:
     // point while following our path home.  If we take too long we
     // may choose to land the vehicle.
     uint32_t path_follow_last_pop_fail_ms;
+
+    // backup last popped point so that it can be restored to the path
+    // if vehicle exits SmartRTL mode before reaching home. invalid if zero
+    Vector3f dest_NED_backup;
 };
 
 
@@ -1740,7 +1753,7 @@ private:
     float free_fall_start_velz;     // vertical velocity when free fall was detected
 };
 
-#if MODE_TURTLE_ENABLED == ENABLED
+#if MODE_TURTLE_ENABLED
 class ModeTurtle : public Mode {
 
 public:
@@ -1801,7 +1814,7 @@ private:
 
 };
 
-#if MODE_FOLLOW_ENABLED == ENABLED
+#if MODE_FOLLOW_ENABLED
 class ModeFollow : public ModeGuided {
 
 public:
@@ -1930,7 +1943,7 @@ private:
     bool is_suspended;              // true if zigzag auto is suspended
 };
 
-#if MODE_AUTOROTATE_ENABLED == ENABLED
+#if MODE_AUTOROTATE_ENABLED
 class ModeAutorotate : public Mode {
 
 public:

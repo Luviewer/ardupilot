@@ -32,7 +32,9 @@
 static constexpr uint8_t ENABLED_BY_DEFAULT = 1;
 static constexpr uint16_t DELAY_TIME_TOPIC_MS = 10;
 static constexpr uint16_t DELAY_BATTERY_STATE_TOPIC_MS = 1000;
+#if AP_DDS_IMU_PUB_ENABLED
 static constexpr uint16_t DELAY_IMU_TOPIC_MS = 5;
+#endif // AP_DDS_IMU_PUB_ENABLED
 static constexpr uint16_t DELAY_LOCAL_POSE_TOPIC_MS = 33;
 static constexpr uint16_t DELAY_LOCAL_VELOCITY_TOPIC_MS = 33;
 static constexpr uint16_t DELAY_GEO_POSE_TOPIC_MS = 33;
@@ -74,6 +76,14 @@ const AP_Param::GroupInfo AP_DDS_Client::var_info[] {
 
 #endif
 
+    // @Param: _DOMAIN_ID
+    // @DisplayName: DDS DOMAIN ID
+    // @Description: Set the ROS_DOMAIN_ID
+    // @Range: 0 232
+    // @RebootRequired: True
+    // @User: Standard
+    AP_GROUPINFO("_DOMAIN_ID", 4, AP_DDS_Client, domain_id, 0),
+
     AP_GROUPEND
 };
 
@@ -114,11 +124,6 @@ bool AP_DDS_Client::update_topic(sensor_msgs_msg_NavSatFix& msg, const uint8_t i
     // Make it constexpr if possible
     // https://www.fluentcpp.com/2021/12/13/the-evolutions-of-lambdas-in-c14-c17-and-c20/
     // constexpr auto times2 = [] (sensor_msgs_msg_NavSatFix* msg) { return n * 2; };
-
-    // assert(instance >= GPS_MAX_RECEIVERS);
-    if (instance >= GPS_MAX_RECEIVERS) {
-        return false;
-    }
 
     auto &gps = AP::gps();
     WITH_SEMAPHORE(gps.get_semaphore());
@@ -299,8 +304,11 @@ void AP_DDS_Client::update_topic(sensor_msgs_msg_BatteryState& msg, const uint8_
     msg.power_supply_technology = 0; //POWER_SUPPLY_TECHNOLOGY_UNKNOWN
 
     if (battery.has_cell_voltages(instance)) {
-        const uint16_t* cellVoltages = battery.get_cell_voltages(instance).cells;
-        std::copy(cellVoltages, cellVoltages + AP_BATT_MONITOR_CELLS_MAX, msg.cell_voltage);
+        const auto &cells = battery.get_cell_voltages(instance);
+        const uint8_t ncells_max = MIN(ARRAY_SIZE(msg.cell_voltage), ARRAY_SIZE(cells.cells));
+        for (uint8_t i=0; i< ncells_max; i++) {
+            msg.cell_voltage[i] = cells.cells[i] * 0.001;
+        }
     }
 }
 
@@ -434,6 +442,7 @@ void AP_DDS_Client::update_topic(geographic_msgs_msg_GeoPoseStamped& msg)
     }
 }
 
+#if AP_DDS_IMU_PUB_ENABLED
 void AP_DDS_Client::update_topic(sensor_msgs_msg_Imu& msg)
 {
     update_topic(msg.header.stamp);
@@ -471,6 +480,7 @@ void AP_DDS_Client::update_topic(sensor_msgs_msg_Imu& msg)
     msg.angular_velocity_covariance[0] = -1;
     msg.linear_acceleration_covariance[0] = -1;
 }
+#endif // AP_DDS_IMU_PUB_ENABLED
 
 void AP_DDS_Client::update_topic(rosgraph_msgs_msg_Clock& msg)
 {
@@ -816,9 +826,8 @@ bool AP_DDS_Client::create()
         .type = UXR_PARTICIPANT_ID
     };
     const char* participant_name = "ardupilot_dds";
-    const uint16_t domain_id = 0;
     const auto participant_req_id = uxr_buffer_create_participant_bin(&session, reliable_out, participant_id,
-                                    domain_id, participant_name, UXR_REPLACE);
+                                    static_cast<uint16_t>(domain_id), participant_name, UXR_REPLACE);
 
     //Participant requests
     constexpr uint8_t nRequestsParticipant = 1;
@@ -1034,6 +1043,7 @@ void AP_DDS_Client::write_tx_local_velocity_topic()
     }
 }
 
+#if AP_DDS_IMU_PUB_ENABLED
 void AP_DDS_Client::write_imu_topic()
 {
     WITH_SEMAPHORE(csem);
@@ -1048,6 +1058,7 @@ void AP_DDS_Client::write_imu_topic()
         }
     }
 }
+#endif // AP_DDS_IMU_PUB_ENABLED
 
 void AP_DDS_Client::write_geo_pose_topic()
 {
@@ -1127,12 +1138,13 @@ void AP_DDS_Client::update()
         last_local_velocity_time_ms = cur_time_ms;
         write_tx_local_velocity_topic();
     }
-
+#if AP_DDS_IMU_PUB_ENABLED
     if (cur_time_ms - last_imu_time_ms > DELAY_IMU_TOPIC_MS) {
         update_topic(imu_topic);
         last_imu_time_ms = cur_time_ms;
         write_imu_topic();
     }
+#endif
 
     if (cur_time_ms - last_geo_pose_time_ms > DELAY_GEO_POSE_TOPIC_MS) {
         update_topic(geo_pose_topic);

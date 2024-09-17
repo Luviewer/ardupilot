@@ -14,6 +14,7 @@
 #define HAL_BOARD_CHIBIOS  10
 #define HAL_BOARD_F4LIGHT  11 // reserved
 #define HAL_BOARD_ESP32	   12
+#define HAL_BOARD_QURT     13
 #define HAL_BOARD_EMPTY    99
 
 /* Default board subtype is -1 */
@@ -139,6 +140,8 @@
 	#include <AP_HAL/board/chibios.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_ESP32
     #include <AP_HAL/board/esp32.h>
+#elif CONFIG_HAL_BOARD == HAL_BOARD_QURT
+    #include <AP_HAL/board/qurt.h>
 #else
 #error "Unknown CONFIG_HAL_BOARD type"
 #endif
@@ -186,13 +189,6 @@
 // otherwise the communication to IOMCU breaks!
 #ifndef AP_EXTENDED_DSHOT_TELEM_V2_ENABLED
 #define AP_EXTENDED_DSHOT_TELEM_V2_ENABLED HAL_REQUIRES_BDSHOT_SUPPORT
-#endif
-
-// this is used as a general mechanism to make a 'small' build by
-// dropping little used features. We use this to allow us to keep
-// FMUv2 going for as long as possible
-#ifndef HAL_MINIMIZE_FEATURES
-#define HAL_MINIMIZE_FEATURES       0
 #endif
 
 #ifndef BOARD_FLASH_SIZE
@@ -375,6 +371,8 @@
 
 #ifndef HAL_GPIO_LED_ON
 #define HAL_GPIO_LED_ON 0
+#elif HAL_GPIO_LED_ON == 0
+#error "Do not specify HAL_GPIO_LED_ON if you are setting it to the default, 0"
 #endif
 
 #ifdef HAL_GPIO_LED_OFF

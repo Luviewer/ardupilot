@@ -79,8 +79,15 @@ enum class LogEvent : uint8_t {
     STANDBY_ENABLE = 74,
     STANDBY_DISABLE = 75,
 
-    FENCE_FLOOR_ENABLE = 80,
-    FENCE_FLOOR_DISABLE = 81,
+    // Fence events
+    FENCE_ALT_MAX_ENABLE = 76,
+    FENCE_ALT_MAX_DISABLE = 77,
+    FENCE_CIRCLE_ENABLE = 78,
+    FENCE_CIRCLE_DISABLE = 79,
+    FENCE_ALT_MIN_ENABLE = 80,
+    FENCE_ALT_MIN_DISABLE = 81,
+    FENCE_POLYGON_ENABLE = 82,
+    FENCE_POLYGON_DISABLE = 83,
 
     // if the EKF's source input set is changed (e.g. via a switch or
     // a script), we log an event:
@@ -382,7 +389,6 @@ public:
         struct log_write_fmt *next;
         uint8_t msg_type;
         uint8_t msg_len;
-        uint8_t sent_mask; // bitmask of backends sent to
         const char *name;
         const char *fmt;
         const char *labels;
@@ -452,7 +458,7 @@ private:
     int16_t find_free_msg_type() const;
 
     // fill LogStructure with information about msg_type
-    bool fill_log_write_logstructure(struct LogStructure &logstruct, const uint8_t msg_type) const;
+    bool fill_logstructure(struct LogStructure &logstruct, const uint8_t msg_type) const;
 
     bool _armed;
 
@@ -585,6 +591,7 @@ private:
     void handle_log_request_data(class GCS_MAVLINK &, const mavlink_message_t &msg);
     void handle_log_request_erase(class GCS_MAVLINK &, const mavlink_message_t &msg);
     void handle_log_request_end(class GCS_MAVLINK &, const mavlink_message_t &msg);
+    void end_log_transfer();
     void handle_log_send_listing(); // handle LISTING state
     void handle_log_sending(); // handle SENDING state
     bool handle_log_send_data(); // send data chunk to client

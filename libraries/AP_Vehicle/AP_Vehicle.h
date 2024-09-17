@@ -80,6 +80,8 @@
 #include <AP_Gripper/AP_Gripper.h>
 #endif
 
+#include <AP_IBus_Telem/AP_IBus_Telem.h>
+
 class AP_DDS_Client;
 
 class AP_Vehicle : public AP_HAL::HAL::Callbacks {
@@ -169,10 +171,10 @@ public:
     // returns true if the vehicle has crashed
     virtual bool is_crashed() const;
 
-#if AP_EXTERNAL_CONTROL_ENABLED
+#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
     // Method to control vehicle position for use by external control
     virtual bool set_target_location(const Location& target_loc) { return false; }
-#endif // AP_EXTERNAL_CONTROL_ENABLED
+#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 #if AP_SCRIPTING_ENABLED
     /*
       methods to control vehicle for use by scripting
@@ -221,7 +223,11 @@ public:
 
     // allow for landing descent rate to be overridden by a script, may be -ve to climb
     virtual bool set_land_descent_rate(float descent_rate) { return false; }
-    
+
+    // Allow for scripting to have control over the crosstracking when exiting and resuming missions or guided flight
+    // It's up to the Lua script to ensure the provided location makes sense
+    virtual bool set_crosstrack_start(const Location &new_start_location) { return false; }
+
     // control outputs enumeration
     enum class ControlOutput {
         Roll = 1,
@@ -333,7 +339,9 @@ protected:
 #if HAL_BUTTON_ENABLED
     AP_Button button;
 #endif
+#if AP_RANGEFINDER_ENABLED
     RangeFinder rangefinder;
+#endif
 
 #if HAL_LOGGING_ENABLED
     AP_Logger logger;
@@ -346,6 +354,10 @@ protected:
 
 #if AP_GRIPPER_ENABLED
     AP_Gripper gripper;
+#endif
+
+#if AP_IBUS_TELEM_ENABLED
+    AP_IBus_Telem ibus_telem;
 #endif
 
 #if AP_RSSI_ENABLED

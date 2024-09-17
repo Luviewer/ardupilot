@@ -1719,8 +1719,10 @@ AP_GPS_UBLOX::_parse_gps(void)
             state.hdop        = _buffer.pvt.p_dop;
             state.vdop        = _buffer.pvt.p_dop;
         }
-                    
-        state.last_gps_time_ms = AP_HAL::millis();
+
+        if (_buffer.pvt.fix_type >= 2) {
+            state.last_gps_time_ms = AP_HAL::millis();
+        }
         
         // time
         state.time_week_ms    = _buffer.pvt.itow;
@@ -2301,7 +2303,14 @@ bool AP_GPS_UBLOX::is_healthy(void) const
 uint8_t AP_GPS_UBLOX::populate_F9_gnss(void)
 {
     uint8_t cfg_count = 0;
-    if (params.gnss_mode != 0 && (_unconfigured_messages & CONFIG_F9)) {
+
+    if (params.gnss_mode == 0) {
+        _unconfigured_messages &= ~CONFIG_F9;
+        last_configured_gnss = params.gnss_mode;
+        return 0;
+    }
+
+    if ((_unconfigured_messages & CONFIG_F9) != 0) {
         // ZED-F9P defaults are
         // GPS L1C/A+L2C(ZED)
         // SBAS L1C/A

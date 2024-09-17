@@ -16,6 +16,7 @@
 #include "lua_boxed_numerics.h"
 #include <AP_Scripting/lua_generated_bindings.h>
 
+#include <AP_Scheduler/AP_Scheduler.h>
 #include <AP_Scripting/AP_Scripting.h>
 #include <string.h>
 
@@ -33,8 +34,7 @@ extern const AP_HAL::HAL& hal;
 int lua_millis(lua_State *L) {
     binding_argcheck(L, 0);
 
-    new_uint32_t(L);
-    *check_uint32_t(L, -1) = AP_HAL::millis();
+    *new_uint32_t(L) = AP_HAL::millis();
 
     return 1;
 }
@@ -43,8 +43,7 @@ int lua_millis(lua_State *L) {
 int lua_micros(lua_State *L) {
     binding_argcheck(L, 0);
 
-    new_uint32_t(L);
-    *check_uint32_t(L, -1) = AP_HAL::micros();
+    *new_uint32_t(L) = AP_HAL::micros();
 
     return 1;
 }
@@ -100,8 +99,7 @@ int lua_mavlink_receive_chan(lua_State *L) {
         luaL_addlstring(&b, (char *)&msg.msg, sizeof(msg.msg));
         luaL_pushresult(&b);
         lua_pushinteger(L, msg.chan);
-        new_uint32_t(L);
-        *check_uint32_t(L, -1) = msg.timestamp_ms;
+        *new_uint32_t(L) = msg.timestamp_ms;
         return 3;
     } else {
         // no MAVLink to handle, just return no results
@@ -239,8 +237,7 @@ int lua_mission_receive(lua_State *L) {
         return 0;
     }
 
-    new_uint32_t(L);
-    *check_uint32_t(L, -1) = cmd.time_ms;
+    *new_uint32_t(L) = cmd.time_ms;
 
     lua_pushinteger(L, cmd.p1);
     lua_pushnumber(L, cmd.content_p1);
@@ -605,8 +602,7 @@ int lua_get_i2c_device(lua_State *L) {
         return luaL_argerror(L, 1, "i2c device nullptr");
     }
 
-    new_AP_HAL__I2CDevice(L);
-    *((AP_HAL::I2CDevice**)luaL_checkudata(L, -1, "AP_HAL::I2CDevice")) = scripting->_i2c_dev[scripting->num_i2c_devices]->get();
+    *new_AP_HAL__I2CDevice(L) = scripting->_i2c_dev[scripting->num_i2c_devices]->get();
 
     scripting->num_i2c_devices++;
 
@@ -655,6 +651,33 @@ int AP_HAL__I2CDevice_read_registers(lua_State *L) {
     return success;
 }
 
+int AP_HAL__I2CDevice_transfer(lua_State *L) {
+    binding_argcheck(L, 3);
+
+    AP_HAL::I2CDevice * ud = *check_AP_HAL__I2CDevice(L, 1);
+
+    // Parse string of bytes to send
+    size_t send_len;
+    const uint8_t* send_data = (const uint8_t*)(lua_tolstring(L, 2, &send_len));
+
+    // Parse and setup rx buffer
+    uint32_t rx_len = get_uint8_t(L, 3);
+    uint8_t rx_data[rx_len];
+
+    // Transfer
+    ud->get_semaphore()->take_blocking();
+    const bool success = ud->transfer(send_data, send_len, rx_data, rx_len);
+    ud->get_semaphore()->give();
+
+    if (!success) {
+        return 0;
+    }
+
+    // Return a string
+    lua_pushlstring(L, (const char *)rx_data, rx_len);
+    return 1;
+}
+
 #if AP_SCRIPTING_CAN_SENSOR_ENABLED
 int lua_get_CAN_device(lua_State *L) {
 
@@ -681,8 +704,7 @@ int lua_get_CAN_device(lua_State *L) {
         return 0;
     }
 
-    new_ScriptingCANBuffer(L);
-    *((ScriptingCANBuffer**)luaL_checkudata(L, -1, "ScriptingCANBuffer")) = scripting->_CAN_dev->add_buffer(buffer_len);
+    *new_ScriptingCANBuffer(L) = scripting->_CAN_dev->add_buffer(buffer_len);
 
     return 1;
 }
@@ -712,14 +734,13 @@ int lua_get_CAN_device2(lua_State *L) {
         return 0;
     }
 
-    new_ScriptingCANBuffer(L);
-    *((ScriptingCANBuffer**)luaL_checkudata(L, -1, "ScriptingCANBuffer")) = scripting->_CAN_dev2->add_buffer(buffer_len);
+    *new_ScriptingCANBuffer(L) = scripting->_CAN_dev2->add_buffer(buffer_len);
 
     return 1;
 }
 #endif // AP_SCRIPTING_CAN_SENSOR_ENABLED
 
-#if HAL_GCS_ENABLED
+#if AP_SERIALMANAGER_ENABLED
 int lua_serial_find_serial(lua_State *L) {
     // Allow : and . access
     const int arg_offset = (luaL_testudata(L, 1, "serial") != NULL) ? 1 : 0;
@@ -736,8 +757,7 @@ int lua_serial_find_serial(lua_State *L) {
         return 0;
     }
 
-    new_AP_Scripting_SerialAccess(L);
-    AP_Scripting_SerialAccess *port = check_AP_Scripting_SerialAccess(L, -1);
+    AP_Scripting_SerialAccess *port = new_AP_Scripting_SerialAccess(L);
     port->stream = driver_stream;
 #if AP_SCRIPTING_SERIALDEVICE_ENABLED
     port->is_device_port = false;
@@ -745,7 +765,7 @@ int lua_serial_find_serial(lua_State *L) {
 
     return 1;
 }
-#endif // HAL_GCS_ENABLED
+#endif // AP_SERIALMANAGER_ENABLED
 
 #if AP_SCRIPTING_SERIALDEVICE_ENABLED
 int lua_serial_find_simulated_device(lua_State *L) {
@@ -774,8 +794,7 @@ int lua_serial_find_simulated_device(lua_State *L) {
         return 0;
     }
 
-    new_AP_Scripting_SerialAccess(L);
-    AP_Scripting_SerialAccess *port = check_AP_Scripting_SerialAccess(L, -1);
+    AP_Scripting_SerialAccess *port = new_AP_Scripting_SerialAccess(L);
     port->stream = device_stream;
     port->is_device_port = true;
 
@@ -861,7 +880,7 @@ int lua_dirlist(lua_State *L) {
 int lua_removefile(lua_State *L) {
     binding_argcheck(L, 1);
     const char *filename = luaL_checkstring(L, 1);
-    return luaL_fileresult(L, remove(filename) == 0, filename);
+    return luaL_fileresult(L, AP::FS().unlink(filename) == 0, filename);
 }
 
 // Manual binding to allow SRV_Channels table to see safety state
@@ -887,8 +906,7 @@ int lua_get_PWMSource(lua_State *L) {
         return luaL_argerror(L, 1, "PWMSources device nullptr");
     }
 
-    new_AP_HAL__PWMSource(L);
-    *((AP_HAL::PWMSource**)luaL_checkudata(L, -1, "AP_HAL::PWMSource")) = scripting->_pwm_source[scripting->num_pwm_source];
+    *new_AP_HAL__PWMSource(L) = scripting->_pwm_source[scripting->num_pwm_source];
 
     scripting->num_pwm_source++;
 
@@ -911,8 +929,7 @@ int lua_get_SocketAPM(lua_State *L) {
     for (uint8_t i=0; i<SCRIPTING_MAX_NUM_NET_SOCKET; i++) {
         if (scripting->_net_sockets[i] == nullptr) {
             scripting->_net_sockets[i] = sock;
-            new_SocketAPM(L);
-            *((SocketAPM**)luaL_checkudata(L, -1, "SocketAPM")) = scripting->_net_sockets[i];
+            *new_SocketAPM(L) = scripting->_net_sockets[i];
             return 1;
         }
     }
@@ -1011,8 +1028,7 @@ int SocketAPM_accept(lua_State *L) {
             if (scripting->_net_sockets[i] == nullptr) {
                 return 0;
             }
-            new_SocketAPM(L);
-            *((SocketAPM**)luaL_checkudata(L, -1, "SocketAPM")) = scripting->_net_sockets[i];
+            *new_SocketAPM(L) = scripting->_net_sockets[i];
             return 1;
         }
     }
@@ -1024,10 +1040,10 @@ int SocketAPM_accept(lua_State *L) {
 #endif // AP_NETWORKING_ENABLED
 
 
-int lua_get_current_ref()
+int lua_get_current_env_ref()
 {
     auto *scripting = AP::scripting();
-    return scripting->get_current_ref();
+    return scripting->get_current_env_ref();
 }
 
 // This is used when loading modules with require, lua must only look in enabled directory's
@@ -1067,7 +1083,7 @@ int lua_print(lua_State *L) {
     return 0;
 }
 
-#if (!defined(HAL_BUILD_AP_PERIPH) || defined(HAL_PERIPH_ENABLE_RANGEFINDER))
+#if AP_RANGEFINDER_ENABLED
 int lua_range_finder_handle_script_msg(lua_State *L) {
     // Arg 1 => self (an instance of rangefinder_backend)
     // Arg 2 => a float distance or a RangeFinder_State user data
@@ -1091,7 +1107,7 @@ int lua_range_finder_handle_script_msg(lua_State *L) {
     lua_pushboolean(L, result);
     return 1;
 }
-#endif
+#endif  // AP_RANGEFINDER_ENABLED
 
 /*
   lua wants to abort, and doesn't have access to a panic function
@@ -1177,10 +1193,8 @@ int lua_GCS_command_int(lua_State *L)
 
     auto result = _gcs->lua_command_int_packet(pkt);
 
-    // map MAV_RESULT to a boolean
-    bool ok = result == MAV_RESULT_ACCEPTED;
-
-    lua_pushboolean(L, ok);
+    // Return the resulting MAV_RESULT
+    lua_pushinteger(L, result);
 
     return 1;
 }
