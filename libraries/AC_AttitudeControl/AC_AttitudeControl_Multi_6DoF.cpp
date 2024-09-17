@@ -6,27 +6,32 @@
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 
-// 6DoF control is extracted from the existing copter code by treating desired angles as thrust angles rather than vehicle attitude.
-// Vehicle attitude is then set separately, typically the vehicle would maintain 0 roll and pitch.
-// rate commands result in the vehicle behaving as a ordinary copter.
+// 6自由度控制是从现有的多旋翼代码中提取的，将期望的角度视为推力角度，而不是飞行器姿态。
+// 飞行器姿态随后单独设置，通常飞行器会保持0度的滚转和俯仰。
+// 速率命令使飞行器表现得像一个普通的多旋翼飞行器。
 
-// run lowest level body-frame rate controller and send outputs to the motors
+// 运行最低级别的机体框架速率控制器，并将输出发送到电机
 void AC_AttitudeControl_Multi_6DoF::rate_controller_run() {
 
-    // pass current offsets to motors and run baseclass controller
-    // motors require the offsets to know which way is up
-    float roll_deg = roll_offset_deg;
-    float pitch_deg = pitch_offset_deg;
-    // if 6DoF control, always point directly up
-    // this stops horizontal drift due to error between target and true attitude
-    if (lateral_enable) {
-        roll_deg = degrees(AP::ahrs().get_roll());
-    }
-    if (forward_enable) {
-        pitch_deg = degrees(AP::ahrs().get_pitch());
-    }
-    _motors.set_roll_pitch(roll_deg,pitch_deg);
+    // 将当前偏移量传递给电机，并运行基类控制器
+    // 电机需要偏移量来知道“向上”方向
+    float roll_deg = roll_offset_deg; // 当前滚转偏移角度
+    float pitch_deg = pitch_offset_deg; // 当前俯仰偏移角度
 
+    // 如果启用了横向控制，始终将滚转角度指向正上方
+    // 这可以防止由于目标姿态和真实姿态之间的误差导致的水平漂移
+    if (lateral_enable) {
+        roll_deg = degrees(AP::ahrs().get_roll()); // 获取当前滚转角度
+    }
+    // 如果启用了前向控制，始终将俯仰角度指向正上方
+    if (forward_enable) {
+        pitch_deg = degrees(AP::ahrs().get_pitch()); // 获取当前俯仰角度
+    }
+
+    // 设置电机的滚转和俯仰角度
+    _motors.set_roll_pitch(roll_deg, pitch_deg);
+
+    // 调用基类的方法以继续运行速率控制器
     AC_AttitudeControl_Multi::rate_controller_run();
 }
 
@@ -72,25 +77,37 @@ void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_heading(const Vector3f& 
 
 void AC_AttitudeControl_Multi_6DoF::set_forward_lateral(float &euler_pitch_angle_cd, float &euler_roll_angle_cd)
 {
-    // pitch/forward
-    if (forward_enable) {
-        _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
-        euler_pitch_angle_cd = pitch_offset_deg * 100.0f;
+    // 处理前向运动的控制逻辑
+    if (forward_enable) { // 检查前向运动是否启用
+        // 根据俯仰角计算前向推力，并设置给电机
+        // euler_pitch_angle_cd * 0.01f 是为了将角度缩放到合适的范围
+        _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f))); 
+        // 将俯仰角更新为偏移量的100倍
+        euler_pitch_angle_cd = pitch_offset_deg * 100.0f; 
     } else {
-        _motors.set_forward(0.0f);
-        euler_pitch_angle_cd += pitch_offset_deg * 100.0f;
+        // 如果前向运动未启用，设置前向推力为0
+        _motors.set_forward(0.0f); 
+        // 增加俯仰角的偏移量
+        euler_pitch_angle_cd += pitch_offset_deg * 100.0f; 
     }
-    euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
+    // 确保俯仰角在[-180, 180]度范围内
+    euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd); 
 
-    // roll/lateral
-    if (lateral_enable) {
-        _motors.set_lateral(sinf(radians(euler_roll_angle_cd * 0.01f)));
-        euler_roll_angle_cd = roll_offset_deg * 100.0f;
+    // 处理侧向运动的控制逻辑
+    if (lateral_enable) { // 检查侧向运动是否启用
+        // 根据滚转角计算侧向推力，并设置给电机
+        // euler_roll_angle_cd * 0.01f 是为了将角度缩放到合适的范围
+        _motors.set_lateral(sinf(radians(euler_roll_angle_cd * 0.01f))); 
+        // 将滚转角更新为偏移量的100倍
+        euler_roll_angle_cd = roll_offset_deg * 100.0f; 
     } else {
-        _motors.set_lateral(0.0f);
-        euler_roll_angle_cd += roll_offset_deg * 100.0f;
+        // 如果侧向运动未启用，设置侧向推力为0
+        _motors.set_lateral(0.0f); 
+        // 增加滚转角的偏移量
+        euler_roll_angle_cd += roll_offset_deg * 100.0f; 
     }
-    euler_roll_angle_cd = wrap_180_cd(euler_roll_angle_cd);
+    // 确保滚转角在[-180, 180]度范围内
+    euler_roll_angle_cd = wrap_180_cd(euler_roll_angle_cd); 
 }
 
 /*
@@ -138,28 +155,37 @@ void AC_AttitudeControl_Multi_6DoF::input_rate_bf_roll_pitch_yaw_3(float roll_ra
     AC_AttitudeControl_Multi::input_rate_bf_roll_pitch_yaw_3(roll_rate_bf_cds, pitch_rate_bf_cds, yaw_rate_bf_cds);
 }
 
-// Command an angular step (i.e change) in body frame angle
+// 在机体坐标系中命令一个角度变化（即角度步进）
 void AC_AttitudeControl_Multi_6DoF::input_angle_step_bf_roll_pitch_yaw(float roll_angle_step_bf_cd, float pitch_angle_step_bf_cd, float yaw_angle_step_bf_cd) {
+    // 将电机的横向和前向控制设置为零
+    // 这可能是为了在进行角度调整时避免电机的意外操作
     _motors.set_lateral(0.0f);
     _motors.set_forward(0.0f);
 
+    // 调用基类的方法处理角度步进输入
+    // 这允许基类实现的逻辑处理姿态控制
     AC_AttitudeControl_Multi::input_angle_step_bf_roll_pitch_yaw(roll_angle_step_bf_cd, pitch_angle_step_bf_cd, yaw_angle_step_bf_cd);
 }
 
-// Command a Quaternion attitude with feedforward and smoothing
-// attitude_desired_quat: is updated on each time_step (_dt) by the integral of the angular velocity
+// 输入四元数姿态控制的函数，支持前馈和光滑处理
+// attitude_desired_quat: 在每个时间步长 (_dt) 中通过角速度的积分更新
 void AC_AttitudeControl_Multi_6DoF::input_quaternion(Quaternion& attitude_desired_quat, Vector3f ang_vel_body) {
+    // 如果当前编译为 SITL 模式，触发 panic，提示此函数未实现
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     AP_HAL::panic("input_quaternion not implemented AC_AttitudeControl_Multi_6DoF");
 #endif
 
+    // 将电机的横向和前向控制设置为零
+    // 这可能是为了在未实现的情况下避免电机的意外操作
     _motors.set_lateral(0.0f);
     _motors.set_forward(0.0f);
 
+    // 调用基类的方法处理四元数输入
+    // 这允许基类实现的逻辑处理姿态控制
     AC_AttitudeControl_Multi::input_quaternion(attitude_desired_quat, ang_vel_body);
 }
 
-
+// 单例模式的静态成员变量，指向该类的唯一实例
 AC_AttitudeControl_Multi_6DoF *AC_AttitudeControl_Multi_6DoF::_singleton = nullptr;
 
 #endif // AP_SCRIPTING_ENABLED

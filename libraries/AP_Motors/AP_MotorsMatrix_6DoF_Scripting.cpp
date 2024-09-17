@@ -27,47 +27,50 @@ extern const AP_HAL::HAL& hal;
 
 void AP_MotorsMatrix_6DoF_Scripting::output_to_motors()
 {
+    // 根据当前的马达状态执行不同的输出逻辑
     switch (_spool_state) {
-        case SpoolState::SHUT_DOWN:
-        case SpoolState::GROUND_IDLE:
+        case SpoolState::SHUT_DOWN: // 状态：关闭
+        case SpoolState::GROUND_IDLE: // 状态：地面待机
         {
-            // no output, cant spin up for ground idle because we don't know which way motors should be spining
+            // 在关闭或待机状态下，不输出任何信号，因为我们不知道马达应该如何旋转
             for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled[i]) {
-                    _actuator[i] = 0.0f;
+                if (motor_enabled[i]) { // 检查当前马达是否启用
+                    _actuator[i] = 0.0f; // 设置马达输出为0
                 }
             }
-            break;
+            break; // 退出当前状态处理
         }
-        case SpoolState::SPOOLING_UP:
-        case SpoolState::THROTTLE_UNLIMITED:
-        case SpoolState::SPOOLING_DOWN:
-            // set motor output based on thrust requests
+        case SpoolState::SPOOLING_UP: // 状态：加速
+        case SpoolState::THROTTLE_UNLIMITED: // 状态：油门无限制
+        case SpoolState::SPOOLING_DOWN: // 状态：减速
+            // 根据推力请求设置马达输出
             for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-                if (motor_enabled[i]) {
-                    if (_reversible[i]) {
-                        // revesible motor can provide both positive and negative thrust, +- spin max, spin min does not apply
+                if (motor_enabled[i]) { // 检查当前马达是否启用
+                    if (_reversible[i]) { // 检查马达是否可逆
+                        // 可逆马达可以提供正负推力，最大旋转和最小旋转不适用
                         if (is_positive(_thrust_rpyt_out[i])) { 
+                            // 如果推力为正，应用推力曲线和电压缩放，并乘以最大旋转值
                             _actuator[i] = thr_lin.apply_thrust_curve_and_volt_scaling(_thrust_rpyt_out[i]) * thr_lin.get_spin_max();
-
                         } else if (is_negative(_thrust_rpyt_out[i])) {
+                            // 如果推力为负，应用推力曲线和电压缩放，并乘以最大旋转值（取反）
                             _actuator[i] = -thr_lin.apply_thrust_curve_and_volt_scaling(-_thrust_rpyt_out[i]) * thr_lin.get_spin_max();
-
                         } else {
+                            // 如果推力为零，设置输出为0
                             _actuator[i] = 0.0f;
                         }
                     } else {
-                        // motor can only provide trust in a single direction, spin min to spin max as 'normal' copter
-                         _actuator[i] = thr_lin.thrust_to_actuator(_thrust_rpyt_out[i]);
+                        // 非可逆马达只能提供单向推力，正常飞行器的旋转范围
+                        _actuator[i] = thr_lin.thrust_to_actuator(_thrust_rpyt_out[i]);
                     }
                 }
             }
-            break;
+            break; // 退出当前状态处理
     }
 
-    // Send to each motor
+    // 将计算的输出发送到每个马达
     for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-        if (motor_enabled[i]) {
+        if (motor_enabled[i]) { // 检查当前马达是否启用
+            // 将马达的输出值乘以4500并发送到相应的马达输出通道
             SRV_Channels::set_output_scaled(SRV_Channels::get_motor_function(i), _actuator[i] * 4500);
         }
     }
