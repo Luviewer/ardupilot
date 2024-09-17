@@ -188,8 +188,8 @@ public:
     void                set_forward(float forward_in) { _forward_in = forward_in; }; // range -1 ~ +1
     void                set_lateral(float lateral_in) { _lateral_in = lateral_in; };     // range -1 ~ +1
 
-    // for 6DoF vehicles, sets the roll and pitch offset, this rotates the thrust vector in body frame
-    virtual void        set_roll_pitch(float roll_deg, float pitch_deg) {};
+    // 对于6自由度飞行器，设置滚转和俯仰偏移，这将旋转机体框架中的推力向量
+    virtual void set_roll_pitch(float roll_deg, float pitch_deg) {};
 
     // accessors for roll, pitch, yaw and throttle inputs to motors
     float               get_roll() const { return _roll_in; }
