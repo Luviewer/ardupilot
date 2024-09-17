@@ -13,7 +13,7 @@
  #include <AC_AttitudeControl/AC_WeatherVane.h>
 #endif
 
-#if USER_PARAMS_ENABLED == ENABLED 
+#if USER_PARAMS_ENABLED == 1 
  #include "UserParameters.h"
 #endif
 
