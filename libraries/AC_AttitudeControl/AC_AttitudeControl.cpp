@@ -297,6 +297,23 @@ void AC_AttitudeControl::landed_gain_reduction(bool landed)
 //    integrate them into the target attitude. Any errors between the target attitude and the measured attitude are
 //    corrected by first correcting the thrust vector until the angle between the target thrust vector measured
 //    trust vector drops below 2*AC_ATTITUDE_THRUST_ERROR_ANGLE. At this point the heading is also corrected.
+// 姿态控制器围绕期望姿态、目标姿态和测量姿态的概念工作。
+// 期望姿态是指输入到姿态控制器的姿态，表达了高层代码希望飞机移动到的位置。
+// 目标姿态通过抖动、加速度和速度限制逐渐移动到期望姿态。
+// 目标角速度直接输入到速率控制器中。测量姿态与目标姿态之间的角度误差
+// 被输入到角度控制器中，角度控制器的输出在速率控制器的输入处相加。
+// 通过将目标角速度直接输入到速率控制器中，测量姿态和目标姿态始终保持非常接近。
+//
+// 下面所有输入函数都遵循相同的程序
+// 1. 根据输入变量定义期望姿态或姿态变化
+// 2. 根据角速度目标和自上次循环以来的时间更新目标姿态
+// 3. 使用期望姿态和输入变量，定义目标角速度，使其能够将目标姿态移动到期望姿态
+// 4. 如果未使用 _rate_bf_ff_enabled，则将目标姿态和目标角速度设置为期望姿态和期望角速度
+// 5. 确保 _attitude_target、_euler_angle_target、_euler_rate_target 和
+//    _ang_vel_target 已经定义。这确保可以在不出现不连续的情况下更改输入模式。
+// 6. 然后运行 attitude_controller_run_quat 将目标角速度传递给速率控制器并将其整合到目标姿态中。
+//    任何目标姿态与测量姿态之间的误差首先通过校正推力矢量来纠正，直到目标推力矢量和测量推力矢量之间的角度
+//    低于 2*AC_ATTITUDE_THRUST_ERROR_ANGLE。此时，也会校正航向。
 
 // Command a Quaternion attitude with feedforward and smoothing
 // attitude_desired_quat: is updated on each time_step by the integral of the body frame angular velocity

@@ -655,6 +655,13 @@ bool ModeGuided::use_wpnav_for_position_control() const
 // climb_rate_cms_or_thrust: represents either the climb_rate (cm/s) or thrust scaled from [0, 1], unitless
 // use_thrust: IF true: climb_rate_cms_or_thrust represents thrust
 //             IF false: climb_rate_cms_or_thrust represents climb_rate (cm/s)
+// 设置引导模式的角目标子模式：使用旋转四元数、角速度和爬升率或推力（取决于用户选项）
+// attitude_quat: 若为零：必须提供 ang_vel_body（体坐标系角速度），即使全为零
+//                若非零：使用四元数和体坐标系角速度进行姿态控制
+// ang_vel_body: 体坐标系角速度（弧度/秒）
+// climb_rate_cms_or_thrust: 表示爬升率（厘米/秒）或推力（范围从0到1，无单位）
+// use_thrust: 若为真：climb_rate_cms_or_thrust 表示推力
+//             若为假：climb_rate_cms_or_thrust 表示爬升率（厘米/秒）
 void ModeGuided::set_angle(const Quaternion &attitude_quat, const Vector3f &ang_vel_body, float climb_rate_cms_or_thrust, bool use_thrust)
 {
     // check we are in velocity control mode
