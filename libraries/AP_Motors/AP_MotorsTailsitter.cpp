@@ -150,8 +150,11 @@ void AP_MotorsTailsitter::output_to_motors()
         // hiwonder_r->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
         // hiwonder_l->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
 
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_cdeg_L + aim_pitch_deg * 100 + forward_thrust * 4500);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_cdeg_R - aim_pitch_deg * 100 - forward_thrust * 4500);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_cdeg_L + aim_pitch_deg * 100);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_cdeg_R - aim_pitch_deg * 100);
+
+        // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, 0);
+        // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, 0);
     }
 }
 
@@ -213,6 +216,19 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
         limit.roll  = true;
     }
 
+
+    // 将推力旋转到体坐标系
+    Matrix3f rot;  // 定义一个3x3旋转矩阵
+    Vector3f rpy_vec;  // 定义一个3维推力向量
+
+    // 使用欧拉角（roll, pitch, yaw）创建旋转矩阵
+    // rot.from_euler312(0, -_pitch_offset, 0.0f);  // 使用滚转角和俯仰角创建旋转矩阵，偏航角为0
+    // rpy_vec = rot * Vector3f(roll_thrust, pitch_thrust, yaw_thrust);
+
+    // roll_thrust = rpy_vec.x;
+    // pitch_thrust = rpy_vec.y;
+    // yaw_thrust = rpy_vec.z;
+
     // calculate left and right throttle outputs
     _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
     _thrust_right = throttle_thrust - roll_thrust * 0.5f;
@@ -253,10 +269,20 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
-    _tilt_left  = pitch_thrust - yaw_thrust;
-    _tilt_right = -pitch_thrust - yaw_thrust;
+    _tilt_left  = -pitch_thrust + yaw_thrust;
+    _tilt_right = pitch_thrust + yaw_thrust;
+    _tilt_left *= 0.5f;
+    _tilt_right *= 0.5f;
 
     forward_thrust = get_forward();
+}
+
+// 设置滚转和俯仰偏移，这将在体坐标系中旋转推力向量
+// 这些偏移通常设置为使油门推力向量指向地球坐标系的上方
+void AP_MotorsTailsitter::set_roll_pitch(float roll_deg, float pitch_deg)
+{
+    _roll_offset = radians(roll_deg);  // 将滚转角度从度转换为弧度，并赋值给滚转偏移
+    _pitch_offset = radians(pitch_deg);  // 将俯仰角度从度转换为弧度，并赋值给俯仰偏移
 }
 
 // output_test_seq - spin a motor at the pwm value specified

@@ -37,41 +37,45 @@ void AC_AttitudeControl_Multi_6DoF::rate_controller_run() {
 
 /*
     override all input to the attitude controller and convert desired angles into thrust angles and substitute
+    重写无人机姿态控制器的所有输入，将期望的角度转换为推力角并进行替换
 */
 
-// Command an euler roll and pitch angle and an euler yaw rate with angular velocity feedforward and smoothing
+// 命令欧拉滚转和俯仰角以及欧拉航向速率，并进行角速度前馈和平滑处理
 void AC_AttitudeControl_Multi_6DoF::input_euler_angle_roll_pitch_euler_rate_yaw(float euler_roll_angle_cd, float euler_pitch_angle_cd, float euler_yaw_rate_cds) {
-
+    // 设置前向和横向的控制目标
     set_forward_lateral(euler_pitch_angle_cd, euler_roll_angle_cd);
 
+    // 调用基类函数以输入欧拉角和航向速率
     AC_AttitudeControl_Multi::input_euler_angle_roll_pitch_euler_rate_yaw(euler_roll_angle_cd, euler_pitch_angle_cd, euler_yaw_rate_cds);
 }
 
-// Command an euler roll, pitch and yaw angle with angular velocity feedforward and smoothing
+// 命令欧拉滚转、俯仰和航向角，并进行角速度前馈和平滑处理
 void AC_AttitudeControl_Multi_6DoF::input_euler_angle_roll_pitch_yaw(float euler_roll_angle_cd, float euler_pitch_angle_cd, float euler_yaw_angle_cd, bool slew_yaw) {
-
+    // 设置前向和横向的控制目标
     set_forward_lateral(euler_pitch_angle_cd, euler_roll_angle_cd);
 
+    // 调用基类函数以输入欧拉角和航向角
     AC_AttitudeControl_Multi::input_euler_angle_roll_pitch_yaw(euler_roll_angle_cd, euler_pitch_angle_cd, euler_yaw_angle_cd, slew_yaw);
 }
 
-// Command a thrust vector and heading rate
+// 命令推力向量和航向速率
 void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_rate_heading(const Vector3f& thrust_vector, float heading_rate_cds, bool slew_yaw)
 {
-    // convert thrust vector to a roll and pitch angles
-    // this negates the advantage of using thrust vector control, but works just fine
+    // 将推力向量转换为滚转角和俯仰角
+    // 这会抵消使用推力向量控制的优势，但仍然可以正常工作
     Vector3f angle_target = attitude_from_thrust_vector(thrust_vector, _ahrs.yaw).to_vector312();
 
+    // 调用函数以输入目标的滚转角、俯仰角和航向速率
     input_euler_angle_roll_pitch_euler_rate_yaw(degrees(angle_target.x) * 100.0f, degrees(angle_target.y) * 100.0f, heading_rate_cds);
 }
 
-// Command a thrust vector, heading and heading rate
+// 命令推力向量、航向角和航向速率
 void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_heading(const Vector3f& thrust_vector, float heading_angle_cd, float heading_rate_cds)
 {
-    // convert thrust vector to a roll and pitch angles
+    // 将推力向量转换为滚转角和俯仰角
     Vector3f angle_target = attitude_from_thrust_vector(thrust_vector, _ahrs.yaw).to_vector312();
 
-    // note that we are throwing away heading rate here
+    // 注意这里我们丢弃了航向速率
     input_euler_angle_roll_pitch_yaw(degrees(angle_target.x) * 100.0f, degrees(angle_target.y) * 100.0f, heading_angle_cd, true);
 }
 
@@ -112,46 +116,67 @@ void AC_AttitudeControl_Multi_6DoF::set_forward_lateral(float &euler_pitch_angle
 
 /*
     all other input functions should zero thrust vectoring
+    无人机的姿态控制器中重写所有输入函数，以实现零推力矢量
 */
 
-// Command euler yaw rate and pitch angle with roll angle specified in body frame
-// (used only by tailsitter quadplanes)
+// 命令欧拉偏航速率和俯仰角，滚转角在机体坐标系中指定
+// （仅用于tailsitter quadplanes飞机）
 void AC_AttitudeControl_Multi_6DoF::input_euler_rate_yaw_euler_angle_pitch_bf_roll(bool plane_controls, float euler_roll_angle_cd, float euler_pitch_angle_cd, float euler_yaw_rate_cds) {
+    // 将横向运动的速度设置为0.0f，确保无人机在控制过程中不进行横向移动
     _motors.set_lateral(0.0f);
+    // 将前向运动的速度设置为0.0f，确保无人机在控制过程中不进行前向移动
     _motors.set_forward(0.0f);
 
+    // 调用父类 AC_AttitudeControl_Multi 的同名函数
+    // 将传入的参数传递给父类进行处理
     AC_AttitudeControl_Multi::input_euler_rate_yaw_euler_angle_pitch_bf_roll(plane_controls, euler_roll_angle_cd, euler_pitch_angle_cd, euler_yaw_rate_cds);
 }
 
-// Command an euler roll, pitch, and yaw rate with angular velocity feedforward and smoothing
+// 命令欧拉角的滚转、俯仰和偏航速率，使用角速度前馈和控制平滑
 void AC_AttitudeControl_Multi_6DoF::input_euler_rate_roll_pitch_yaw(float euler_roll_rate_cds, float euler_pitch_rate_cds, float euler_yaw_rate_cds) {
+    // 将横向运动的速度设置为0.0f，确保无人机在控制过程中不进行横向移动
     _motors.set_lateral(0.0f);
+    // 将前向运动的速度设置为0.0f，确保无人机在控制过程中不进行前向移动
     _motors.set_forward(0.0f);
 
+    // 调用父类 AC_AttitudeControl_Multi 的同名函数
+    // 将传入的欧拉角滚转、俯仰和偏航速率传递给父类进行处理
     AC_AttitudeControl_Multi::input_euler_rate_roll_pitch_yaw(euler_roll_rate_cds, euler_pitch_rate_cds, euler_yaw_rate_cds);
 }
 
-// Command an angular velocity with angular velocity feedforward and smoothing
+// 命令一个角速度，使用角速度前馈和控制平滑
 void AC_AttitudeControl_Multi_6DoF::input_rate_bf_roll_pitch_yaw(float roll_rate_bf_cds, float pitch_rate_bf_cds, float yaw_rate_bf_cds) {
+    // 将横向运动的速度设置为0.0f，确保无人机在控制过程中不进行横向移动
     _motors.set_lateral(0.0f);
+    // 将前向运动的速度设置为0.0f，确保无人机在控制过程中不进行前向移动
     _motors.set_forward(0.0f);
 
+    // 调用父类 AC_AttitudeControl_Multi 的同名函数
+    // 将传入的滚转、俯仰和偏航速率传递给父类进行处理
     AC_AttitudeControl_Multi::input_rate_bf_roll_pitch_yaw(roll_rate_bf_cds, pitch_rate_bf_cds, yaw_rate_bf_cds);
 }
 
-// Command an angular velocity with angular velocity feedforward and smoothing
+// 命令一个角速度，使用角速度前馈和控制平滑
 void AC_AttitudeControl_Multi_6DoF::input_rate_bf_roll_pitch_yaw_2(float roll_rate_bf_cds, float pitch_rate_bf_cds, float yaw_rate_bf_cds) {
+    // 将横向运动的速度设置为0.0f，确保无人机在控制过程中不进行横向移动
     _motors.set_lateral(0.0f);
+    // 将前向运动的速度设置为0.0f，确保无人机在控制过程中不进行前向移动
     _motors.set_forward(0.0f);
 
+    // 调用父类 AC_AttitudeControl_Multi 的同名函数
+    // 将传入的滚转、俯仰和偏航速率传递给父类进行处理
     AC_AttitudeControl_Multi::input_rate_bf_roll_pitch_yaw_2(roll_rate_bf_cds, pitch_rate_bf_cds, yaw_rate_bf_cds);
 }
 
-// Command an angular velocity with angular velocity smoothing using rate loops only with integrated rate error stabilization
+// 命令一个角速度，使用速率环进行平滑控制，并集成速率误差稳定
 void AC_AttitudeControl_Multi_6DoF::input_rate_bf_roll_pitch_yaw_3(float roll_rate_bf_cds, float pitch_rate_bf_cds, float yaw_rate_bf_cds) {
+    // 将横向运动的速度设置为0.0f，确保无人机在控制过程中不进行横向移动
     _motors.set_lateral(0.0f);
+    // 将前向运动的速度设置为0.0f，确保无人机在控制过程中不进行前向移动
     _motors.set_forward(0.0f);
 
+    // 调用父类 AC_AttitudeControl_Multi 的同名函数
+    // 将传入的滚转、俯仰和偏航速率传递给父类进行处理
     AC_AttitudeControl_Multi::input_rate_bf_roll_pitch_yaw_3(roll_rate_bf_cds, pitch_rate_bf_cds, yaw_rate_bf_cds);
 }
 

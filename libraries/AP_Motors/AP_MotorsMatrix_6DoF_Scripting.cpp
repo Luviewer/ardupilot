@@ -79,34 +79,33 @@ void AP_MotorsMatrix_6DoF_Scripting::output_to_motors()
 // output_armed - sends commands to the motors
 void AP_MotorsMatrix_6DoF_Scripting::output_armed_stabilizing()
 {
-    uint8_t i;                          // general purpose counter
-    float   roll_thrust;                // roll thrust input value, +/- 1.0
-    float   pitch_thrust;               // pitch thrust input value, +/- 1.0
-    float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
-    float   throttle_thrust;            // throttle thrust input value, 0.0 - 1.0
-    float   forward_thrust;             // forward thrust input value, +/- 1.0
-    float   right_thrust;               // right thrust input value, +/- 1.0
+    uint8_t i;                          // 通用计数器
+    float   roll_thrust;                // 滚转推力输入值，范围 ±1.0
+    float   pitch_thrust;               // 俯仰推力输入值，范围 ±1.0
+    float   yaw_thrust;                 // 偏航推力输入值，范围 ±1.0
+    float   throttle_thrust;            // 油门推力输入值，范围 0.0 - 1.0
+    float   forward_thrust;             // 前进推力输入值，范围 ±1.0
+    float   right_thrust;               // 右侧推力输入值，范围 ±1.0
 
-    // note that the throttle, forwards and right inputs are not in bodyframe, they are in the frame of the 'normal' 4DoF copter were pretending to be
+    // 注意，油门、前进和右侧输入不是在体坐标系中，而是在我们假装的“正常”4自由度多旋翼的坐标系中
 
-    // apply voltage and air pressure compensation
-    const float compensation_gain = thr_lin.get_compensation_gain(); // compensation for battery voltage and altitude
-    roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
-    pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;
-    yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;
-    throttle_thrust = get_throttle() * compensation_gain;
+    // 应用电压和气压补偿
+    const float compensation_gain = thr_lin.get_compensation_gain(); // 电池电压和海拔高度的补偿
+    roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;      // 计算滚转推力
+    pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;   // 计算俯仰推力
+    yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;         // 计算偏航推力
+    throttle_thrust = get_throttle() * compensation_gain;            // 计算油门推力
 
-    // scale horizontal thrust with throttle, this mimics a normal copter
-    // so we don't break the lean angle proportional acceleration assumption made by the position controller
-    forward_thrust = get_forward() * throttle_thrust;
-    right_thrust = get_lateral() * throttle_thrust;
+    // 用油门缩放水平推力，这模仿了一个正常的多旋翼
+    // 这样我们就不会破坏位置控制器假设的倾斜角度比例加速度
+    forward_thrust = get_forward() * throttle_thrust;                // 计算前进推力
+    right_thrust = get_lateral() * throttle_thrust;                  // 计算右侧推力
 
-
-    // set throttle limit flags
+    // 设置油门限制标志
     if (throttle_thrust <= 0) {
         throttle_thrust = 0;
-        // we cant thrust down, the vehicle can do it, but it would break a lot of assumptions further up the control stack
-        // 1G decent probably plenty anyway....
+        // 我们不能向下推力，尽管车辆可以这样做，但这会破坏控制堆栈中更高层次的许多假设
+        // 1G下降可能已经足够了......
         limit.throttle_lower = true;
     }
     if (throttle_thrust >= 1) {
@@ -114,117 +113,135 @@ void AP_MotorsMatrix_6DoF_Scripting::output_armed_stabilizing()
         limit.throttle_upper = true;
     }
 
-    // rotate the thrust into bodyframe
-    Matrix3f rot;
-    Vector3f thrust_vec;
-    rot.from_euler312(_roll_offset, _pitch_offset, 0.0f);
+    // 将推力旋转到体坐标系
+    Matrix3f rot;  // 定义一个3x3旋转矩阵
+    Vector3f thrust_vec;  // 定义一个3维推力向量
 
+    // 使用欧拉角（roll, pitch, yaw）创建旋转矩阵
+    rot.from_euler312(_roll_offset, _pitch_offset, 0.0f);  // 使用滚转角和俯仰角创建旋转矩阵，偏航角为0
 
     /*
-        upwards thrust, independent of orientation
+        向上的推力，独立于方向
     */
-    thrust_vec.x = 0.0f;
-    thrust_vec.y = 0.0f;
-    thrust_vec.z = throttle_thrust;
+    thrust_vec.x = 0.0f;  // 推力向量的x分量为0
+    thrust_vec.y = 0.0f;  // 推力向量的y分量为0
+    thrust_vec.z = throttle_thrust;  // 推力向量的z分量为油门推力
+
+    // 将推力向量从世界坐标系旋转到体坐标系
     thrust_vec = rot * thrust_vec;
+
     for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            _thrust_rpyt_out[i] =  thrust_vec.x * _forward_factor[i];
-            _thrust_rpyt_out[i] += thrust_vec.y * _right_factor[i];
-            _thrust_rpyt_out[i] += thrust_vec.z * _throttle_factor[i];
+            // 计算每个电机的推力
+            _thrust_rpyt_out[i] =  thrust_vec.x * _forward_factor[i];  // 前进分量
+            _thrust_rpyt_out[i] += thrust_vec.y * _right_factor[i];    // 右侧分量
+            _thrust_rpyt_out[i] += thrust_vec.z * _throttle_factor[i]; // 油门分量
 
             if (fabsf(_thrust_rpyt_out[i]) >= 1) {
-                // if we hit this the mixer is probably scaled incorrectly
+                // 如果推力超过1，可能是混合器缩放不正确
                 limit.throttle_upper = true;
             }
-            _thrust_rpyt_out[i] = constrain_float(_thrust_rpyt_out[i],-1.0f,1.0f);
+            // 约束推力在-1.0到1.0之间
+            _thrust_rpyt_out[i] = constrain_float(_thrust_rpyt_out[i], -1.0f, 1.0f);
         }
     }
 
-
     /*
-        rotations: roll, pitch and yaw
+        旋转：滚转、俯仰和偏航
     */
-    float rpy_ratio = 1.0f;  // scale factor, output will be scaled by this ratio so it can all fit evenly
-    float thrust[AP_MOTORS_MAX_NUM_MOTORS];
+    float rpy_ratio = 1.0f;  // 缩放因子，输出将按此比例缩放，以便所有值都能均匀分布
+    float thrust[AP_MOTORS_MAX_NUM_MOTORS];  // 定义一个数组来存储每个电机的推力
+
     for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            thrust[i] =  roll_thrust * _roll_factor[i];
-            thrust[i] += pitch_thrust * _pitch_factor[i];
-            thrust[i] += yaw_thrust * _yaw_factor[i];
-            float total_thrust = _thrust_rpyt_out[i] + thrust[i];
-            // control input will be limited by motor range
+            // 计算每个电机的推力
+            thrust[i] =  roll_thrust * _roll_factor[i];  // 滚转分量
+            thrust[i] += pitch_thrust * _pitch_factor[i];  // 俯仰分量
+            thrust[i] += yaw_thrust * _yaw_factor[i];  // 偏航分量
+
+            float total_thrust = _thrust_rpyt_out[i] + thrust[i];  // 计算总推力
+
+            // 控制输入将受到电机范围的限制
             if (total_thrust > 1.0f) {
-                rpy_ratio = MIN(rpy_ratio,(1.0f - _thrust_rpyt_out[i]) / thrust[i]);
+                rpy_ratio = MIN(rpy_ratio, (1.0f - _thrust_rpyt_out[i]) / thrust[i]);
             } else if (total_thrust < -1.0f) {
-                rpy_ratio = MIN(rpy_ratio,(-1.0f -_thrust_rpyt_out[i]) / thrust[i]);
+                rpy_ratio = MIN(rpy_ratio, (-1.0f - _thrust_rpyt_out[i]) / thrust[i]);
             }
         }
     }
 
-    // set limit flags if output is being scaled
+    // 如果输出被缩放，设置限制标志
     if (rpy_ratio < 1) {
-        limit.roll = true;
-        limit.pitch = true;
-        limit.yaw = true;
+        limit.roll = true;  // 设置滚转限制标志
+        limit.pitch = true; // 设置俯仰限制标志
+        limit.yaw = true;   // 设置偏航限制标志
     }
 
-    // scale back rotations evenly so it will all fit
+    // 均匀缩放旋转，使其适合
     for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            _thrust_rpyt_out[i] = constrain_float(_thrust_rpyt_out[i] + thrust[i] * rpy_ratio,-1.0f,1.0f);
+            // 计算并约束每个电机的推力
+            _thrust_rpyt_out[i] = constrain_float(_thrust_rpyt_out[i] + thrust[i] * rpy_ratio, -1.0f, 1.0f);
         }
     }
 
     /*
-        forward and lateral, independent of orentaiton
+        前进和横向推力，独立于方向
     */
-    thrust_vec.x = forward_thrust;
-    thrust_vec.y = right_thrust;
-    thrust_vec.z = 0.0f;
+    thrust_vec.x = forward_thrust;  // 推力向量的x分量为前进推力
+    thrust_vec.y = right_thrust;    // 推力向量的y分量为右侧推力
+    thrust_vec.z = 0.0f;            // 推力向量的z分量为0
+
+    // 将推力向量从世界坐标系旋转到体坐标系
     thrust_vec = rot * thrust_vec;
 
-    float horz_ratio = 1.0f; 
+    float horz_ratio = 1.0f;  // 水平推力的缩放因子，输出将按此比例缩放，以便所有值都能均匀分布
+
     for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
         if (motor_enabled[i]) {
-            thrust[i] =  thrust_vec.x * _forward_factor[i];
-            thrust[i] += thrust_vec.y * _right_factor[i];
-            thrust[i] += thrust_vec.z * _throttle_factor[i];
-            float total_thrust = _thrust_rpyt_out[i] + thrust[i];
-            // control input will be limited by motor range
+            // 计算每个电机的推力
+            thrust[i] =  thrust_vec.x * _forward_factor[i];  // 前进分量
+            thrust[i] += thrust_vec.y * _right_factor[i];    // 右侧分量
+            thrust[i] += thrust_vec.z * _throttle_factor[i]; // 油门分量（这里为0）
+
+            float total_thrust = _thrust_rpyt_out[i] + thrust[i];  // 计算总推力
+
+            // 控制输入将受到电机范围的限制
             if (total_thrust > 1.0f) {
-                horz_ratio = MIN(horz_ratio,(1.0f - _thrust_rpyt_out[i]) / thrust[i]);
+                horz_ratio = MIN(horz_ratio, (1.0f - _thrust_rpyt_out[i]) / thrust[i]);
             } else if (total_thrust < -1.0f) {
-                horz_ratio = MIN(horz_ratio,(-1.0f -_thrust_rpyt_out[i]) / thrust[i]);
+                horz_ratio = MIN(horz_ratio, (-1.0f - _thrust_rpyt_out[i]) / thrust[i]);
             }
         }
     }
 
-    // scale back evenly so it will all fit
-    for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-        if (motor_enabled[i]) {
-            _thrust_rpyt_out[i] = constrain_float(_thrust_rpyt_out[i] + thrust[i] * horz_ratio,-1.0f,1.0f);
+    // 均匀缩放，使其适合
+    for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {  // 遍历所有电机
+        if (motor_enabled[i]) {  // 检查当前电机是否启用
+            // 计算并约束每个电机的推力
+            _thrust_rpyt_out[i] = constrain_float(_thrust_rpyt_out[i] + thrust[i] * horz_ratio, -1.0f, 1.0f);
         }
     }
 
     /*
-        apply deadzone to revesible motors, this stops motors from reversing direction too often
-        re-use yaw headroom param for deadzone, constain to a max of 25%
+        对可逆电机应用死区，这可以防止电机频繁改变方向
+        重用偏航余量参数作为死区，限制最大为25%
     */
-    const float deadzone = constrain_float(_yaw_headroom.get() * 0.001f,0.0f,0.25f);
-    for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
-        if (motor_enabled[i] && _reversible[i]) {
-            if (is_negative(_thrust_rpyt_out[i])) {
-                if ((_thrust_rpyt_out[i] > -deadzone) && is_positive(_last_thrust_out[i])) {
-                    _thrust_rpyt_out[i] = 0.0f;
+    const float deadzone = constrain_float(_yaw_headroom.get() * 0.001f, 0.0f, 0.25f);  // 计算死区值，范围在0.0到0.25之间
+
+    for (i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {  // 遍历所有电机
+        if (motor_enabled[i] && _reversible[i]) {  // 检查当前电机是否启用且是可逆电机
+            if (is_negative(_thrust_rpyt_out[i])) {  // 检查当前电机的推力是否为负
+                if ((_thrust_rpyt_out[i] > -deadzone) && is_positive(_last_thrust_out[i])) {  // 如果推力值大于负死区且上一次推力值为正
+                    _thrust_rpyt_out[i] = 0.0f;  // 将推力值设为0
                 } else {
-                    _last_thrust_out[i] = _thrust_rpyt_out[i];
+                    _last_thrust_out[i] = _thrust_rpyt_out[i];  // 更新上一次推力值
                 }
-            } else if (is_positive(_thrust_rpyt_out[i])) {
-                if ((_thrust_rpyt_out[i] < deadzone) && is_negative(_last_thrust_out[i])) {
-                    _thrust_rpyt_out[i] = 0.0f;
+            } else if (is_positive(_thrust_rpyt_out[i])) {  // 检查当前电机的推力是否为正
+                if ((_thrust_rpyt_out[i] < deadzone) && is_negative(_last_thrust_out[i])) {  // 如果推力值小于死区且上一次推力值为负
+                    _thrust_rpyt_out[i] = 0.0f;  // 将推力值设为0
                 } else {
-                    _last_thrust_out[i] = _thrust_rpyt_out[i];
+                    _last_thrust_out[i] = _thrust_rpyt_out[i];  // 更新上一次推力值
                 }
             }
         }
@@ -232,12 +249,12 @@ void AP_MotorsMatrix_6DoF_Scripting::output_armed_stabilizing()
 
 }
 
-// sets the roll and pitch offset, this rotates the thrust vector in body frame
-// these are typically set such that the throttle thrust vector is earth frame up
+// 设置滚转和俯仰偏移，这将在体坐标系中旋转推力向量
+// 这些偏移通常设置为使油门推力向量指向地球坐标系的上方
 void AP_MotorsMatrix_6DoF_Scripting::set_roll_pitch(float roll_deg, float pitch_deg)
 {
-    _roll_offset = radians(roll_deg);
-    _pitch_offset = radians(pitch_deg);
+    _roll_offset = radians(roll_deg);  // 将滚转角度从度转换为弧度，并赋值给滚转偏移
+    _pitch_offset = radians(pitch_deg);  // 将俯仰角度从度转换为弧度，并赋值给俯仰偏移
 }
 
 // add_motor, take roll, pitch, yaw, throttle(up), forward, right factors along with a bool if the motor is reversible and the testing order, called from scripting

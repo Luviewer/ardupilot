@@ -65,7 +65,7 @@ public:
     float get_althold_lean_angle_max_cd() const override { return 9000.0f; }
 
     // set the attitude that will be used in 6DoF flight
-    void set_offset_roll_pitch(float roll_deg, float pitch_deg) {
+    void set_offset_roll_pitch(float roll_deg, float pitch_deg) override {
         roll_offset_deg = roll_deg;
         pitch_offset_deg = pitch_deg;
     }
@@ -87,8 +87,8 @@ private:
     float roll_offset_deg;
     float pitch_offset_deg;
 
-    bool forward_enable = true;
-    bool lateral_enable = true;
+    bool forward_enable = false;
+    bool lateral_enable = false;
 
     static AC_AttitudeControl_Multi_6DoF *_singleton;
 
