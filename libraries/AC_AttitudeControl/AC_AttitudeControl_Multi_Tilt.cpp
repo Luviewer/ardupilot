@@ -75,12 +75,15 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
     // pitch/forward
     if (forward_enable) {
         _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
-        euler_pitch_angle_cd = pitch_offset_deg * 100.0f;
+        euler_pitch_angle_cd = pitch_offset_deg * 100.0f * 0.2f;
     } else {
-        _motors.set_forward(0.0f);
+        // _motors.set_forward(0.0f);
+        _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
+
         euler_pitch_angle_cd += pitch_offset_deg * 100.0f;
     }
     euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
+    euler_pitch_angle_cd = 0.0f;
 
     // roll/lateral
     if (lateral_enable) {
