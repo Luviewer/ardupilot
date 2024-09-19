@@ -150,8 +150,8 @@ void AP_MotorsTailsitter::output_to_motors()
         // hiwonder_r->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
         // hiwonder_l->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
 
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_cdeg_L + aim_pitch_deg * 100 + forward_thrust * 4500);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_cdeg_R - aim_pitch_deg * 100 - forward_thrust * 4500);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE);
     }
 }
 
@@ -253,8 +253,13 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
+#if CONFIG_HAL_BOARD == HAL_BOARD_SITL
+    _tilt_left  = -pitch_thrust * 0.75f + yaw_thrust * 0.5f;
+    _tilt_right = pitch_thrust * 0.75f + yaw_thrust * 0.5f;
+#else
     _tilt_left  = pitch_thrust - yaw_thrust;
     _tilt_right = -pitch_thrust - yaw_thrust;
+#endif
 
     forward_thrust = get_forward();
 }
