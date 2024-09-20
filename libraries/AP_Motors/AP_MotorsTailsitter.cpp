@@ -110,22 +110,28 @@ void AP_MotorsTailsitter::output_to_motors()
         return;
     }
 
+    float throttle = get_throttle() * 2.0f;
+
+    if (throttle > 1.0f)
+        throttle = 1.0f;
+    else if (throttle < 0)
+        throttle = 0;
+
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN:
             _actuator[0]           = 0.0f;
             _actuator[1]           = 0.0f;
             _actuator[2]           = 0.0f;
             _external_min_throttle = 0.0;
-
-            // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, 0);
-            // SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, 0);
             break;
+
         case SpoolState::GROUND_IDLE:
             set_actuator_with_slew(_actuator[0], actuator_spin_up_to_ground_idle());
             set_actuator_with_slew(_actuator[1], actuator_spin_up_to_ground_idle());
             set_actuator_with_slew(_actuator[2], actuator_spin_up_to_ground_idle());
             _external_min_throttle = 0.0;
             break;
+
         case SpoolState::SPOOLING_UP:
         case SpoolState::THROTTLE_UNLIMITED:
         case SpoolState::SPOOLING_DOWN:
@@ -135,23 +141,26 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
+    float tilt2_l = tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    float tilt2_r = tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
 
     // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2] * 100);
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR + tilt_cdeg_L);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR + tilt_cdeg_R);
+    float tilt_left  = _tilt_left * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle + tilt_cdeg_L;
+    float tilt_right = _tilt_right * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle + tilt_cdeg_R;
+
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
 
     static uint16_t cnt = 0;
 
-    if ((++cnt % 4) == 0) {
-        // hiwonder_r->set_position(SERVO_1, _tilt_right * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
-        // hiwonder_l->set_position(SERVO_3, _tilt_left * SEIRAL_SERVO_MAX_ANGLE + 1500, 0);
-
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE);
+    if ((++cnt % 2) == 0) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_l);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_r);
     }
 }
 
@@ -253,9 +262,12 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
+    pitch_thrust *= 0.75f;
+    yaw_thrust *= 0.5f;
+
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    _tilt_left  = -pitch_thrust * 0.75f + yaw_thrust * 0.5f;
-    _tilt_right = pitch_thrust * 0.75f + yaw_thrust * 0.5f;
+    _tilt_left  = -pitch_thrust + yaw_thrust;
+    _tilt_right = pitch_thrust + yaw_thrust;
 #else
     _tilt_left  = pitch_thrust - yaw_thrust;
     _tilt_right = -pitch_thrust - yaw_thrust;

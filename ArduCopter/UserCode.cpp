@@ -1,5 +1,7 @@
 #include "Copter.h"
 
+const float alpha = 0.02f;
+
 float aim_pitch_deg_before;
 float aim_pitch_deg;
 float delta_aim_pitch_deg;
@@ -69,8 +71,7 @@ void Copter::userhook_FastLoop()
 #endif
 
 #ifdef USERHOOK_50HZLOOP
-const float alpha = 0.02f;
-void        Copter::userhook_50Hz()
+void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
