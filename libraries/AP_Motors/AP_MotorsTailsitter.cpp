@@ -263,7 +263,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
 
     // thrust vectoring
     pitch_thrust *= 0.75f;
-    yaw_thrust *= 0.5f;
+    yaw_thrust *= 0.25f;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     _tilt_left  = -pitch_thrust + yaw_thrust;
