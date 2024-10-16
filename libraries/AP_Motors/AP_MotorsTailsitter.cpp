@@ -30,6 +30,8 @@ extern float aim_pitch_deg;
 extern float tilt_cdeg_R, tilt_cdeg_L;
 extern float tilt2_cdeg_R, tilt2_cdeg_L;
 
+extern float yaw_factor_f;
+
 #define SERVO1_OUTPUT_RANGE    9000
 #define SERVO2_OUTPUT_RANGE    13500
 #define SEIRAL_SERVO_MAX_ANGLE 150
@@ -263,7 +265,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
 
     // thrust vectoring
     pitch_thrust *= 0.75f;
-    yaw_thrust *= 0.25f;
+    yaw_thrust *= yaw_factor_f;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     _tilt_left  = -pitch_thrust + yaw_thrust;
