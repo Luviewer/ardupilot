@@ -19,6 +19,10 @@ const AP_Param::GroupInfo UserParameters::var_info[] = {
     AP_GROUPINFO("_tiltR", 7, UserParameters, _tiltR, 0),
     AP_GROUPINFO("_tiltL", 8, UserParameters, _tiltL, 0),
 
+    AP_GROUPINFO("_yawft", 9, UserParameters, _yaw_fact, 0.25f),
+
+    AP_GROUPINFO("_pitoff", 10, UserParameters, _pitch_offset, 0),
+
     AP_GROUPEND
 };
 
