@@ -74,18 +74,29 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
 {
     extern float pitch_offset;
 
-    // pitch/forward
-    if (forward_enable) {
-        _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
-        euler_pitch_angle_cd = pitch_offset_deg * 100.0f * 0.2f;
-    } else {
-        // _motors.set_forward(0.0f);
-        _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)) * 0.5f);
+    extern const AP_HAL::HAL& hal;
 
+    extern bool fly_mode_rc;
+
+    // pitch/forward
+    if (forward_enable && fly_mode_rc) {
+        _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
+        // euler_pitch_angle_cd = pitch_offset_deg * 100.0f * 0.2f;
+        euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
+        euler_pitch_angle_cd = pitch_offset * 100.0f;
+    } else {
+        _motors.set_forward(0.0f);
+        euler_pitch_angle_cd += pitch_offset * 100.0f;
+
+        // _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)) * 0.5f);
         // euler_pitch_angle_cd += pitch_offset_deg * 100.0f * 0.5f;
     }
-    euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
-    euler_pitch_angle_cd = pitch_offset*100.0f;
+
+    static int16_t cnt = 0;
+    if (++cnt > 100) {
+        cnt = 0;
+        hal.console->printf("euler_pitch_angle_cd=%f\r\n", euler_pitch_angle_cd);
+    }
 
     // roll/lateral
     if (lateral_enable) {

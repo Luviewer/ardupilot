@@ -2,6 +2,8 @@
 
 const float alpha = 0.02f;
 
+bool fly_mode_rc;
+
 float aim_pitch_deg_before;
 float aim_pitch_deg;
 float delta_aim_pitch_deg;
@@ -137,6 +139,11 @@ void Copter::userhook_SlowLoop()
 void Copter::userhook_SuperSlowLoop()
 {
     // put your 1Hz code here
+
+    if (hal.rcin->read(CH_8) > 1700)
+        fly_mode_rc = true;
+    else
+        fly_mode_rc = false;
 
     tilt_cdeg_R  = g2.user_parameters.get_tiltR_Param() * 100.0f;
     tilt_cdeg_L  = g2.user_parameters.get_tiltL_Param() * 100.0f;
