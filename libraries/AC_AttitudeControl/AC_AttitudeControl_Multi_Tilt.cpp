@@ -74,7 +74,7 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
 {
     extern float pitch_offset;
 
-    extern const AP_HAL::HAL& hal;
+    // extern const AP_HAL::HAL& hal;
 
     extern bool fly_mode_rc;
 
@@ -92,11 +92,11 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
         // euler_pitch_angle_cd += pitch_offset_deg * 100.0f * 0.5f;
     }
 
-    static int16_t cnt = 0;
-    if (++cnt > 100) {
-        cnt = 0;
-        hal.console->printf("euler_pitch_angle_cd=%f\r\n", euler_pitch_angle_cd);
-    }
+    // static int16_t cnt = 0;
+    // if (++cnt > 100) {
+    //     cnt = 0;
+    //     hal.console->printf("euler_pitch_angle_cd=%f\r\n", euler_pitch_angle_cd);
+    // }
 
     // roll/lateral
     if (lateral_enable) {
