@@ -143,8 +143,10 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
-    float tilt2_l = tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
-    float tilt2_r = tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    extern float pitch_offset;
+
+    float tilt2_l = tilt2_cdeg_L + pitch_offset * 100 * 0.5f; // + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    float tilt2_r = tilt2_cdeg_R - pitch_offset * 100 * 0.5f; // - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
 
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
@@ -185,6 +187,14 @@ uint32_t AP_MotorsTailsitter::get_motor_mask()
     return motor_mask;
 }
 
+// sets the roll and pitch offset, this rotates the thrust vector in body frame
+// these are typically set such that the throttle thrust vector is earth frame up
+void AP_MotorsTailsitter::set_roll_pitch(float roll_deg, float pitch_deg)
+{
+    _roll_offset  = radians(roll_deg);
+    _pitch_offset = radians(pitch_deg);
+}
+
 // calculate outputs to the motors
 void AP_MotorsTailsitter::output_armed_stabilizing()
 {
@@ -208,6 +218,24 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     const float min_throttle_out = MIN(_external_min_throttle, max_boost_throttle);
     const float max_throttle_out = _throttle_thrust_max * compensation_gain;
 
+    forward_thrust = get_forward() * throttle_thrust;
+
+    // rotate the thrust into bodyframe
+    Matrix3f rot;
+    Vector3f thrust_vec;
+    rot.from_euler312(_roll_offset, _pitch_offset, 0.0f);
+
+    /*
+        forward and lateral, independent of orentaiton
+    */
+    thrust_vec.x = roll_thrust;
+    thrust_vec.y = pitch_thrust;
+    thrust_vec.z = yaw_thrust;
+    thrust_vec   = rot * thrust_vec;
+    roll_thrust  = thrust_vec.x;
+    pitch_thrust = thrust_vec.y;
+    yaw_thrust   = thrust_vec.z;
+
     // sanity check throttle is above min and below current limited throttle
     if (throttle_thrust <= min_throttle_out) {
         throttle_thrust      = min_throttle_out;
@@ -224,9 +252,15 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
         limit.roll  = true;
     }
 
+    static int16_t cnt = 0;
+    if (++cnt > 200) {
+        cnt = 0;
+        hal.console->printf("throttle_thrust=%f\r\n", throttle_thrust);
+    }
+
     // calculate left and right throttle outputs
-    _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
-    _thrust_right = throttle_thrust - roll_thrust * 0.5f;
+    _thrust_left  = throttle_thrust + roll_thrust;
+    _thrust_right = throttle_thrust - roll_thrust;
 
     thrust_max = MAX(_thrust_right, _thrust_left);
     thrust_min = MIN(_thrust_right, _thrust_left);
@@ -264,8 +298,8 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
-    pitch_thrust *= 0.75f;
-    yaw_thrust *= yaw_factor_f;
+    // pitch_thrust *= 0.75f;
+    // yaw_thrust *= yaw_factor_f;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
     _tilt_left  = -pitch_thrust + yaw_thrust;

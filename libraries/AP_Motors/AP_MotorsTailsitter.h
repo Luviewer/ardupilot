@@ -33,6 +33,10 @@ public:
     // Set by tailsitters using diskloading minumum outflow velocity limit
     void set_min_throttle(float val) {_external_min_throttle = val;}
 
+    // sets the roll and pitch offset, this rotates the thrust vector in body frame
+    // these are typically set such that the throttle thrust vector is earth frame up
+    void set_roll_pitch(float roll_deg, float pitch_deg) override;
+
 protected:
     // calculate motor outputs
     void output_armed_stabilizing() override;
@@ -59,5 +63,8 @@ protected:
     // AP_Hiwonder_R* hiwonder_r;
 
     float forward_thrust;
+    // Current offset angles, radians
+    float _roll_offset;
+    float _pitch_offset;
 
 };

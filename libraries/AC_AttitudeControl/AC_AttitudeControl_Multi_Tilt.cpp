@@ -10,19 +10,20 @@
 // run lowest level body-frame rate controller and send outputs to the motors
 void AC_AttitudeControl_Multi_Tilt::rate_controller_run()
 {
+    extern float pitch_offset;
 
     // pass current offsets to motors and run baseclass controller
     // motors require the offsets to know which way is up
-    float roll_deg  = roll_offset_deg;
-    float pitch_deg = pitch_offset_deg;
+    float roll_deg  = 0;
+    float pitch_deg = pitch_offset;
     // if 6DoF control, always point directly up
     // this stops horizontal drift due to error between target and true attitude
-    if (lateral_enable) {
-        roll_deg = degrees(AP::ahrs().get_roll());
-    }
-    if (forward_enable) {
-        pitch_deg = degrees(AP::ahrs().get_pitch());
-    }
+    // if (lateral_enable) {
+    //     roll_deg = degrees(AP::ahrs().get_roll());
+    // }
+    // if (forward_enable) {
+    //     pitch_deg = degrees(AP::ahrs().get_pitch());
+    // }
     _motors.set_roll_pitch(roll_deg, pitch_deg);
 
     AC_AttitudeControl_Multi::rate_controller_run();
@@ -83,14 +84,13 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
         _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
         // euler_pitch_angle_cd = pitch_offset_deg * 100.0f * 0.2f;
         euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
-        euler_pitch_angle_cd = pitch_offset * 100.0f;
+        // euler_pitch_angle_cd = pitch_offset * 100.0f;
     } else {
         _motors.set_forward(0.0f);
         euler_pitch_angle_cd += pitch_offset * 100.0f;
-
-        // _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)) * 0.5f);
-        // euler_pitch_angle_cd += pitch_offset_deg * 100.0f * 0.5f;
     }
+    euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
+
 
     // static int16_t cnt = 0;
     // if (++cnt > 100) {

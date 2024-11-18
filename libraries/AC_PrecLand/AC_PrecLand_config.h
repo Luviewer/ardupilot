@@ -3,7 +3,7 @@
 #include <AP_HAL/AP_HAL_Boards.h>
 
 #ifndef AC_PRECLAND_ENABLED
-#define AC_PRECLAND_ENABLED 1
+#define AC_PRECLAND_ENABLED 0
 #endif
 
 #ifndef AC_PRECLAND_BACKEND_DEFAULT_ENABLED

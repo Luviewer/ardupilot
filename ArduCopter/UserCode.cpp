@@ -117,6 +117,8 @@ void Copter::userhook_MediumLoop()
     // put your 10Hz code here
     copter.Log_Write_Virtual_Pitch(degrees(ahrs.get_pitch()), pitch_b, aim_pitch_deg);
 
+    pitch_offset = g2.user_parameters.get_pitch_offset_Param();
+
 # ifdef MANUAL_TILT
     chin = hal.rcin->read(CH_7);
     if (chin > 1480 && chin < 1520)
@@ -153,8 +155,6 @@ void Copter::userhook_SuperSlowLoop()
     yaw_factor_f = g2.user_parameters.get_yaw_fact_Param();
 
     tilt_MaxDeg = g2.user_parameters.get_MaxDegParam();
-
-    pitch_offset = g2.user_parameters.get_pitch_offset_Param();
 
     pitch_b = degrees(ahrs.get_pitch()) + aim_pitch_deg;
     // gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));
