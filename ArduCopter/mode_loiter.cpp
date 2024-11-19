@@ -185,11 +185,20 @@ void ModeLoiter::run()
         loiter_nav->update();
 #endif
 
+        extern const AP_HAL::HAL& hal;
+
+        static int16_t cnt = 0;
+        if (++cnt > 400) {
+            cnt = 0;
+            hal.console->printf("%f, %f, %f\r\n", degrees(loiter_nav->get_thrust_vector().x), degrees(loiter_nav->get_thrust_vector().y), degrees(loiter_nav->get_thrust_vector().z));
+        }
+
+
         // call attitude controller
         attitude_control->input_thrust_vector_rate_heading(loiter_nav->get_thrust_vector(), target_yaw_rate, false);
 
         // get avoidance adjusted climb rate
-        target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
+        // target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
 #if AP_RANGEFINDER_ENABLED
         // update the vertical offset based on the surface measurement

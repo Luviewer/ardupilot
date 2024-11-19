@@ -145,8 +145,8 @@ void AP_MotorsTailsitter::output_to_motors()
 
     extern float pitch_offset;
 
-    float tilt2_l = tilt2_cdeg_L + pitch_offset * 100 * 0.5f; // + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
-    float tilt2_r = tilt2_cdeg_R - pitch_offset * 100 * 0.5f; // - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    float tilt2_l = tilt2_cdeg_L + pitch_offset * 100 * 1.0f; // + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    float tilt2_r = tilt2_cdeg_R - pitch_offset * 100 * 1.0f; // - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
 
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
@@ -220,10 +220,20 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
 
     forward_thrust = get_forward() * throttle_thrust;
 
+    throttle_thrust = sqrtf(throttle_thrust * throttle_thrust + forward_thrust * forward_thrust);
+
+    static int16_t cnt = 0;
+    if (++cnt > 400) {
+        cnt = 0;
+        hal.console->printf("throttle_thrust=%f\r\n", throttle_thrust);
+    }
+
     // rotate the thrust into bodyframe
     Matrix3f rot;
     Vector3f thrust_vec;
     rot.from_euler312(_roll_offset, _pitch_offset, 0.0f);
+
+    float off_factor = fabs(_pitch_offset) / 90.0f;
 
     /*
         forward and lateral, independent of orentaiton
@@ -231,10 +241,11 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     thrust_vec.x = roll_thrust;
     thrust_vec.y = pitch_thrust;
     thrust_vec.z = yaw_thrust;
+
     thrust_vec   = rot * thrust_vec;
-    roll_thrust  = thrust_vec.x;
     pitch_thrust = thrust_vec.y;
-    yaw_thrust   = thrust_vec.z;
+    roll_thrust  = thrust_vec.x * ((-0.75f) * off_factor + 1.0f);
+    yaw_thrust   = thrust_vec.z * ((0.75f) * off_factor + 0.25f);
 
     // sanity check throttle is above min and below current limited throttle
     if (throttle_thrust <= min_throttle_out) {
@@ -250,12 +261,6 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
         // cannot split motor outputs by more than 1
         roll_thrust = 1;
         limit.roll  = true;
-    }
-
-    static int16_t cnt = 0;
-    if (++cnt > 200) {
-        cnt = 0;
-        hal.console->printf("throttle_thrust=%f\r\n", throttle_thrust);
     }
 
     // calculate left and right throttle outputs

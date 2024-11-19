@@ -91,6 +91,7 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
     }
     euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
 
+    _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
 
     // static int16_t cnt = 0;
     // if (++cnt > 100) {
