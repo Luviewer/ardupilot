@@ -76,7 +76,7 @@ PA12 CAN1_TX CAN1
 
 define HAL_CAN_POOL_SIZE 12000
 
-define HAL_PERIPH_ENABLE_SERIAL_OPTIONS
+# define HAL_PERIPH_ENABLE_SERIAL_OPTIONS
 
 # allow for reboot command for faster development
 define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
@@ -85,4 +85,29 @@ define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
 # to uncompress the bootloader at runtime
 env ROMFS_UNCOMPRESSED True
 
+
 define CAN_APP_NODE_NAME "pogo.canuart.periph"
+
+# ----------------------- GPS ----------------------------
+define HAL_PERIPH_ENABLE_GPS
+define GPS_MAX_RATE_MS 200
+
+define GPS_MAX_RECEIVERS 1
+define GPS_MAX_INSTANCES 1
+
+define HAL_PERIPH_GPS_PORT_DEFAULT 2
+define GPS_MOVING_BASELINE 1
+
+define HAL_RCIN_THREAD_ENABLED 1
+define HAL_PERIPH_ENABLE_RCIN 1
+
+# ENABLE ADSB
+define HAL_PERIPH_ENABLE_ADSB
+
+# support all proximity types
+define HAL_PERIPH_ENABLE_PROXIMITY
+define HAL_PROXIMITY_ENABLED 1
+
+# support all rangefinder types
+define HAL_PERIPH_ENABLE_RANGEFINDER
+define RANGEFINDER_MAX_INSTANCES 2
