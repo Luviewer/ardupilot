@@ -354,6 +354,11 @@ class VehicleInfo(object):
                 "default_params_filename": "default_params/gazebo-zephyr.parm",
                 "external": True,
             },
+            "gazebo-bv2plane": {
+                "waf_target": "bin/arduplane",
+                "default_params_filename": "default_params/gazebo-bv2.parm",
+                "external": True,
+            },
             "last_letter": {
                 "waf_target": "bin/arduplane",
                 "default_params_filename": "models/plane.parm",

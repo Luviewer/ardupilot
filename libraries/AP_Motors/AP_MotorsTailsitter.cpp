@@ -26,9 +26,9 @@
 
 extern const AP_HAL::HAL& hal;
 
-extern float aim_pitch_deg;
-extern float tilt_cdeg_R, tilt_cdeg_L;
-extern float tilt2_cdeg_R, tilt2_cdeg_L;
+// extern float aim_pitch_deg;
+// extern float tilt_cdeg_R, tilt_cdeg_L;
+// extern float tilt2_cdeg_R, tilt2_cdeg_L;
 
 extern float yaw_factor_f;
 
@@ -143,10 +143,12 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
-    extern float pitch_offset;
+    // extern float pitch_offset;
 
-    float tilt2_l = tilt2_cdeg_L + pitch_offset * 100 * 1.0f; // + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
-    float tilt2_r = tilt2_cdeg_R - pitch_offset * 100 * 1.0f; // - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    // float tilt2_l = tilt2_cdeg_L + pitch_offset * 100 * 1.0f; // + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    // float tilt2_r = tilt2_cdeg_R - pitch_offset * 100 * 1.0f; // - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    // float tilt2_l = pitch_offset * 100 * 1.0f;  // + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    // float tilt2_r = -pitch_offset * 100 * 1.0f; // - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
 
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
@@ -154,18 +156,20 @@ void AP_MotorsTailsitter::output_to_motors()
     // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
     SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2] * 100);
 
-    float tilt_left  = _tilt_left * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle + tilt_cdeg_L;
-    float tilt_right = _tilt_right * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle + tilt_cdeg_R;
+    // float tilt_left  = _tilt_left * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle + tilt_cdeg_L;
+    // float tilt_right = _tilt_right * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle + tilt_cdeg_R;
+    float tilt_left  = _tilt_left * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle;
+    float tilt_right = _tilt_right * SERVO1_OUTPUT_RANGE * SERVO1_FACTOR * throttle;
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, tilt_left);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, tilt_right);
 
-    static uint16_t cnt = 0;
+    // static uint16_t cnt = 0;
 
-    if ((++cnt % 2) == 0) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_l);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_r);
-    }
+    // if ((++cnt % 2) == 0) {
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_l);
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_r);
+    // }
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -229,23 +233,23 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // rotate the thrust into bodyframe
-    Matrix3f rot;
-    Vector3f thrust_vec;
-    rot.from_euler312(_roll_offset, _pitch_offset, 0.0f);
+    // Matrix3f rot;
+    // Vector3f thrust_vec;
+    // rot.from_euler312(_roll_offset, _pitch_offset, 0.0f);
 
-    float off_factor = fabs(_pitch_offset) / 90.0f;
+    // float off_factor = fabs(_pitch_offset) / 90.0f;
 
     /*
         forward and lateral, independent of orentaiton
     */
-    thrust_vec.x = roll_thrust;
-    thrust_vec.y = pitch_thrust;
-    thrust_vec.z = yaw_thrust;
+    // thrust_vec.x = roll_thrust;
+    // thrust_vec.y = pitch_thrust;
+    // thrust_vec.z = yaw_thrust;
 
-    thrust_vec   = rot * thrust_vec;
-    pitch_thrust = thrust_vec.y;
-    roll_thrust  = thrust_vec.x * ((-0.75f) * off_factor + 1.0f);
-    yaw_thrust   = thrust_vec.z * ((0.75f) * off_factor + 0.25f);
+    // thrust_vec   = rot * thrust_vec;
+    // pitch_thrust = thrust_vec.y;
+    // roll_thrust  = thrust_vec.x * ((-0.75f) * off_factor + 1.0f);
+    // yaw_thrust   = thrust_vec.z * ((0.75f) * off_factor + 0.25f);
 
     // sanity check throttle is above min and below current limited throttle
     if (throttle_thrust <= min_throttle_out) {
