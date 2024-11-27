@@ -107,12 +107,15 @@
 #define AP_LANDINGGEAR_ENABLED 0
 
 // disable avoid-fence-follow in copter, these all kinda need each other, so its all or none.
-#define AC_AVOID_ENABLED 0
+#define AP_AVOIDANCE_ENABLED 0
 #define AP_FENCE_ENABLED 0
 #define MODE_FOLLOW_ENABLED 0
-#define AC_OAPATHPLANNER_ENABLED 0
+#define AP_OAPATHPLANNER_ENABLED 0
 
 
 // other big things..
 #define HAL_QUADPLANE_ENABLED 0
 #define HAL_GYROFFT_ENABLED 0
+
+// remove once ESP32 isn't so chronically slow
+#define AP_SCHEDULER_OVERTIME_MARGIN_US 50000UL

@@ -166,8 +166,8 @@ struct PACKED FIFODataHighRes {
 #define INV3_SAMPLE_SIZE sizeof(FIFOData)
 #define INV3_HIGHRES_SAMPLE_SIZE sizeof(FIFODataHighRes)
 
-static_assert(sizeof(FIFOData) == 16);
-static_assert(sizeof(FIFODataHighRes) == 20);
+static_assert(sizeof(FIFOData) == 16, "FIFOData must be 16 bytes");
+static_assert(sizeof(FIFODataHighRes) == 20, "FIFODataHighRes must be 20 bytes");
 
 #define INV3_FIFO_BUFFER_LEN 8
 
@@ -207,7 +207,7 @@ AP_InertialSensor_Backend *AP_InertialSensor_Invensensev3::probe(AP_InertialSens
     }
 
     AP_InertialSensor_Invensensev3 *sensor =
-        new AP_InertialSensor_Invensensev3(imu, std::move(_dev), _rotation);
+        NEW_NOTHROW AP_InertialSensor_Invensensev3(imu, std::move(_dev), _rotation);
     if (!sensor || !sensor->hardware_init()) {
         delete sensor;
         return nullptr;
@@ -294,13 +294,13 @@ void AP_InertialSensor_Invensensev3::start()
         switch (inv3_type) {
             case Invensensev3_Type::ICM42688: // HiRes 19bit
             case Invensensev3_Type::IIM42652: // HiRes 19bit
-            case Invensensev3_Type::ICM42670: // HiRes 19bit
             case Invensensev3_Type::ICM45686: // HiRes 20bit
                 highres_sampling = dev->bus_type() == AP_HAL::Device::BUS_TYPE_SPI;
                 break;
             case Invensensev3_Type::ICM40609: // No HiRes
             case Invensensev3_Type::ICM42605:
             case Invensensev3_Type::ICM40605:
+            case Invensensev3_Type::ICM42670: // HiRes 19bit (not working)
                 break;
         }
     }
@@ -468,6 +468,9 @@ static inline float uint20_to_float(uint8_t msb, uint8_t bits, uint8_t lsb)
 
 bool AP_InertialSensor_Invensensev3::accumulate_highres_samples(const FIFODataHighRes *data, uint8_t n_samples)
 {
+#if INV3_ENABLE_FIFO_LOGGING
+    const uint64_t tstart = AP_HAL::micros64();
+#endif
     for (uint8_t i = 0; i < n_samples; i++) {
         const FIFODataHighRes &d = data[i];
 
@@ -488,6 +491,9 @@ bool AP_InertialSensor_Invensensev3::accumulate_highres_samples(const FIFODataHi
         accel *= accel_scale;
         gyro *= gyro_scale;
 
+#if INV3_ENABLE_FIFO_LOGGING
+        Write_GYR(gyro_instance, tstart+(i*backend_period_us), gyro, true);
+#endif
         const float temp = d.temperature * temp_sensitivity + temp_zero;
 
         // these four calls are about 40us
@@ -1031,7 +1037,7 @@ bool AP_InertialSensor_Invensensev3::hardware_init(void)
     case Invensensev3_Type::ICM42605:
     case Invensensev3_Type::ICM40605:
     case Invensensev3_Type::ICM42670:
-        _clip_limit = 15.5f * GRAVITY_MSS;
+        _clip_limit = (16.0f - 0.5f) * GRAVITY_MSS;
         break;
     }
 

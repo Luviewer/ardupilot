@@ -21,6 +21,8 @@
 
 #include "AP_Scheduler_config.h"
 
+#if AP_SCHEDULER_ENABLED
+
 #include "AP_Scheduler.h"
 
 #include <AP_HAL/AP_HAL.h>
@@ -123,7 +125,7 @@ void AP_Scheduler::init(const AP_Scheduler::Task *tasks, uint8_t num_tasks, uint
 
     _num_tasks = _num_vehicle_tasks + _num_common_tasks;
 
-   _last_run = new uint16_t[_num_tasks];
+   _last_run = NEW_NOTHROW uint16_t[_num_tasks];
     _tick_counter = 0;
 
     // setup initial performance counters
@@ -345,7 +347,8 @@ void AP_Scheduler::loop()
     _rsem.take_blocking();
     hal.util->persistent_data.scheduler_task = -1;
 
-    const uint32_t sample_time_us = AP_HAL::micros();
+    _loop_sample_time_us = AP_HAL::micros64();
+    const uint32_t sample_time_us = uint32_t(_loop_sample_time_us);
     
     if (_loop_timer_start_us == 0) {
         _loop_timer_start_us = sample_time_us;
@@ -539,3 +542,5 @@ AP_Scheduler &scheduler()
 }
 
 };
+
+#endif  // AP_SCHEDULER_ENABLED

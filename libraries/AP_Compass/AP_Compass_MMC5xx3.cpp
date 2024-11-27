@@ -49,7 +49,7 @@ AP_Compass_Backend *AP_Compass_MMC5XX3::probe(AP_HAL::OwnPtr<AP_HAL::Device> dev
     if (!dev) {
         return nullptr;
     }
-    AP_Compass_MMC5XX3 *sensor = new AP_Compass_MMC5XX3(std::move(dev), force_external, rotation);
+    AP_Compass_MMC5XX3 *sensor = NEW_NOTHROW AP_Compass_MMC5XX3(std::move(dev), force_external, rotation);
     if (!sensor || !sensor->init()) {
         delete sensor;
         return nullptr;
@@ -115,7 +115,7 @@ bool AP_Compass_MMC5XX3::init()
 
     set_dev_id(compass_instance, dev->get_bus_id());
 
-    printf("Found a MMC5983 on 0x%x as compass %u\n", dev->get_bus_id(), compass_instance);
+    printf("Found a MMC5983 on 0x%x as compass %u\n", unsigned(dev->get_bus_id()), compass_instance);
 
     set_rotation(compass_instance, rotation);
 

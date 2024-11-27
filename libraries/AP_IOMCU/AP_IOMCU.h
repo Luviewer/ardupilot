@@ -110,8 +110,14 @@ public:
     // set bi-directional mask
     void set_bidir_dshot_mask(uint16_t mask);
 
+    // set reversible mask
+    void set_reversible_mask(uint16_t mask);
+
     // get output mode
     AP_HAL::RCOutput::output_mode get_output_mode(uint8_t& mask) const;
+
+    // approximation to disabled channel
+    uint32_t get_disabled_channels(uint32_t digital_mask) const;
 
     // MCUID
     uint32_t get_mcu_id() const { return config.mcuid; }
@@ -157,8 +163,16 @@ public:
     // set GPIO mask of channels setup for output
     void set_GPIO_mask(uint8_t mask);
 
+    // Get GPIO mask of channels setup for output
+    uint8_t get_GPIO_mask() const;
+
     // write to a output pin
     void write_GPIO(uint8_t pin, bool value);
+
+    // Read the last output value send to the GPIO pin
+    // This is not a real read of the actual pin
+    // This allows callers to check for state change
+    uint8_t read_virtual_GPIO(uint8_t pin) const;
 
     // toggle a output pin
     void toggle_GPIO(uint8_t pin);
@@ -243,9 +257,9 @@ private:
     // output pwm values
     struct {
         uint8_t num_channels;
-        uint16_t pwm[IOMCU_MAX_CHANNELS];
+        uint16_t pwm[IOMCU_MAX_RC_CHANNELS];
         uint16_t safety_mask;
-        uint16_t failsafe_pwm[IOMCU_MAX_CHANNELS];
+        uint16_t failsafe_pwm[IOMCU_MAX_RC_CHANNELS];
         uint8_t failsafe_pwm_set;
         uint8_t failsafe_pwm_sent;
         uint16_t channel_mask;
@@ -253,7 +267,7 @@ private:
 
     // read back pwm values
     struct {
-        uint16_t pwm[IOMCU_MAX_CHANNELS];
+        uint16_t pwm[IOMCU_MAX_RC_CHANNELS];
     } pwm_in;
 
     // output rates

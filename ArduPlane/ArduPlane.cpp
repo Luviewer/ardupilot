@@ -31,7 +31,7 @@
 
   All entries in this table must be ordered by priority.
 
-  This table is interleaved with the table presnet in each of the
+  This table is interleaved with the table present in each of the
   vehicles to determine the order in which tasks are run.  Convenience
   methods SCHED_TASK and SCHED_TASK_CLASS are provided to build
   entries in this structure:
@@ -81,8 +81,9 @@ const AP_Scheduler::Task Plane::scheduler_tasks[] = {
     SCHED_TASK_CLASS(AP_ServoRelayEvents, &plane.ServoRelayEvents, update_events, 50, 150,  63),
 #endif
     SCHED_TASK_CLASS(AP_BattMonitor, &plane.battery, read,   10, 300,  66),
-    SCHED_TASK_CLASS(AP_Baro, &plane.barometer, accumulate,  50, 150,  69),
+#if AP_RANGEFINDER_ENABLED
     SCHED_TASK(read_rangefinder,       50,    100, 78),
+#endif
 #if AP_ICENGINE_ENABLED
     SCHED_TASK_CLASS(AP_ICEngine,      &plane.g2.ice_control, update,     10, 100,  81),
 #endif
@@ -215,6 +216,17 @@ void Plane::update_speed_height(void)
         should_run_tecs = false;
     }
 #endif
+
+    if (auto_state.idle_mode) {
+        should_run_tecs = false;
+    }
+
+#if AP_PLANE_GLIDER_PULLUP_ENABLED
+    if (mode_auto.in_pullup()) {
+        should_run_tecs = false;
+    }
+#endif
+
     if (should_run_tecs) {
 	    // Call TECS 50Hz update. Note that we call this regardless of
 	    // throttle suppressed, as this needs to be running for
@@ -273,9 +285,11 @@ void Plane::update_logging25(void)
 
     if (should_log(MASK_LOG_CTUN)) {
         Log_Write_Control_Tuning();
+#if AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
         if (!should_log(MASK_LOG_NOTCH_FULLRATE)) {
             AP::ins().write_notch_log_messages();
         }
+#endif
 #if HAL_GYROFFT_ENABLED
         gyro_fft.write_log_messages();
 #endif
@@ -509,6 +523,12 @@ void Plane::update_fly_forward(void)
     }
 #endif
 
+    if (auto_state.idle_mode) {
+        // don't fuse airspeed when in balloon lift
+        ahrs.set_fly_forward(false);
+        return;
+    }
+
     if (flight_stage == AP_FixedWing::FlightStage::LAND) {
         ahrs.set_fly_forward(landing.is_flying_forward());
         return;
@@ -556,7 +576,7 @@ void Plane::update_alt()
 
     // low pass the sink rate to take some of the noise out
     auto_state.sink_rate = 0.8f * auto_state.sink_rate + 0.2f*sink_rate;
-#if PARACHUTE == ENABLED
+#if HAL_PARACHUTE_ENABLED
     parachute.set_sink_rate(auto_state.sink_rate);
 #endif
 
@@ -572,6 +592,16 @@ void Plane::update_alt()
     bool should_run_tecs = control_mode->does_auto_throttle();
 #if HAL_QUADPLANE_ENABLED
     if (quadplane.should_disable_TECS()) {
+        should_run_tecs = false;
+    }
+#endif
+
+    if (auto_state.idle_mode) {
+        should_run_tecs = false;
+    }
+
+#if AP_PLANE_GLIDER_PULLUP_ENABLED
+    if (mode_auto.in_pullup()) {
         should_run_tecs = false;
     }
 #endif
@@ -699,7 +729,7 @@ bool Plane::trigger_land_abort(const float climb_to_alt_m)
         plane.is_land_command(mission_id);
     if (is_in_landing) {
         // fly a user planned abort pattern if available
-        if (plane.mission.jump_to_abort_landing_sequence()) {
+        if (plane.have_position && plane.mission.jump_to_abort_landing_sequence(plane.current_loc)) {
             return true;
         }
 
@@ -749,7 +779,9 @@ float Plane::tecs_hgt_afe(void)
     float hgt_afe;
     if (flight_stage == AP_FixedWing::FlightStage::LAND) {
         hgt_afe = height_above_target();
+#if AP_RANGEFINDER_ENABLED
         hgt_afe -= rangefinder_correction();
+#endif
     } else {
         // when in normal flight we pass the hgt_afe as relative
         // altitude to home
@@ -828,7 +860,7 @@ bool Plane::set_target_location(const Location &target_loc)
 #endif //AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 
 #if AP_SCRIPTING_ENABLED
-// set target location (for use by scripting)
+// get target location (for use by scripting)
 bool Plane::get_target_location(Location& target_loc)
 {
     switch (control_mode->mode_number()) {
@@ -869,8 +901,8 @@ bool Plane::update_target_location(const Location &old_loc, const Location &new_
     next_WP_loc = new_loc;
 
 #if HAL_QUADPLANE_ENABLED
-    if (control_mode == &mode_qland) {
-        mode_qland.last_target_loc_set_ms = AP_HAL::millis();
+    if (control_mode == &mode_qland || control_mode == &mode_qloiter) {
+        mode_qloiter.last_target_loc_set_ms = AP_HAL::millis();
     }
 #endif
 
@@ -903,6 +935,16 @@ bool Plane::set_land_descent_rate(float descent_rate)
 #endif
     return false;
 }
+
+// Allow for scripting to have control over the crosstracking when exiting and resuming missions or guided flight
+// It's up to the Lua script to ensure the provided location makes sense
+bool Plane::set_crosstrack_start(const Location &new_start_location)
+{        
+    prev_WP_loc = new_start_location;
+    auto_state.crosstrack = true;
+    return true;
+}
+
 #endif // AP_SCRIPTING_ENABLED
 
 // returns true if vehicle is landing.
@@ -966,8 +1008,11 @@ bool Plane::flight_option_enabled(FlightOptions flight_option) const
 void Plane::precland_update(void)
 {
     // alt will be unused if we pass false through as the second parameter:
-    return g2.precland.update(rangefinder_state.height_estimate*100,
-                              rangefinder_state.in_range && rangefinder_state.in_use);
+#if AP_RANGEFINDER_ENABLED
+    return g2.precland.update(rangefinder_state.height_estimate*100, rangefinder_state.in_range);
+#else
+    return g2.precland.update(0, false);
+#endif
 }
 #endif
 

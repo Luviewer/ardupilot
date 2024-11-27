@@ -70,6 +70,9 @@ static const eventmask_t EVT_PARITY = EVENT_MASK(11);
 // event for transmit end for half-duplex
 static const eventmask_t EVT_TRANSMIT_END = EVENT_MASK(12);
 
+// event for framing error
+static const eventmask_t EVT_ERROR = EVENT_MASK(13);
+
 // events for dma tx, thread per UART so can be from 0
 static const eventmask_t EVT_TRANSMIT_DMA_START = EVENT_MASK(0);
 static const eventmask_t EVT_TRANSMIT_DMA_COMPLETE = EVENT_MASK(1);
@@ -299,6 +302,7 @@ void UARTDriver::_begin(uint32_t b, uint16_t rxS, uint16_t txS)
         _rx_initialised = false;
         _readbuf.set_size_best(rxS);
     }
+    _rts_threshold = _readbuf.get_size() / 16U;
 
     bool clear_buffers = false;
     if (b != 0) {
@@ -414,7 +418,7 @@ void UARTDriver::_begin(uint32_t b, uint16_t rxS, uint16_t txS)
                 // we only allow for sharing of the TX DMA channel, not the RX
                 // DMA channel, as the RX side is active all the time, so
                 // cannot be shared
-                dma_handle = new Shared_DMA(sdef.dma_tx_stream_id,
+                dma_handle = NEW_NOTHROW Shared_DMA(sdef.dma_tx_stream_id,
                                             SHARED_DMA_NONE,
                                             FUNCTOR_BIND_MEMBER(&UARTDriver::dma_tx_allocate, void, Shared_DMA *),
                                             FUNCTOR_BIND_MEMBER(&UARTDriver::dma_tx_deallocate, void, Shared_DMA *));
@@ -451,6 +455,13 @@ void UARTDriver::_begin(uint32_t b, uint16_t rxS, uint16_t txS)
                 sercfg.cr3 |= USART_CR3_DMAT;
             }
             sercfg.irq_cb = rx_irq_cb;
+#if HAL_HAVE_LOW_NOISE_UART
+            if (sdef.low_noise_line) {
+                // we can mark UART to sample on one bit instead of default 3 bits
+                // this allows us to be slightly less sensitive to clock differences
+                sercfg.cr3 |= USART_CR3_ONEBIT;
+            }
+#endif
 #endif // HAL_UART_NODMA
             if (!(sercfg.cr2 & USART_CR2_STOP2_BITS)) {
                 sercfg.cr2 |= USART_CR2_STOP1_BITS;
@@ -494,6 +505,16 @@ void UARTDriver::_begin(uint32_t b, uint16_t rxS, uint16_t txS)
         vprintf_console_hook = hal_console_vprintf;
 #endif
     }
+
+#if HAL_UART_STATS_ENABLED && CH_CFG_USE_EVENTS == TRUE
+    if (!err_listener_initialised) {
+        chEvtRegisterMaskWithFlags(chnGetEventSource((SerialDriver*)sdef.serial),
+                                &err_listener,
+                                EVT_ERROR,
+                                SD_FRAMING_ERROR | SD_OVERRUN_ERROR | SD_NOISE_ERROR);
+        err_listener_initialised = true;
+    }
+#endif
 }
 
 #ifndef HAL_UART_NODMA
@@ -672,6 +693,19 @@ uint32_t UARTDriver::get_usb_baud() const
     return 0;
 }
 
+/*
+    get the requested usb parity.  Valid if get_usb_baud() returned non-zero.
+*/
+uint8_t UARTDriver::get_usb_parity() const
+{
+#if HAL_USE_SERIAL_USB
+    if (sdef.is_usb) {
+        return ::get_usb_parity(sdef.endpoint_id);
+    }
+#endif
+    return 0;
+}
+
 uint32_t UARTDriver::_available()
 {
     if (!_rx_initialised || _uart_owner_thd != chThdGetSelfX()) {
@@ -805,7 +839,7 @@ void UARTDriver::write_pending_bytes_DMA(uint32_t n)
     }
 
     while (n > 0) {
-        if (_flow_control != FLOW_CONTROL_DISABLE &&
+        if (flow_control_enabled(_flow_control) &&
             acts_line != 0 &&
             palReadLine(acts_line)) {
             // we are using hw flow control and the CTS line is high. We
@@ -1076,6 +1110,22 @@ void UARTDriver::_rx_timer_tick(void)
     }
 
     _in_rx_timer = true;
+
+#if HAL_UART_STATS_ENABLED && CH_CFG_USE_EVENTS == TRUE
+    if (!sdef.is_usb) {
+        const auto err_flags = chEvtGetAndClearFlags(&err_listener);
+        // count the number of errors
+        if (err_flags & SD_FRAMING_ERROR) {
+            _rx_stats_framing_errors++;
+        }
+        if (err_flags & SD_OVERRUN_ERROR) {
+            _rx_stats_overrun_errors++;
+        }
+        if (err_flags & SD_NOISE_ERROR) {
+            _rx_stats_noise_errors++;
+        }
+    }
+#endif
 
 #ifndef HAL_UART_NODMA
     if (rx_dma_enabled && rxdma) {
@@ -1360,6 +1410,33 @@ void UARTDriver::set_flow_control(enum flow_control flowcontrol)
         }
         chSysUnlock();
         break;
+
+    case FLOW_CONTROL_RTS_DE:
+        // Driver Enable, RTS pin high during transmit
+        // If posible enable in hardware
+#if defined(USART_CR3_DEM)
+        if (sdef.rts_alternative_function != UINT8_MAX) {
+            // Hand over control of RTS pin to the UART driver
+            palSetLineMode(arts_line, PAL_MODE_ALTERNATE(sdef.rts_alternative_function));
+
+            // Enable in driver, if not already set
+            chSysLock();
+            if ((sd->usart->CR3 & USART_CR3_DEM) != USART_CR3_DEM) {
+                // Disable UART, set bit and then re-enable
+                sd->usart->CR1 &= ~USART_CR1_UE;
+                sd->usart->CR3 |= USART_CR3_DEM;
+                sd->usart->CR1 |= USART_CR1_UE;
+            }
+            chSysUnlock();
+        } else
+#endif
+        {
+            // No hardware support for DEM mode or
+            // No alternative function, RTS GPIO pin is not a conected to the UART peripheral
+            // This is typicaly fine becaues we do software flow control.
+            set_flow_control(FLOW_CONTROL_DISABLE);
+        }
+        break;
     }
 #endif // HAL_USE_SERIAL
 }
@@ -1370,14 +1447,14 @@ void UARTDriver::set_flow_control(enum flow_control flowcontrol)
  */
 __RAMFUNC__ void UARTDriver::update_rts_line(void)
 {
-    if (arts_line == 0 || _flow_control == FLOW_CONTROL_DISABLE) {
+    if (arts_line == 0 || !flow_control_enabled(_flow_control)) {
         return;
     }
     uint16_t space = _readbuf.space();
-    if (_rts_is_active && space < 16) {
+    if (_rts_is_active && space < _rts_threshold) {
         _rts_is_active = false;
         palSetLine(arts_line);
-    } else if (!_rts_is_active && space > 32) {
+    } else if (!_rts_is_active && space > _rts_threshold+16) {
         _rts_is_active = true;
         palClearLine(arts_line);
     }
@@ -1402,6 +1479,7 @@ void UARTDriver::configure_parity(uint8_t v)
         // not possible
         return;
     }
+    UARTDriver::parity = v;
 #if HAL_USE_SERIAL == TRUE
     // stop and start to take effect
     sdStop((SerialDriver*)sdef.serial);
@@ -1620,21 +1698,37 @@ bool UARTDriver::set_options(uint16_t options)
         cr2 &= ~USART_CR2_SWAP;
         _cr2_options &= ~USART_CR2_SWAP;
     }
-#else // STM32F4
+#elif defined(STM32F4) // STM32F4
     // F4 can do inversion by GPIO if enabled in hwdef.dat, using
     // TXINV and RXINV options
     if (options & OPTION_RXINV) {
         if (sdef.rxinv_gpio >= 0) {
             hal.gpio->write(sdef.rxinv_gpio, sdef.rxinv_polarity);
+            if (arx_line != 0) {
+                palLineSetPushPull(arx_line, PAL_PUSHPULL_PULLDOWN);
+            }
         } else {
             ret = false;
+        }
+    } else if (sdef.rxinv_gpio >= 0) {
+        hal.gpio->write(sdef.rxinv_gpio, !sdef.rxinv_polarity);
+        if (arx_line != 0) {
+            palLineSetPushPull(arx_line, PAL_PUSHPULL_PULLUP);
         }
     }
     if (options & OPTION_TXINV) {
         if (sdef.txinv_gpio >= 0) {
             hal.gpio->write(sdef.txinv_gpio, sdef.txinv_polarity);
+            if (atx_line != 0) {
+                palLineSetPushPull(atx_line, PAL_PUSHPULL_PULLDOWN);
+            }
         } else {
             ret = false;
+        }
+    } else if (sdef.txinv_gpio >= 0) {
+        hal.gpio->write(sdef.txinv_gpio, !sdef.txinv_polarity);
+        if (atx_line != 0) {
+            palLineSetPushPull(atx_line, PAL_PUSHPULL_PULLUP);
         }
     }
     if (options & OPTION_SWAP) {
@@ -1696,24 +1790,33 @@ uint16_t UARTDriver::get_options(void) const
 
 #if HAL_UART_STATS_ENABLED
 // request information on uart I/O for @SYS/uarts.txt for this uart
-void UARTDriver::uart_info(ExpandingString &str)
+void UARTDriver::uart_info(ExpandingString &str, StatsTracker &stats, const uint32_t dt_ms)
 {
-    uint32_t now_ms = AP_HAL::millis();
+    const uint32_t tx_bytes = stats.tx.update(_tx_stats_bytes);
+    const uint32_t rx_bytes = stats.rx.update(_rx_stats_bytes);
+
     if (sdef.is_usb) {
         str.printf("OTG%u  ", unsigned(sdef.instance));
     } else {
         str.printf("UART%u ", unsigned(sdef.instance));
     }
-    str.printf("TX%c=%8u RX%c=%8u TXBD=%6u RXBD=%6u\n",
+    str.printf("TX%c=%8u RX%c=%8u TXBD=%6u RXBD=%6u"
+#if CH_CFG_USE_EVENTS == TRUE
+                " FE=%lu OE=%lu NE=%lu"
+#endif
+                " FlowCtrl=%u\n",
                tx_dma_enabled ? '*' : ' ',
-               unsigned(_tx_stats_bytes),
+               unsigned(tx_bytes),
                rx_dma_enabled ? '*' : ' ',
-               unsigned(_rx_stats_bytes),
-               unsigned(_tx_stats_bytes * 10000 / (now_ms - _last_stats_ms)),
-               unsigned(_rx_stats_bytes * 10000 / (now_ms - _last_stats_ms)));
-    _tx_stats_bytes = 0;
-    _rx_stats_bytes = 0;
-    _last_stats_ms = now_ms;
+               unsigned(rx_bytes),
+               unsigned((tx_bytes * 10000) / dt_ms),
+               unsigned((rx_bytes * 10000) / dt_ms),
+#if CH_CFG_USE_EVENTS == TRUE
+               _rx_stats_framing_errors,
+               _rx_stats_overrun_errors,
+               _rx_stats_noise_errors,
+#endif
+               _flow_control);
 }
 #endif
 

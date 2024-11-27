@@ -1,9 +1,13 @@
-#include "AP_Camera_Backend.h"
+#include "AP_Camera_config.h"
 
 #if AP_CAMERA_ENABLED
+
+#include "AP_Camera_Backend.h"
+
 #include <GCS_MAVLink/GCS.h>
 #include <AP_GPS/AP_GPS.h>
 #include <AP_Mount/AP_Mount.h>
+#include <AP_AHRS/AP_AHRS.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -18,7 +22,7 @@ AP_Camera_Backend::AP_Camera_Backend(AP_Camera &frontend, AP_Camera_Params &para
 void AP_Camera_Backend::update()
 {
     // Check camera options and start/stop recording based on arm/disarm
-    if ((_params.options.get() & (uint8_t)Options::RecordWhileArmed) != 0) {
+    if (option_is_enabled(Option::RecordWhileArmed)) {
         if (hal.util->get_soft_armed() != last_is_armed) {
             last_is_armed = hal.util->get_soft_armed();
             if (!record_video(last_is_armed)) {
@@ -57,8 +61,10 @@ void AP_Camera_Backend::update()
         return;
     }
 
-    // check GPS status
-    if (AP::gps().status() < AP_GPS::GPS_OK_FIX_3D) {
+    const AP_AHRS &ahrs = AP::ahrs();
+
+    Location current_loc;
+    if (!ahrs.get_location(current_loc)) {
         return;
     }
 
@@ -68,14 +74,9 @@ void AP_Camera_Backend::update()
     }
 
     // check vehicle roll angle is less than configured maximum
-    const AP_AHRS &ahrs = AP::ahrs();
-    if ((_frontend.get_roll_max() > 0) && (fabsf(AP::ahrs().roll_sensor * 1e-2f) > _frontend.get_roll_max())) {
+    if ((_frontend.get_roll_max() > 0) && (fabsf(ahrs.roll_sensor * 1e-2f) > _frontend.get_roll_max())) {
         return;
     }
-
-    // get current location. ignore failure because AHRS will provide its best guess
-    Location current_loc;
-    IGNORE_RETURN(ahrs.get_location(current_loc));
 
     // initialise last location to current location
     if (last_location.lat == 0 && last_location.lng == 0) {
@@ -279,10 +280,10 @@ void AP_Camera_Backend::send_camera_fov_status(mavlink_channel_t chan) const
         AP_HAL::millis(),
         loc.lat,
         loc.lng,
-        loc.alt,
+        loc.alt * 10,
         poi_loc.lat,
         poi_loc.lng,
-        poi_loc.alt,
+        poi_loc.alt * 10,
         quat_array,
         horizontal_fov() > 0 ? horizontal_fov() : NaN,
         vertical_fov() > 0 ? vertical_fov() : NaN

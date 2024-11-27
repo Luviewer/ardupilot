@@ -119,7 +119,7 @@ public:
         ACRO_TRAINER =        14, // low = disabled, middle = leveled, high = leveled and limited
         SPRAYER =             15, // enable/disable the crop sprayer
         AUTO =                16, // change to auto flight mode
-        AUTOTUNE =            17, // auto tune
+        AUTOTUNE_MODE =       17, // auto tune
         LAND =                18, // change to LAND flight mode
         GRIPPER =             19, // Operate cargo grippers low=off, middle=neutral, high=on
         PARACHUTE_ENABLE  =   21, // Parachute enable/disable
@@ -191,7 +191,7 @@ public:
         CROW_SELECT =         87, // select CROW mode for diff spoilers;high disables,mid forces progressive
         SOARING =             88, // three-position switch to set soaring mode
         LANDING_FLARE =       89, // force flare, throttle forced idle, pitch to LAND_PITCH_DEG, tilts up
-        EKF_POS_SOURCE =      90, // change EKF position source between primary, secondary and tertiary sources
+        EKF_SOURCE_SET =      90, // change EKF data source set between primary, secondary and tertiary
         ARSPD_CALIBRATE=      91, // calibrate airspeed ratio 
         FBWA =                92, // Fly-By-Wire-A
         RELOCATE_MISSION =    93, // used in separate branch MISSION_RELATIVE
@@ -217,6 +217,7 @@ public:
         KILL_IMU3 =          110, // disable third IMU (for IMU failure testing)
         LOWEHEISER_STARTER = 111,  // allows for manually running starter
         AHRS_TYPE =          112, // change AHRS_EKF_TYPE
+        RETRACT_MOUNT2 =     113, // Retract Mount2
 
         // if you add something here, make sure to update the documentation of the parameter in RC_Channel.cpp!
         // also, if you add an option >255, you will need to fix duplicate_options_exist
@@ -249,6 +250,10 @@ public:
         CAMERA_IMAGE_TRACKING = 174, // camera image tracking
         CAMERA_LENS =        175, // camera lens selection
         VFWD_THR_OVERRIDE =  176, // force enabled VTOL forward throttle method
+        MOUNT_LRF_ENABLE =   177,  // mount LRF enable/disable
+        FLIGHTMODE_PAUSE =   178,  // e.g. pause movement towards waypoint
+        ICE_START_STOP =     179, // AP_ICEngine start stop
+        AUTOTUNE_TEST_GAINS = 180, // auto tune tuning switch to test or revert gains
 
 
         // inputs from 200 will eventually used to replace RCMAP
@@ -268,6 +273,7 @@ public:
         MOUNT2_PITCH =       216, // mount3 pitch input
         MOUNT2_YAW =         217, // mount4 yaw input
         LOWEHEISER_THROTTLE= 218,  // allows for throttle on slider
+        TRANSMITTER_TUNING = 219, // use a transmitter knob or slider for in-flight tuning
 
         // inputs 248-249 are reserved for the Skybrush fork at
         // https://github.com/skybrush-io/ardupilot
@@ -360,6 +366,7 @@ protected:
     void do_aux_function_sprayer(const AuxSwitchPos ch_flag);
     void do_aux_function_generator(const AuxSwitchPos ch_flag);
     void do_aux_function_fft_notch_tune(const AuxSwitchPos ch_flag);
+    void do_aux_function_retract_mount(const AuxSwitchPos ch_flag, const uint8_t instance);
 
     typedef int8_t modeswitch_pos_t;
     virtual void mode_switch_changed(modeswitch_pos_t new_pos) {
@@ -406,11 +413,19 @@ private:
         int8_t debounce_position = -1;
         int8_t current_position = -1;
         uint32_t last_edge_time_ms;
+        bool initialised;
     } switch_state;
 
     void reset_mode_switch();
     void read_mode_switch();
     bool debounce_completed(int8_t position);
+    // returns true if the first time we successfully read the
+    // channel's three-position-switch position we should record that
+    // position as the current position *without* executing the
+    // associated auxiliary function.  e.g. do not attempt to arm a
+    // vehicle when the user turns on their transmitter with the arm
+    // switch high!
+    bool init_position_on_first_radio_read(AUX_FUNC func) const;
 
 #if AP_RC_CHANNEL_AUX_FUNCTION_STRINGS_ENABLED
     // Structure to lookup switch change announcements
@@ -597,6 +612,12 @@ public:
     // get failsafe timeout in milliseconds
     uint32_t get_fs_timeout_ms() const { return MAX(_fs_timeout * 1000, 100); }
 
+    // methods which return RC input channels used for various axes.
+    RC_Channel &get_roll_channel();
+    RC_Channel &get_pitch_channel();
+    RC_Channel &get_yaw_channel();
+    RC_Channel &get_throttle_channel();
+
 protected:
 
     void new_override_received() {
@@ -638,6 +659,9 @@ private:
 
     void set_aux_cached(RC_Channel::AUX_FUNC aux_fn, RC_Channel::AuxSwitchPos pos);
 #endif
+
+    RC_Channel &get_rcmap_channel_nonnull(uint8_t rcmap_number);
+    RC_Channel dummy_rcchannel;
 };
 
 RC_Channels &rc();

@@ -257,7 +257,7 @@ public:
     // Throttle
     //
     AP_Int8     throttle_cruise;
-    AP_Int8     pilot_steer_type;
+    AP_Enum<PilotSteerType>     pilot_steer_type;
 
     // failsafe control
     AP_Int8     fs_action;
@@ -301,7 +301,7 @@ public:
     // control over servo output ranges
     SRV_Channels servo_channels;
 
-#if ADVANCED_FAILSAFE == ENABLED
+#if AP_ROVER_ADVANCED_FAILSAFE_ENABLED
     // advanced failsafe library
     AP_AdvancedFailsafe_Rover afs;
 #endif
@@ -340,13 +340,15 @@ public:
     AP_Proximity proximity;
 #endif
 
-#if MODE_DOCK_ENABLED == ENABLED
+#if MODE_DOCK_ENABLED
     // we need a pointer to the mode for the G2 table
     class ModeDock *mode_dock_ptr;
 #endif
 
+#if AP_AVOIDANCE_ENABLED
     // avoidance library
     AC_Avoid avoid;
+#endif
 
     // pitch angle at 100% throttle
     AP_Float bal_pitch_max;
@@ -382,8 +384,10 @@ public:
     // windvane
     AP_WindVane windvane;
 
+#if AP_MISSION_ENABLED
     // mission behave
-    AP_Int8 mis_done_behave;
+    AP_Enum<ModeAuto::DoneBehaviour> mis_done_behave;
+#endif
 
     // balance both pitch trim
     AP_Float bal_pitch_trim;
@@ -397,8 +401,10 @@ public:
     // Sailboat functions
     Sailboat sailboat;
 
+#if AP_OAPATHPLANNER_ENABLED
     // object avoidance path planning
     AP_OAPathPlanner oa;
+#endif
 
     // maximum speed for vehicle
     AP_Float speed_max;

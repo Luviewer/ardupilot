@@ -80,6 +80,8 @@
 #include <AP_Gripper/AP_Gripper.h>
 #endif
 
+#include <AP_IBus_Telem/AP_IBus_Telem.h>
+
 class AP_DDS_Client;
 
 class AP_Vehicle : public AP_HAL::HAL::Callbacks {
@@ -127,10 +129,10 @@ public:
     // parameters for example.
     void notify_no_such_mode(uint8_t mode_number);
 
+#if AP_SCHEDULER_ENABLED
     void get_common_scheduler_tasks(const AP_Scheduler::Task*& tasks, uint8_t& num_tasks);
     // implementations *MUST* fill in all passed-in fields or we get
     // Valgrind errors
-#if AP_SCHEDULER_ENABLED
     virtual void get_scheduler_tasks(const AP_Scheduler::Task *&tasks, uint8_t &task_count, uint32_t &log_bit) = 0;
 #endif
 
@@ -169,10 +171,10 @@ public:
     // returns true if the vehicle has crashed
     virtual bool is_crashed() const;
 
-#if AP_EXTERNAL_CONTROL_ENABLED
+#if AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
     // Method to control vehicle position for use by external control
     virtual bool set_target_location(const Location& target_loc) { return false; }
-#endif // AP_EXTERNAL_CONTROL_ENABLED
+#endif // AP_SCRIPTING_ENABLED || AP_EXTERNAL_CONTROL_ENABLED
 #if AP_SCRIPTING_ENABLED
     /*
       methods to control vehicle for use by scripting
@@ -221,7 +223,11 @@ public:
 
     // allow for landing descent rate to be overridden by a script, may be -ve to climb
     virtual bool set_land_descent_rate(float descent_rate) { return false; }
-    
+
+    // Allow for scripting to have control over the crosstracking when exiting and resuming missions or guided flight
+    // It's up to the Lua script to ensure the provided location makes sense
+    virtual bool set_crosstrack_start(const Location &new_start_location) { return false; }
+
     // control outputs enumeration
     enum class ControlOutput {
         Roll = 1,
@@ -289,6 +295,11 @@ public:
      */
     virtual bool get_rate_ef_targets(Vector3f& rate_ef_targets) const { return false; }
 
+#if AP_AHRS_ENABLED
+    virtual bool set_home_to_current_location(bool lock) WARN_IF_UNUSED { return false; }
+    virtual bool set_home(const Location& loc, bool lock) WARN_IF_UNUSED { return false; }
+#endif
+
 protected:
 
     virtual void init_ardupilot() = 0;
@@ -305,8 +316,10 @@ protected:
     AP_CANManager can_mgr;
 #endif
 
+#if AP_SCHEDULER_ENABLED
     // main loop scheduler
     AP_Scheduler scheduler;
+#endif
 
     // IMU variables
     // Integration time; time last loop took to run
@@ -326,7 +339,9 @@ protected:
 #if HAL_BUTTON_ENABLED
     AP_Button button;
 #endif
+#if AP_RANGEFINDER_ENABLED
     RangeFinder rangefinder;
+#endif
 
 #if HAL_LOGGING_ENABLED
     AP_Logger logger;
@@ -339,6 +354,10 @@ protected:
 
 #if AP_GRIPPER_ENABLED
     AP_Gripper gripper;
+#endif
+
+#if AP_IBUS_TELEM_ENABLED
+    AP_IBus_Telem ibus_telem;
 #endif
 
 #if AP_RSSI_ENABLED
@@ -456,7 +475,9 @@ protected:
 #endif
 
     static const struct AP_Param::GroupInfo var_info[];
+#if AP_SCHEDULER_ENABLED
     static const struct AP_Scheduler::Task scheduler_tasks[];
+#endif
 
 #if OSD_ENABLED
     void publish_osd_info();
@@ -490,14 +511,16 @@ protected:
 
 private:
 
+#if AP_SCHEDULER_ENABLED
     // delay() callback that processing MAVLink packets
     static void scheduler_delay_callback();
+#endif
 
     // if there's been a watchdog reset, notify the world via a
     // statustext:
     void send_watchdog_reset_statustext();
 
-#if AP_INERTIALSENSOR_ENABLED
+#if AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
     // update the harmonic notch for throttle based notch
     void update_throttle_notch(AP_InertialSensor::HarmonicNotch &notch);
 
@@ -506,7 +529,7 @@ private:
 
     // run notch update at either loop rate or 200Hz
     void update_dynamic_notch_at_specified_rate();
-#endif
+#endif  // AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
 
     // decimation for 1Hz update
     uint8_t one_Hz_counter;
@@ -514,7 +537,9 @@ private:
 
     bool likely_flying;         // true if vehicle is probably flying
     uint32_t _last_flying_ms;   // time when likely_flying last went true
+#if AP_INERTIALSENSOR_HARMONICNOTCH_ENABLED
     uint32_t _last_notch_update_ms[HAL_INS_NUM_HARMONIC_NOTCH_FILTERS]; // last time update_dynamic_notch() was run
+#endif
 
     static AP_Vehicle *_singleton;
 

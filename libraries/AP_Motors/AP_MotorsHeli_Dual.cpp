@@ -374,7 +374,8 @@ void AP_MotorsHeli_Dual::update_motor_control(AP_MotorsHeli_RSC::RotorControlSta
     }
 
     // Check if rotors are run-up
-    _heliflags.rotor_runup_complete = _main_rotor.is_runup_complete();
+    set_rotor_runup_complete(_main_rotor.is_runup_complete());
+
     // Check if rotors are spooled down
     _heliflags.rotor_spooldown_complete = _main_rotor.is_spooldown_complete();
 }
@@ -403,7 +404,8 @@ void AP_MotorsHeli_Dual::move_actuators(float roll_out, float pitch_out, float c
             pitch_out = _cyclic_max/4500.0f;
             limit.pitch = true;
         }
-    } else {
+    }
+    if (_dual_mode != AP_MOTORS_HELI_DUAL_MODE_TRANSVERSE) {
         if (roll_out < -_cyclic_max/4500.0f) {
             roll_out = -_cyclic_max/4500.0f;
             limit.roll = true;
@@ -593,3 +595,16 @@ bool AP_MotorsHeli_Dual::arming_checks(size_t buflen, char *buffer) const
 
     return true;
 }
+
+#if HAL_LOGGING_ENABLED
+// heli motors logging - called at 10 Hz
+void AP_MotorsHeli_Dual::Log_Write(void)
+{
+    // write swashplate log
+    _swashplate1.write_log(get_cyclic_angle_scaler(), _collective_min_deg.get(), _collective_max_deg.get(), _collective_min.get(), _collective_max.get());
+    _swashplate2.write_log(get_cyclic_angle_scaler(), _collective_min_deg.get(), _collective_max_deg.get(), _collective2_min.get(), _collective2_max.get());
+
+    // write RSC log
+    _main_rotor.write_log();
+}
+#endif

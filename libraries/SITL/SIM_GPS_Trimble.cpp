@@ -93,7 +93,7 @@ void GPS_Trimble::publish(const GPS_Data *d)
                 GSOF_POS_TIME_LEN,
                 htobe32(gps_tow.ms),
                 htobe16(gps_tow.week),
-                d->have_lock ? _sitl->gps_numsats[instance] : uint8_t(3),
+                d->have_lock ? d->num_sats : uint8_t(3),
                 pos_flags_1,
                 pos_flags_2,
                 bootcount
@@ -175,7 +175,7 @@ void GPS_Trimble::publish(const GPS_Data *d)
                 GSOF_VEL_LEN,
                 vel_flags,
                 gsof_pack_float(d->speed_2d()),
-                gsof_pack_float(d->heading()),
+                gsof_pack_float(d->ground_track_rad()),
                 // Trimble API has ambiguous direction here.
                 // Intentionally narrow from double.
                 gsof_pack_float(static_cast<float>(d->speedD))

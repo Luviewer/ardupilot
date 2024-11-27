@@ -9,7 +9,7 @@ const AP_Param::GroupInfo AP_Mount_Params::var_info[] = {
     // @Param: _TYPE
     // @DisplayName: Mount Type
     // @Description: Mount Type
-    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial, 6:Gremsy, 7:BrushlessPWM, 8:Siyi, 9:Scripting, 10:Xacti, 11:Viewpro
+    // @Values: 0:None, 1:Servo, 2:3DR Solo, 3:Alexmos Serial, 4:SToRM32 MAVLink, 5:SToRM32 Serial, 6:Gremsy, 7:BrushlessPWM, 8:Siyi, 9:Scripting, 10:Xacti, 11:Viewpro, 12:Topotek
     // @RebootRequired: True
     // @User: Standard
     AP_GROUPINFO_FLAGS("_TYPE", 1, AP_Mount_Params, type, 0, AP_PARAM_FLAG_ENABLE),
@@ -164,6 +164,13 @@ const AP_Param::GroupInfo AP_Mount_Params::var_info[] = {
     // @Description: Mount device ID, taking into account its type, bus and instance
     // @User: Advanced
     AP_GROUPINFO_FLAGS("_DEVID", 15, AP_Mount_Params, dev_id, 0, AP_PARAM_FLAG_INTERNAL_USE_ONLY),
+
+    // @Param: _OPTIONS
+    // @DisplayName: Mount options
+    // @Description: Mount options bitmask
+    // @Bitmask: 0:RC lock state from previous mode
+    // @User: Standard
+    AP_GROUPINFO("_OPTIONS", 16, AP_Mount_Params, options, 0),
 
     AP_GROUPEND
 };

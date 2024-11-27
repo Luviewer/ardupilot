@@ -41,7 +41,7 @@ void Compass::cal_update()
         return;
     } else if (_cal_has_run && _auto_reboot()) {
         hal.scheduler->delay(1000);
-        hal.scheduler->reboot(false);
+        hal.scheduler->reboot();
     }
 }
 
@@ -63,7 +63,7 @@ bool Compass::_start_calibration(uint8_t i, bool retry, float delay)
 #endif
     
     if (_calibrator[prio] == nullptr) {
-        _calibrator[prio] = new CompassCalibrator();
+        _calibrator[prio] = NEW_NOTHROW CompassCalibrator();
         if (_calibrator[prio] == nullptr) {
             GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Compass cal object not initialised");
             return false;

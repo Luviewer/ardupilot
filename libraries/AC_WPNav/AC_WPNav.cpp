@@ -5,7 +5,7 @@ extern const AP_HAL::HAL& hal;
 
 // maximum velocities and accelerations
 #define WPNAV_WP_SPEED                 1000.0f      // default horizontal speed between waypoints in cm/s
-#define WPNAV_WP_SPEED_MIN               20.0f      // minimum horizontal speed between waypoints in cm/s
+#define WPNAV_WP_SPEED_MIN               10.0f      // minimum horizontal speed between waypoints in cm/s
 #define WPNAV_WP_RADIUS                 200.0f      // default waypoint radius in cm
 #define WPNAV_WP_RADIUS_MIN               5.0f      // minimum waypoint radius in cm
 #define WPNAV_WP_SPEED_UP               250.0f      // default maximum climb velocity
@@ -19,7 +19,7 @@ const AP_Param::GroupInfo AC_WPNav::var_info[] = {
     // @DisplayName: Waypoint Horizontal Speed Target
     // @Description: Defines the speed in cm/s which the aircraft will attempt to maintain horizontally during a WP mission
     // @Units: cm/s
-    // @Range: 20 2000
+    // @Range: 10 2000
     // @Increment: 50
     // @User: Standard
     AP_GROUPINFO("SPEED",       0, AC_WPNav, _wp_speed_cms, WPNAV_WP_SPEED),
@@ -482,7 +482,7 @@ bool AC_WPNav::advance_wp_target_along_track(float dt)
         const float track_error = _pos_control.get_pos_error_cm().dot(track_direction);
         const float track_velocity = _inav.get_velocity_neu_cms().dot(track_direction);
         // set time scaler to be consistent with the achievable aircraft speed with a 5% buffer for short term variation.
-        track_scaler_dt = constrain_float(0.05f + (track_velocity - _pos_control.get_pos_xy_p().kP() * track_error) / curr_target_vel.length(), 0.1f, 1.0f);
+        track_scaler_dt = constrain_float(0.05f + (track_velocity - _pos_control.get_pos_xy_p().kP() * track_error) / curr_target_vel.length(), 0.0f, 1.0f);
     }
 
     // Use vel_scaler_dt to slow down the trajectory time

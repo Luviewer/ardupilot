@@ -222,7 +222,7 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_receive_resources(const u
     if (allocation_size != 0) {
         _new_items = (AC_PolyFenceItem*)malloc(allocation_size);
         if (_new_items == nullptr) {
-            gcs().send_text(MAV_SEVERITY_WARNING, "Out of memory for upload");
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Out of memory for upload");
             return MAV_MISSION_ERROR;
         }
     }
@@ -233,7 +233,7 @@ MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_receive_resources(const u
 MAV_MISSION_RESULT MissionItemProtocol_Fence::allocate_update_resources()
 {
     const uint16_t _item_count = _fence.polyfence().num_stored_items();
-    _updated_mask = new uint8_t[(_item_count+7)/8];
+    _updated_mask = NEW_NOTHROW uint8_t[(_item_count+7)/8];
     if (_updated_mask == nullptr) {
         return MAV_MISSION_ERROR;
     }

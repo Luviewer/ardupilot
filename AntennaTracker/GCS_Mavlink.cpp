@@ -264,6 +264,7 @@ static const ap_message STREAM_RAW_SENSORS_msgs[] = {
     MSG_SCALED_PRESSURE,
     MSG_SCALED_PRESSURE2,
     MSG_SCALED_PRESSURE3,
+    MSG_AIRSPEED,
 };
 static const ap_message STREAM_EXTENDED_STATUS_msgs[] = {
     MSG_SYS_STATUS,
@@ -289,7 +290,9 @@ static const ap_message STREAM_RAW_CONTROLLER_msgs[] = {
 };
 static const ap_message STREAM_RC_CHANNELS_msgs[] = {
     MSG_RC_CHANNELS,
+#if AP_MAVLINK_MSG_RC_CHANNELS_RAW_ENABLED
     MSG_RC_CHANNELS_RAW, // only sent on a mavlink1 connection
+#endif
 };
 static const ap_message STREAM_EXTRA1_msgs[] = {
     MSG_ATTITUDE,
@@ -451,13 +454,6 @@ MAV_RESULT GCS_MAVLINK_Tracker::handle_command_int_packet(const mavlink_command_
     }
 }
 
-bool GCS_MAVLINK_Tracker::set_home_to_current_location(bool _lock) {
-    return tracker.set_home(AP::gps().location());
-}
-bool GCS_MAVLINK_Tracker::set_home(const Location& loc, bool _lock) {
-    return tracker.set_home(loc);
-}
-
 void GCS_MAVLINK_Tracker::handle_message(const mavlink_message_t &msg)
 {
     switch (msg.msgid) {
@@ -584,7 +580,7 @@ void GCS_MAVLINK_Tracker::handle_message_mission_item(const mavlink_message_t &m
 
         // check if this is the HOME wp
         if (packet.seq == 0) {
-            if (!tracker.set_home(tell_command)) {
+            if (!tracker.set_home(tell_command, false)) {
                 result = MAV_MISSION_ERROR;
                 goto mission_failed;
             }

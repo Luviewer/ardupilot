@@ -48,6 +48,7 @@ const struct UnitStructure log_Units[] = {
     { 'a', "Ah" },            // Ampere hours
     { 'd', "deg" },           // of the angular variety, -180 to 180
     { 'b', "B" },             // bytes
+    { 'B', "B/s" },           // bytes per second
     { 'k', "deg/s" },         // degrees per second. Degrees are NOT SI, but is some situations more user-friendly than radians
     { 'D', "deglatitude" },   // degrees of latitude
     { 'e', "deg/s/s" },       // degrees per second per second. Degrees are NOT SI, but is some situations more user-friendly than radians
@@ -144,6 +145,7 @@ const struct MultiplierStructure log_Multipliers[] = {
 #include <AC_Fence/LogStructure.h>
 #include <AP_Landing/LogStructure.h>
 #include <AC_AttitudeControl/LogStructure.h>
+#include <AP_HAL/LogStructure.h>
 
 // structure used to define logging format
 // It is packed on ChibiOS to save flash space; however, this causes problems
@@ -660,6 +662,7 @@ struct PACKED log_VER {
     char fw_string[64];
     uint16_t _APJ_BOARD_ID;
     uint8_t build_type;
+    uint8_t filter_version;
 };
 
 
@@ -1079,7 +1082,7 @@ struct PACKED log_VER {
 // @Field: NumPts: number of points currently in use
 // @Field: MaxPts: maximum number of points that could be used
 // @Field: Action: most recent internal action taken by SRTL library
-// @FieldValueEnum: Action: AP_SmartRTL::SRTL_Actions
+// @FieldValueEnum: Action: AP_SmartRTL::Action
 // @Field: N: point associated with most recent action (North component)
 // @Field: E: point associated with most recent action (East component)
 // @Field: D: point associated with most recent action (Down component)
@@ -1170,6 +1173,7 @@ struct PACKED log_VER {
 // @Field: FWS: Firmware version string
 // @Field: APJ: Board ID
 // @Field: BU: Build vehicle type
+// @Field: FV: Filter version
 
 // @LoggerMessage: MOTB
 // @Description: Motor mixer information
@@ -1268,6 +1272,7 @@ LOG_STRUCTURE_FROM_NAVEKF3 \
 LOG_STRUCTURE_FROM_NAVEKF \
 LOG_STRUCTURE_FROM_AHRS \
 LOG_STRUCTURE_FROM_HAL_CHIBIOS \
+LOG_STRUCTURE_FROM_HAL \
 LOG_STRUCTURE_FROM_RPM \
 LOG_STRUCTURE_FROM_FENCE \
     { LOG_DF_FILE_STATS, sizeof(log_DSF), \
@@ -1278,7 +1283,7 @@ LOG_STRUCTURE_FROM_FENCE \
       "MAV", "QBHHHBHH",   "TimeUS,chan,txp,rxp,rxdp,flags,ss,tf", "s#----s-", "F-000-C-" },   \
 LOG_STRUCTURE_FROM_VISUALODOM \
     { LOG_OPTFLOW_MSG, sizeof(log_Optflow), \
-      "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEnn", "F-0000" , true }, \
+      "OF",   "QBffff",   "TimeUS,Qual,flowX,flowY,bodyX,bodyY", "s-EEEE", "F-0000" , true }, \
     { LOG_WHEELENCODER_MSG, sizeof(log_WheelEncoder), \
       "WENC",  "Qfbfb", "TimeUS,Dist0,Qual0,Dist1,Qual1", "sm-m-", "F0-0-" , true }, \
     { LOG_ADSB_MSG, sizeof(log_ADSB), \
@@ -1300,11 +1305,11 @@ LOG_STRUCTURE_FROM_AIS \
     { LOG_SCRIPTING_MSG, sizeof(log_Scripting), \
       "SCR",   "QNIii", "TimeUS,Name,Runtime,Total_mem,Run_mem", "s#sbb", "F-F--", true }, \
     { LOG_VER_MSG, sizeof(log_VER), \
-      "VER",   "QBHBBBBIZHB", "TimeUS,BT,BST,Maj,Min,Pat,FWT,GH,FWS,APJ,BU", "s----------", "F----------", false }, \
+      "VER",   "QBHBBBBIZHBB", "TimeUS,BT,BST,Maj,Min,Pat,FWT,GH,FWS,APJ,BU,FV", "s-----------", "F-----------", false }, \
     { LOG_MOTBATT_MSG, sizeof(log_MotBatt), \
       "MOTB", "QfffffB",  "TimeUS,LiftMax,BatVolt,ThLimit,ThrAvMx,ThrOut,FailFlags", "s------", "F------" , true }
 
-// message types 0 to 63 reserved for vehicle specific use
+// message types 0 to 31 reserved for vehicle-specific use
 
 // message types for common messages
 enum LogMessages : uint8_t {
@@ -1388,6 +1393,7 @@ enum LogMessages : uint8_t {
     LOG_RCOUT2_MSG,
     LOG_RCOUT3_MSG,
     LOG_IDS_FROM_FENCE,
+    LOG_IDS_FROM_HAL,
 
     _LOG_LAST_MSG_
 };

@@ -21,7 +21,6 @@ on:
       - 'Tools/Hello/**'
       - 'Tools/IO_Firmware/**'
       - 'Tools/Linux_HAL_Essentials/**'
-      - 'Tools/LogAnalyzer/**'
       - 'Tools/Pozyx/**'
       - 'Tools/PrintVersion.py'
       - 'Tools/Replay/**'
@@ -202,6 +201,7 @@ jobs:
           PATH: /usr/bin:$(cygpath ${SYSTEMROOT})/system32
         shell: C:\cygwin\bin\bash.exe -eo pipefail '{0}'
         run: >-
+          git config --global --add safe.directory /cygdrive/d/a/${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/}/${GITHUB_REPOSITORY#$GITHUB_REPOSITORY_OWNER/} &&
           export PATH=/usr/local/bin:/usr/bin:$(cygpath ${SYSTEMROOT})/system32 &&
           source ~/ccache.conf &&
           Tools/scripts/cygwin_build.sh &&

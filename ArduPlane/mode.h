@@ -9,6 +9,7 @@
 #include "quadplane.h"
 #include <AP_AHRS/AP_AHRS.h>
 #include <AP_Mission/AP_Mission.h>
+#include "pullup.h"
 
 class AC_PosControl;
 class AC_AttitudeControl_Multi;
@@ -208,6 +209,7 @@ protected:
 class ModeAuto : public Mode
 {
 public:
+    friend class Plane;
 
     Number mode_number() const override { return Number::AUTO; }
     const char *name() const override { return "AUTO"; }
@@ -233,7 +235,13 @@ public:
     void do_nav_delay(const AP_Mission::Mission_Command& cmd);
     bool verify_nav_delay(const AP_Mission::Mission_Command& cmd);
 
+    bool verify_altitude_wait(const AP_Mission::Mission_Command& cmd);
+
     void run() override;
+
+#if AP_PLANE_GLIDER_PULLUP_ENABLED
+    bool in_pullup() const { return pullup.in_pullup(); }
+#endif
 
 protected:
 
@@ -249,6 +257,16 @@ private:
         uint32_t time_start_ms;
     } nav_delay;
 
+    // wiggle state and timer for NAV_ALTITUDE_WAIT
+    void wiggle_servos();
+    struct {
+        uint8_t stage;
+        uint32_t last_ms;
+    } wiggle;
+
+#if AP_PLANE_GLIDER_PULLUP_ENABLED
+    GliderPullup pullup;
+#endif // AP_PLANE_GLIDER_PULLUP_ENABLED
 };
 
 
@@ -647,6 +665,8 @@ class ModeQLoiter : public Mode
 {
 friend class QuadPlane;
 friend class ModeQLand;
+friend class Plane;
+
 public:
 
     Number mode_number() const override { return Number::QLOITER; }
@@ -664,13 +684,12 @@ public:
 protected:
 
     bool _enter() override;
+    uint32_t last_target_loc_set_ms;
 };
 
 class ModeQLand : public Mode
 {
 public:
-    friend class Plane;
-
     Number mode_number() const override { return Number::QLAND; }
     const char *name() const override { return "QLAND"; }
     const char *name4() const override { return "QLND"; }
@@ -686,8 +705,6 @@ protected:
 
     bool _enter() override;
     bool _pre_arm_checks(size_t buflen, char *buffer) const override { return false; }
-
-    uint32_t last_target_loc_set_ms;
 };
 
 class ModeQRTL : public Mode
@@ -809,6 +826,12 @@ protected:
     Location start_loc;
 
     bool _enter() override;
+
+private:
+
+    // flag that we have already called autoenable fences once in MODE TAKEOFF
+    bool have_autoenabled_fences;
+
 };
 
 #if HAL_SOARING_ENABLED

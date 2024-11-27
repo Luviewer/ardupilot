@@ -88,7 +88,7 @@ sudo usermod -a -G dialout "$USER"
 
 $ZYPPER $BASE_PKGS $SITL_PKGS || echo "Check zypper output for errors"
 
-python3 -m venv "$HOME"/venv-ardupilot
+python3 -m venv --system-site-packages "$HOME"/venv-ardupilot
 
 SHELL_LOGIN=".profile"
 # activate it:
@@ -105,7 +105,7 @@ if ! grep -Fxq "$SOURCE_LINE" ~/.bashrc; then
     fi
 fi
 
-$PIP3 install -U pip setuptools wheel
+$PIP3 install -U pip packaging setuptools wheel
 $PIP3 install -U attrdict3
 $PIP3 install -U $PYTHON_PKGS
 

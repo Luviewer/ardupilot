@@ -321,15 +321,25 @@ for t in $CI_BUILD_TARGET; do
 
     if [ "$t" == "CubeOrange-PPP" ]; then
         echo "Building CubeOrange-PPP"
-        $waf configure --board CubeOrange --enable-ppp
+        $waf configure --board CubeOrange --enable-PPP
         $waf clean
         $waf copter
         continue
     fi
 
-    if [ "$t" == "CubeOrange-SOHW" ]; then
+    if [ "$t" == "CubeOrange-EKF2" ]; then
+        echo "Building CubeOrange with EKF2 enabled"
+        $waf configure --board CubeOrange --enable-EKF2
+        $waf clean
+        $waf copter
+        continue
+    fi
+
+    if [ "$t" == "SOHW" ]; then
         echo "Building CubeOrange-SOHW"
-        Tools/scripts/sitl-on-hardware/sitl-on-hw.py --vehicle plane --simclass Plane --board CubeOrange
+        Tools/scripts/sitl-on-hardware/sitl-on-hw.py --board CubeOrange --vehicle copter --simclass MultiCopter
+        echo "Building 6X-SOHW"
+        Tools/scripts/sitl-on-hardware/sitl-on-hw.py --board Pixhawk6X --vehicle plane --simclass Plane --frame plane-3d
         continue
     fi
 
@@ -341,6 +351,18 @@ for t in $CI_BUILD_TARGET; do
         $waf configure --board Pixhawk6X-PPPGW --bootloader
         $waf clean
         $waf bootloader
+        continue
+    fi
+
+    if [ "$t" == "new-check" ]; then
+        echo "Building Pixhawk6X with new check"
+        $waf configure --board Pixhawk6X --enable-new-checking
+        $waf clean
+        $waf
+        echo "Building Pixhawk6X-PPPGW with new check"
+        $waf configure --board Pixhawk6X-PPPGW --enable-new-checking
+        $waf clean
+        $waf AP_Periph
         continue
     fi
     
@@ -420,7 +442,7 @@ for t in $CI_BUILD_TARGET; do
         echo "Building signed firmwares"
         sudo apt-get update
         sudo apt-get install -y python3-dev
-        python3 -m pip install pymonocypher
+        python3 -m pip install pymonocypher==3.1.3.2
         ./Tools/scripts/signing/generate_keys.py testkey
         $waf configure --board CubeOrange-ODID --signed-fw --private-key testkey_private_key.dat
         $waf copter

@@ -25,7 +25,9 @@
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <AP_RangeFinder/AP_RangeFinder_config.h>
 #include <AP_Winch/AP_Winch_config.h>
+#include <AP_AHRS/AP_AHRS_config.h>
 #include <AP_Arming/AP_Arming_config.h>
+#include <AP_Airspeed/AP_Airspeed_config.h>
 
 #include "ap_message.h"
 
@@ -318,6 +320,7 @@ public:
         return last_radio_status.remrssi_ms;
     }
     static float telemetry_radio_rssi(); // 0==no signal, 1==full signal
+    static bool last_txbuf_is_greater(uint8_t txbuf_limit);
 
     // mission item index to be sent on queued msg, delayed or not
     uint16_t mission_item_reached_index = AP_MISSION_CMD_INDEX_NONE;
@@ -352,11 +355,18 @@ public:
     void send_rc_channels() const;
     void send_rc_channels_raw() const;
     void send_raw_imu();
+    void send_highres_imu();
 
     void send_scaled_pressure_instance(uint8_t instance, void (*send_fn)(mavlink_channel_t chan, uint32_t time_boot_ms, float press_abs, float press_diff, int16_t temperature, int16_t temperature_press_diff));
     void send_scaled_pressure();
     void send_scaled_pressure2();
     virtual void send_scaled_pressure3(); // allow sub to override this
+#if AP_AIRSPEED_ENABLED
+    // Send per instance airspeed message
+    // last index is used to rotate through sensors
+    void send_airspeed();
+    uint8_t last_airspeed_idx;
+#endif
     void send_simstate() const;
     void send_sim_state() const;
     void send_ahrs();
@@ -480,7 +490,6 @@ public:
 
     virtual uint64_t capabilities() const;
     uint16_t get_stream_slowdown_ms() const { return stream_slowdown_ms; }
-    uint8_t get_last_txbuf() const { return last_txbuf; }
 
     MAV_RESULT set_message_interval(uint32_t msg_id, int32_t interval_us);
 
@@ -521,12 +530,15 @@ protected:
     void handle_set_mode(const mavlink_message_t &msg);
     void handle_command_int(const mavlink_message_t &msg);
 
-    MAV_RESULT handle_command_do_set_home(const mavlink_command_int_t &packet);
     virtual MAV_RESULT handle_command_int_packet(const mavlink_command_int_t &packet, const mavlink_message_t &msg);
     MAV_RESULT handle_command_int_external_position_estimate(const mavlink_command_int_t &packet);
+    MAV_RESULT handle_command_int_external_wind_estimate(const mavlink_command_int_t &packet);
 
-    virtual bool set_home_to_current_location(bool lock) = 0;
-    virtual bool set_home(const Location& loc, bool lock) = 0;
+#if AP_HOME_ENABLED
+    MAV_RESULT handle_command_do_set_home(const mavlink_command_int_t &packet);
+    bool set_home_to_current_location(bool lock);
+    bool set_home(const Location& loc, bool lock);
+#endif
 
 #if AP_ARMING_ENABLED
     virtual MAV_RESULT handle_command_component_arm_disarm(const mavlink_command_int_t &packet);
@@ -710,7 +722,9 @@ protected:
     virtual float vfr_hud_climbrate() const;
     virtual float vfr_hud_airspeed() const;
     virtual int16_t vfr_hud_throttle() const { return 0; }
+#if AP_AHRS_ENABLED
     virtual float vfr_hud_alt() const;
+#endif
 
 #if HAL_HIGH_LATENCY2_ENABLED
     virtual int16_t high_latency_target_altitude() const { return 0; }
@@ -726,7 +740,7 @@ protected:
 #endif // HAL_HIGH_LATENCY2_ENABLED
     
     static constexpr const float magic_force_arm_value = 2989.0f;
-    static constexpr const float magic_force_disarm_value = 21196.0f;
+    static constexpr const float magic_force_arm_disarm_value = 21196.0f;
 
     void manual_override(class RC_Channel *c, int16_t value_in, uint16_t offset, float scaler, const uint32_t tnow, bool reversed = false);
 
@@ -765,6 +779,7 @@ private:
         uint32_t remrssi_ms;
         uint8_t rssi;
         uint32_t received_ms; // time RADIO_STATUS received
+        uint8_t txbuf = 100;
     } last_radio_status;
 
     enum class Flags {
@@ -810,8 +825,6 @@ private:
 
     // number of extra ms to add to slow things down for the radio
     uint16_t         stream_slowdown_ms;
-    // last reported radio buffer percent available
-    uint8_t          last_txbuf = 100;
 
     // outbound ("deferred message") queue.
 
@@ -1266,6 +1279,11 @@ public:
 
     virtual uint8_t sysid_this_mav() const = 0;
 
+#if AP_SCRIPTING_ENABLED
+    // lua access to command_int
+    MAV_RESULT lua_command_int_packet(const mavlink_command_int_t &packet);
+#endif
+
 protected:
 
     virtual GCS_MAVLINK *new_gcs_mavlink_backend(GCS_MAVLINK_Parameters &params,
@@ -1329,6 +1347,8 @@ private:
         uint32_t last_port1_data_ms;
         uint32_t baud1;
         uint32_t baud2;
+        uint8_t parity1;
+        uint8_t parity2;
         uint8_t timeout_s;
         HAL_Semaphore sem;
     } _passthru;
@@ -1395,4 +1415,3 @@ enum MAV_SEVERITY
 #define AP_HAVE_GCS_SEND_TEXT 0
 
 #endif // HAL_GCS_ENABLED
-

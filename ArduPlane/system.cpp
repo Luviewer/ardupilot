@@ -2,13 +2,6 @@
 
 #include "qautotune.h"
 
-/*****************************************************************************
-*   The init_ardupilot function processes everything we need for an in - air restart
-*        We will determine later if we are actually on the ground and process a
-*        ground start in that case.
-*
-*****************************************************************************/
-
 static void failsafe_check_static()
 {
     plane.failsafe_check();
@@ -43,14 +36,18 @@ void Plane::init_ardupilot()
     // init baro
     barometer.init();
 
+#if AP_RANGEFINDER_ENABLED
     // initialise rangefinder
     rangefinder.set_log_rfnd_bit(MASK_LOG_SONAR);
     rangefinder.init(ROTATION_PITCH_270);
+#endif
 
     // initialise battery monitoring
     battery.init();
 
+#if AP_RSSI_ENABLED
     rssi.init();
+#endif
 
 #if AP_RPM_ENABLED
     rpm_sensor.init();
@@ -60,7 +57,7 @@ void Plane::init_ardupilot()
     gcs().setup_uarts();
 
 
-#if OSD_ENABLED == ENABLED
+#if OSD_ENABLED
     osd.init();
 #endif
 
@@ -74,7 +71,7 @@ void Plane::init_ardupilot()
 
     // GPS Initialization
     gps.set_log_gps_bit(MASK_LOG_GPS);
-    gps.init(serial_manager);
+    gps.init();
 
     init_rc_in();               // sets up rc channels from radio
 
@@ -109,40 +106,7 @@ void Plane::init_ardupilot()
 #endif
 
     AP_Param::reload_defaults_file(true);
-    
-    startup_ground();
 
-    // don't initialise aux rc output until after quadplane is setup as
-    // that can change initial values of channels
-    init_rc_out_aux();
-
-    if (g2.oneshot_mask != 0) {
-        hal.rcout->set_output_mode(g2.oneshot_mask, AP_HAL::RCOutput::MODE_PWM_ONESHOT);
-    }
-
-    set_mode_by_number((enum Mode::Number)g.initial_mode.get(), ModeReason::INITIALISED);
-
-    // set the correct flight mode
-    // ---------------------------
-    rc().reset_mode_switch();
-
-    // initialise sensor
-#if AP_OPTICALFLOW_ENABLED
-    if (optflow.enabled()) {
-        optflow.init(-1);
-    }
-#endif
-
-#if AC_PRECLAND_ENABLED
-    g2.precland.init(scheduler.get_loop_rate_hz());
-#endif
-}
-
-//********************************************************************************
-//This function does all the calibrations, etc. that we need during a ground start
-//********************************************************************************
-void Plane::startup_ground(void)
-{
     set_mode(mode_initializing, ModeReason::INITIALISED);
 
 #if (GROUND_START_DELAY > 0)
@@ -155,7 +119,7 @@ void Plane::startup_ground(void)
     //INS ground start
     //------------------------
     //
-    startup_INS_ground();
+    startup_INS();
 
     // Save the settings for in-air restart
     // ------------------------------------
@@ -174,8 +138,38 @@ void Plane::startup_ground(void)
     // reset last heartbeat time, so we don't trigger failsafe on slow
     // startup
     gcs().sysid_myggcs_seen(AP_HAL::millis());
-}
 
+    // don't initialise aux rc output until after quadplane is setup as
+    // that can change initial values of channels
+    init_rc_out_aux();
+
+    if (g2.oneshot_mask != 0) {
+        hal.rcout->set_output_mode(g2.oneshot_mask, AP_HAL::RCOutput::MODE_PWM_ONESHOT);
+    }
+    hal.rcout->set_dshot_esc_type(SRV_Channels::get_dshot_esc_type());
+
+    set_mode_by_number((enum Mode::Number)g.initial_mode.get(), ModeReason::INITIALISED);
+
+    // set the correct flight mode
+    // ---------------------------
+    rc().reset_mode_switch();
+
+    // initialise sensor
+#if AP_OPTICALFLOW_ENABLED
+    if (optflow.enabled()) {
+        optflow.init(-1);
+    }
+#endif
+
+#if AC_PRECLAND_ENABLED
+    g2.precland.init(scheduler.get_loop_rate_hz());
+#endif
+
+#if AP_ICENGINE_ENABLED
+    g2.ice_control.init();
+#endif
+
+}
 
 #if AP_FENCE_ENABLED
 /*
@@ -418,7 +412,7 @@ void Plane::check_short_failsafe()
 }
 
 
-void Plane::startup_INS_ground(void)
+void Plane::startup_INS(void)
 {
     if (ins.gyro_calibration_timing() != AP_InertialSensor::GYRO_CAL_NEVER) {
         gcs().send_text(MAV_SEVERITY_ALERT, "Beginning INS calibration. Do not move plane");

@@ -3,6 +3,7 @@
 #include "Copter.h"
 #include <AP_Math/chirp.h>
 #include <AP_ExternalControl/AP_ExternalControl_config.h> // TODO why is this needed if Copter.h includes this
+
 class Parameters;
 class ParametersG2;
 
@@ -14,7 +15,7 @@ class _AutoTakeoff {
 public:
     void run();
     void start(float complete_alt_cm, bool terrain_alt);
-    bool get_position(Vector3p& completion_pos);
+    bool get_completion_pos(Vector3p& pos_neu_cm);
 
     bool complete;          // true when takeoff is complete
 
@@ -127,6 +128,7 @@ public:
     virtual bool allows_save_trim() const { return false; }
     virtual bool allows_autotune() const { return false; }
     virtual bool allows_flip() const { return false; }
+    virtual bool crash_check_enabled() const { return true; }
 
 #if FRAME_CONFIG == HELI_FRAME
     virtual bool allows_inverted() const { return false; };
@@ -184,8 +186,11 @@ public:
     virtual bool pause() { return false; };
     virtual bool resume() { return false; };
 
+    // handle situations where the vehicle is on the ground waiting for takeoff
+    void make_safe_ground_handling(bool force_throttle_unlimited = false);
+
     // true if weathervaning is allowed in the current mode
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     virtual bool allows_weathervaning() const { return false; }
 #endif
 
@@ -195,7 +200,9 @@ protected:
     bool is_disarmed_or_landed() const;
     void zero_throttle_and_relax_ac(bool spool_up = false);
     void zero_throttle_and_hold_attitude();
-    void make_safe_ground_handling(bool force_throttle_unlimited = false);
+
+    // Return stopping point as a location with above origin alt frame
+    Location get_stopping_point() const;
 
     // functions to control normal landing.  pause_descent is true if vehicle should not descend
     void land_run_horizontal_control();
@@ -228,12 +235,12 @@ protected:
     virtual float throttle_hover() const;
 
     // Alt_Hold based flight mode states used in Alt_Hold, Loiter, and Sport
-    enum AltHoldModeState {
-        AltHold_MotorStopped,
-        AltHold_Takeoff,
-        AltHold_Landed_Ground_Idle,
-        AltHold_Landed_Pre_Takeoff,
-        AltHold_Flying
+    enum class AltHoldModeState {
+        MotorStopped,
+        Takeoff,
+        Landed_Ground_Idle,
+        Landed_Pre_Takeoff,
+        Flying
     };
     AltHoldModeState get_alt_hold_state(float target_climb_rate_cms);
 
@@ -324,7 +331,7 @@ public:
 
         bool reached_fixed_yaw_target();
 
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
         void update_weathervane(const int16_t pilot_yaw_cds);
 #endif
 
@@ -338,7 +345,9 @@ public:
         // rate_cds(): desired yaw rate in centidegrees/second:
         float rate_cds();
 
+        // returns a yaw in degrees, direction of vehicle travel:
         float look_ahead_yaw();
+
         float roi_yaw() const;
 
         // auto flight mode's yaw mode
@@ -381,7 +390,7 @@ public:
 };
 
 
-#if MODE_ACRO_ENABLED == ENABLED
+#if MODE_ACRO_ENABLED
 class ModeAcro : public Mode {
 
 public:
@@ -412,6 +421,7 @@ public:
     void air_mode_aux_changed();
     bool allows_save_trim() const override { return true; }
     bool allows_flip() const override { return true; }
+    bool crash_check_enabled() const override { return false; }
 
 protected:
 
@@ -465,7 +475,9 @@ public:
     }
     bool allows_autotune() const override { return true; }
     bool allows_flip() const override { return true; }
-
+#if FRAME_CONFIG == HELI_FRAME
+    bool allows_inverted() const override { return true; };
+#endif
 protected:
 
     const char *name() const override { return "ALT_HOLD"; }
@@ -493,6 +505,9 @@ public:
     bool allows_arming(AP_Arming::Method method) const override;
     bool is_autopilot() const override { return true; }
     bool in_guided_mode() const override { return _mode == SubMode::NAVGUIDED || _mode == SubMode::NAV_SCRIPT_TIME; }
+#if FRAME_CONFIG == HELI_FRAME
+    bool allows_inverted() const override { return true; };
+#endif
 
     // Auto modes
     enum class SubMode : uint8_t {
@@ -548,6 +563,12 @@ public:
     // Go straight to landing sequence via DO_LAND_START, if succeeds pretend to be Auto RTL mode
     bool jump_to_landing_sequence_auto_RTL(ModeReason reason);
 
+    // Join mission after DO_RETURN_PATH_START waypoint, if succeeds pretend to be Auto RTL mode
+    bool return_path_start_auto_RTL(ModeReason reason);
+
+    // Try join return path else do land start
+    bool return_path_or_jump_to_landing_sequence_auto_RTL(ModeReason reason);
+
     // lua accessors for nav script time support
     bool nav_script_time(uint16_t &id, uint8_t &cmd, float &arg1, float &arg2, int16_t &arg3, int16_t &arg4);
     void nav_script_time_done(uint16_t id);
@@ -561,7 +582,7 @@ public:
     AP_Mission_ChangeDetector mis_change_detector;
 
     // true if weathervaning is allowed in auto
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     bool allows_weathervaning(void) const override;
 #endif
 
@@ -577,12 +598,16 @@ protected:
 
 private:
 
-    enum class Options : int32_t {
+    enum class Option : int32_t {
         AllowArming                        = (1 << 0U),
         AllowTakeOffWithoutRaisingThrottle = (1 << 1U),
         IgnorePilotYaw                     = (1 << 2U),
         AllowWeatherVaning                 = (1 << 7U),
     };
+    bool option_is_enabled(Option option) const;
+
+    // Enter auto rtl pseudo mode
+    bool enter_auto_rtl(ModeReason reason);
 
     bool start_command(const AP_Mission::Mission_Command& cmd);
     bool verify_command(const AP_Mission::Mission_Command& cmd);
@@ -616,7 +641,7 @@ private:
     void do_loiter_to_alt(const AP_Mission::Mission_Command& cmd);
     void do_spline_wp(const AP_Mission::Mission_Command& cmd);
     void get_spline_from_cmd(const AP_Mission::Mission_Command& cmd, const Location& default_loc, Location& dest_loc, Location& next_dest_loc, bool& next_dest_loc_is_spline);
-#if AC_NAV_GUIDED == ENABLED
+#if AC_NAV_GUIDED
     void do_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
     void do_guided_limits(const AP_Mission::Mission_Command& cmd);
 #endif
@@ -628,7 +653,7 @@ private:
     void do_set_home(const AP_Mission::Mission_Command& cmd);
     void do_roi(const AP_Mission::Mission_Command& cmd);
     void do_mount_control(const AP_Mission::Mission_Command& cmd);
-#if PARACHUTE == ENABLED
+#if HAL_PARACHUTE_ENABLED
     void do_parachute(const AP_Mission::Mission_Command& cmd);
 #endif
 #if AP_WINCH_ENABLED
@@ -654,7 +679,7 @@ private:
     bool verify_nav_wp(const AP_Mission::Mission_Command& cmd);
     bool verify_circle(const AP_Mission::Mission_Command& cmd);
     bool verify_spline_wp(const AP_Mission::Mission_Command& cmd);
-#if AC_NAV_GUIDED == ENABLED
+#if AC_NAV_GUIDED
     bool verify_nav_guided_enable(const AP_Mission::Mission_Command& cmd);
 #endif
     bool verify_nav_delay(const AP_Mission::Mission_Command& cmd);
@@ -727,7 +752,7 @@ private:
     } desired_speed_override;
 };
 
-#if AUTOTUNE_ENABLED == ENABLED
+#if AUTOTUNE_ENABLED
 /*
   wrapper class for AC_AutoTune
  */
@@ -771,18 +796,12 @@ public:
     bool allows_arming(AP_Arming::Method method) const override { return false; }
     bool is_autopilot() const override { return false; }
 
-    void save_tuning_gains();
-    void reset();
+    AutoTune autotune;
 
 protected:
 
     const char *name() const override { return "AUTOTUNE"; }
     const char *name4() const override { return "ATUN"; }
-
-private:
-
-    AutoTune autotune;
-
 };
 #endif
 
@@ -888,6 +907,7 @@ public:
     bool has_manual_throttle() const override { return false; }
     bool allows_arming(AP_Arming::Method method) const override { return false; };
     bool is_autopilot() const override { return false; }
+    bool crash_check_enabled() const override { return false; }
 
 protected:
 
@@ -915,7 +935,7 @@ private:
 };
 
 
-#if MODE_FLOWHOLD_ENABLED == ENABLED
+#if MODE_FLOWHOLD_ENABLED
 /*
   class to support FLOWHOLD mode, which is a position hold mode using
   optical flow directly, avoiding the need for a rangefinder
@@ -958,7 +978,7 @@ private:
     // calculate attitude from flow data
     void flow_to_angle(Vector2f &bf_angle);
 
-    LowPassFilterVector2f flow_filter;
+    LowPassFilterConstDtVector2f flow_filter;
 
     bool flowhold_init(bool ignore_checks);
     void flowhold_run();
@@ -1096,7 +1116,7 @@ public:
     bool resume() override;
 
     // true if weathervaning is allowed in guided
-#if WEATHERVANE_ENABLED == ENABLED
+#if WEATHERVANE_ENABLED
     bool allows_weathervaning(void) const override;
 #endif
 
@@ -1112,7 +1132,7 @@ protected:
 private:
 
     // enum for GUID_OPTIONS parameter
-    enum class Options : int32_t {
+    enum class Option : uint32_t {
         AllowArmingFromTX   = (1U << 0),
         // this bit is still available, pilot yaw was mapped to bit 2 for symmetry with auto
         IgnorePilotYaw      = (1U << 2),
@@ -1122,6 +1142,9 @@ private:
         WPNavUsedForPosControl = (1U << 6),
         AllowWeatherVaning = (1U << 7)
     };
+
+    // returns true if the Guided-mode-option is set (see GUID_OPTIONS)
+    bool option_is_enabled(Option option) const;
 
     // wp controller
     void wp_control_start();
@@ -1231,6 +1254,10 @@ public:
     bool is_autopilot() const override { return false; }
     bool has_user_takeoff(bool must_navigate) const override { return true; }
     bool allows_autotune() const override { return true; }
+
+#if FRAME_CONFIG == HELI_FRAME
+    bool allows_inverted() const override { return true; };
+#endif
 
 #if AC_PRECLAND_ENABLED
     void set_precision_loiter_enabled(bool value) { _precision_loiter_enabled = value; }
@@ -1393,8 +1420,8 @@ public:
 
     // enum for RTL_ALT_TYPE parameter
     enum class RTLAltType : int8_t {
-        RTL_ALTTYPE_RELATIVE = 0,
-        RTL_ALTTYPE_TERRAIN = 1
+        RELATIVE = 0,
+        TERRAIN = 1
     };
     ModeRTL::RTLAltType get_alt_type() const;
 
@@ -1511,6 +1538,10 @@ private:
     // point while following our path home.  If we take too long we
     // may choose to land the vehicle.
     uint32_t path_follow_last_pop_fail_ms;
+
+    // backup last popped point so that it can be restored to the path
+    // if vehicle exits SmartRTL mode before reaching home. invalid if zero
+    Vector3f dest_NED_backup;
 };
 
 
@@ -1617,22 +1648,29 @@ protected:
 private:
 
     void log_data() const;
+    bool is_poscontrol_axis_type() const;
 
     enum class AxisType {
-        NONE = 0,           // none
-        INPUT_ROLL = 1,     // angle input roll axis is being excited
-        INPUT_PITCH = 2,    // angle pitch axis is being excited
-        INPUT_YAW = 3,      // angle yaw axis is being excited
-        RECOVER_ROLL = 4,   // angle roll axis is being excited
-        RECOVER_PITCH = 5,  // angle pitch axis is being excited
-        RECOVER_YAW = 6,    // angle yaw axis is being excited
-        RATE_ROLL = 7,      // rate roll axis is being excited
-        RATE_PITCH = 8,     // rate pitch axis is being excited
-        RATE_YAW = 9,       // rate yaw axis is being excited
-        MIX_ROLL = 10,      // mixer roll axis is being excited
-        MIX_PITCH = 11,     // mixer pitch axis is being excited
-        MIX_YAW = 12,       // mixer pitch axis is being excited
-        MIX_THROTTLE = 13,  // mixer throttle axis is being excited
+        NONE = 0,               // none
+        INPUT_ROLL = 1,         // angle input roll axis is being excited
+        INPUT_PITCH = 2,        // angle pitch axis is being excited
+        INPUT_YAW = 3,          // angle yaw axis is being excited
+        RECOVER_ROLL = 4,       // angle roll axis is being excited
+        RECOVER_PITCH = 5,      // angle pitch axis is being excited
+        RECOVER_YAW = 6,        // angle yaw axis is being excited
+        RATE_ROLL = 7,          // rate roll axis is being excited
+        RATE_PITCH = 8,         // rate pitch axis is being excited
+        RATE_YAW = 9,           // rate yaw axis is being excited
+        MIX_ROLL = 10,          // mixer roll axis is being excited
+        MIX_PITCH = 11,         // mixer pitch axis is being excited
+        MIX_YAW = 12,           // mixer pitch axis is being excited
+        MIX_THROTTLE = 13,      // mixer throttle axis is being excited
+        DISTURB_POS_LAT = 14,   // lateral body axis measured position is being excited
+        DISTURB_POS_LONG = 15,  // longitudinal body axis measured position is being excited
+        DISTURB_VEL_LAT = 16,   // lateral body axis measured velocity is being excited
+        DISTURB_VEL_LONG = 17,  // longitudinal body axis measured velocity is being excited
+        INPUT_VEL_LAT = 18,     // lateral body axis commanded velocity is being excited
+        INPUT_VEL_LONG = 19,    // longitudinal body axis commanded velocity is being excited
     };
 
     AP_Int8 axis;               // Controls which axis are being excited. Set to non-zero to display other parameters
@@ -1649,7 +1687,9 @@ private:
     float waveform_freq_rads;   // Instantaneous waveform frequency
     float time_const_freq;      // Time at constant frequency before chirp starts
     int8_t log_subsample;       // Subsample multiple for logging.
-
+    Vector2f target_vel;        // target velocity for position controller modes
+    Vector2f target_pos;       // target positon
+    Vector2f input_vel_last;    // last cycle input velocity
     // System ID states
     enum class SystemIDModeState {
         SYSTEMID_STATE_STOPPED,
@@ -1713,7 +1753,7 @@ private:
     float free_fall_start_velz;     // vertical velocity when free fall was detected
 };
 
-#if MODE_TURTLE_ENABLED == ENABLED
+#if MODE_TURTLE_ENABLED
 class ModeTurtle : public Mode {
 
 public:
@@ -1774,7 +1814,7 @@ private:
 
 };
 
-#if AP_FOLLOW_ENABLED
+#if MODE_FOLLOW_ENABLED
 class ModeFollow : public ModeGuided {
 
 public:
@@ -1903,7 +1943,7 @@ private:
     bool is_suspended;              // true if zigzag auto is suspended
 };
 
-#if MODE_AUTOROTATE_ENABLED == ENABLED
+#if MODE_AUTOROTATE_ENABLED
 class ModeAutorotate : public Mode {
 
 public:

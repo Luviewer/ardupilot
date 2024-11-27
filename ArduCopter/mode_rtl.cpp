@@ -1,6 +1,6 @@
 #include "Copter.h"
 
-#if MODE_RTL_ENABLED == ENABLED
+#if MODE_RTL_ENABLED
 
 /*
  * Init and run calls for RTL flight mode
@@ -52,11 +52,11 @@ ModeRTL::RTLAltType ModeRTL::get_alt_type() const
 {
     // sanity check parameter
     switch ((ModeRTL::RTLAltType)g.rtl_alt_type) {
-    case RTLAltType::RTL_ALTTYPE_RELATIVE ... RTLAltType::RTL_ALTTYPE_TERRAIN:
+    case RTLAltType::RELATIVE ... RTLAltType::TERRAIN:
         return g.rtl_alt_type;
     }
     // user has an invalid value
-    return RTLAltType::RTL_ALTTYPE_RELATIVE;
+    return RTLAltType::RELATIVE;
 }
 
 // rtl_run - runs the return-to-launch controller
@@ -255,11 +255,6 @@ void ModeRTL::descent_start()
     // optionally deploy landing gear
     copter.landinggear.deploy_for_landing();
 #endif
-
-#if AP_FENCE_ENABLED
-    // disable the fence on landing
-    copter.fence.auto_disable_fence_for_landing();
-#endif
 }
 
 // rtl_descent_run - implements the final descent to the RTL_ALT
@@ -347,11 +342,6 @@ void ModeRTL::land_start()
     // optionally deploy landing gear
     copter.landinggear.deploy_for_landing();
 #endif
-
-#if AP_FENCE_ENABLED
-    // disable the fence on landing
-    copter.fence.auto_disable_fence_for_landing();
-#endif
 }
 
 bool ModeRTL::is_landing() const
@@ -387,10 +377,7 @@ void ModeRTL::land_run(bool disarm_on_land)
 void ModeRTL::build_path()
 {
     // origin point is our stopping point
-    Vector3p stopping_point;
-    pos_control->get_stopping_point_xy_cm(stopping_point.xy());
-    pos_control->get_stopping_point_z_cm(stopping_point.z);
-    rtl_path.origin_point = Location(stopping_point.tofloat(), Location::AltFrame::ABOVE_ORIGIN);
+    rtl_path.origin_point = get_stopping_point();
     rtl_path.origin_point.change_alt_frame(Location::AltFrame::ABOVE_HOME);
 
     // compute return target
@@ -423,7 +410,7 @@ void ModeRTL::compute_return_target()
 
     // determine altitude type of return journey (alt-above-home, alt-above-terrain using range finder or alt-above-terrain using terrain database)
     ReturnTargetAltType alt_type = ReturnTargetAltType::RELATIVE;
-    if (terrain_following_allowed && (get_alt_type() == RTLAltType::RTL_ALTTYPE_TERRAIN)) {
+    if (terrain_following_allowed && (get_alt_type() == RTLAltType::TERRAIN)) {
         // convert RTL_ALT_TYPE and WPNAV_RFNG_USE parameters to ReturnTargetAltType
         switch (wp_nav->get_terrain_source()) {
         case AC_WPNav::TerrainSource::TERRAIN_UNAVAILABLE:

@@ -62,6 +62,9 @@ RELEASE_CODENAME=$(lsb_release -c -s)
 
 # translate Mint-codenames to Ubuntu-codenames based on https://www.linuxmint.com/download_all.php
 case ${RELEASE_CODENAME} in
+    wilma)
+        RELEASE_CODENAME='noble'
+        ;;
     vanessa)
         RELEASE_CODENAME='jammy'
         ;;
@@ -80,8 +83,11 @@ PYTHON_V="python3"  # starting from ubuntu 20.04, python isn't symlink to defaul
 PIP=pip3
 
 if [ ${RELEASE_CODENAME} == 'bionic' ] ; then
-    SITLFML_VERSION="2.4"
-    SITLCFML_VERSION="2.4"
+    echo "ArduPilot no longer supports developing on this operating system that has reached end of standard support."
+    exit 1
+elif [ ${RELEASE_CODENAME} == 'bookworm' ]; then
+    SITLFML_VERSION="2.5"
+    SITLCFML_VERSION="2.5"
     PYTHON_V="python3"
     PIP=pip3
 elif [ ${RELEASE_CODENAME} == 'buster' ]; then
@@ -107,6 +113,11 @@ elif [ ${RELEASE_CODENAME} == 'lunar' ]; then
 elif [ ${RELEASE_CODENAME} == 'mantic' ]; then
     SITLFML_VERSION="2.5"
     SITLCFML_VERSION="2.5"
+    PYTHON_V="python3"
+    PIP=pip3
+elif [ ${RELEASE_CODENAME} == 'noble' ]; then
+    SITLFML_VERSION="2.6"
+    SITLCFML_VERSION="2.6"
     PYTHON_V="python3"
     PIP=pip3
 elif [ ${RELEASE_CODENAME} == 'groovy' ] ||
@@ -151,8 +162,8 @@ else
 fi
 
 # Lists of packages to install
-BASE_PKGS="build-essential ccache g++ gawk git make wget valgrind screen"
-PYTHON_PKGS="future lxml pymavlink pyserial MAVProxy pexpect geocoder empy==3.3.4 ptyprocess dronecan"
+BASE_PKGS="build-essential ccache g++ gawk git make wget valgrind screen python3-pexpect"
+PYTHON_PKGS="future lxml pymavlink pyserial MAVProxy geocoder empy==3.3.4 ptyprocess dronecan"
 PYTHON_PKGS="$PYTHON_PKGS flake8 junitparser"
 
 # add some Python packages required for commonly-used MAVProxy modules and hex file generation:
@@ -162,8 +173,10 @@ fi
 ARM_LINUX_PKGS="g++-arm-linux-gnueabihf $INSTALL_PKG_CONFIG"
 # python-wxgtk packages are added to SITL_PKGS below
 
-if [ ${RELEASE_CODENAME} == 'lunar' ] ||
-   [ ${RELEASE_CODENAME} == 'mantic' ]; then
+if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
+   [ ${RELEASE_CODENAME} == 'lunar' ] ||
+   [ ${RELEASE_CODENAME} == 'mantic' ] ||
+   [ ${RELEASE_CODENAME} == 'noble' ]; then
     # on Lunar (and presumably later releases), we install in venv, below
     PYTHON_PKGS+=" numpy pyparsing psutil"
     SITL_PKGS="python3-dev"
@@ -173,8 +186,10 @@ fi
 
 # add some packages required for commonly-used MAVProxy modules:
 if [[ $SKIP_AP_GRAPHIC_ENV -ne 1 ]]; then
-    if [ ${RELEASE_CODENAME} == 'lunar' ] ||
-       [ ${RELEASE_CODENAME} == 'mantic' ]; then
+    if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
+       [ ${RELEASE_CODENAME} == 'lunar' ] ||
+       [ ${RELEASE_CODENAME} == 'mantic' ] ||
+       [ ${RELEASE_CODENAME} == 'noble' ]; then
         PYTHON_PKGS+=" matplotlib scipy opencv-python pyyaml"
         SITL_PKGS+=" xterm libcsfml-dev libcsfml-audio${SITLCFML_VERSION} libcsfml-dev libcsfml-graphics${SITLCFML_VERSION} libcsfml-network${SITLCFML_VERSION} libcsfml-system${SITLCFML_VERSION} libcsfml-window${SITLCFML_VERSION} libsfml-audio${SITLFML_VERSION} libsfml-dev libsfml-graphics${SITLFML_VERSION} libsfml-network${SITLFML_VERSION} libsfml-system${SITLFML_VERSION} libsfml-window${SITLFML_VERSION}"
   else
@@ -261,11 +276,14 @@ elif [ ${RELEASE_CODENAME} == 'groovy' ] ||
          [ ${RELEASE_CODENAME} == 'jammy' ]; then
     BASE_PKGS+=" python-is-python3"
     SITL_PKGS+=" libpython3-stdlib" # for argparse
+elif [ ${RELEASE_CODENAME} == 'bookworm' ]; then
+    SITL_PKGS+=" libpython3-stdlib" # for argparse
 elif [ ${RELEASE_CODENAME} == 'lunar' ]; then
     SITL_PKGS+=" libpython3-stdlib" # for argparse
 elif [ ${RELEASE_CODENAME} == 'buster' ]; then
     SITL_PKGS+=" libpython3-stdlib" # for argparse
-elif [ ${RELEASE_CODENAME} != 'mantic' ]; then
+elif [ ${RELEASE_CODENAME} != 'mantic' ] &&
+     [ ${RELEASE_CODENAME} != 'noble' ]; then
   SITL_PKGS+=" python-argparse"
 fi
 
@@ -277,9 +295,14 @@ if [[ $SKIP_AP_GRAPHIC_ENV -ne 1 ]]; then
   elif [ ${RELEASE_CODENAME} == 'groovy' ] ||
            [ ${RELEASE_CODENAME} == 'focal' ]; then
     SITL_PKGS+=" libjpeg8-dev"
+  elif [ ${RELEASE_CODENAME} == 'bookworm' ]; then
+    SITL_PKGS+=" libgtk-3-dev libwxgtk3.2-dev "
   elif [ ${RELEASE_CODENAME} == 'lunar' ]; then
     SITL_PKGS+=" libgtk-3-dev libwxgtk3.2-dev "
   elif [ ${RELEASE_CODENAME} == 'mantic' ]; then
+    SITL_PKGS+=" libgtk-3-dev libwxgtk3.2-dev "
+    # see below
+  elif [ ${RELEASE_CODENAME} == 'noble' ]; then
     SITL_PKGS+=" libgtk-3-dev libwxgtk3.2-dev "
     # see below
   elif apt-cache search python-wxgtk3.0 | grep wx; then
@@ -293,11 +316,16 @@ if [[ $SKIP_AP_GRAPHIC_ENV -ne 1 ]]; then
       SITL_PKGS+=" fonts-freefont-ttf libfreetype6-dev libjpeg8-dev libpng12-0 libportmidi-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl1.2-dev"  # for pygame
   fi
 
-  if [ ${RELEASE_CODENAME} == 'lunar' ]; then
+  if [ ${RELEASE_CODENAME} == 'bookworm' ]; then
       PYTHON_PKGS+=" opencv-python"
       SITL_PKGS+=" python3-wxgtk4.0"
       SITL_PKGS+=" fonts-freefont-ttf libfreetype6-dev libpng16-16 libportmidi-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl1.2-dev"  # for pygame
-  elif [ ${RELEASE_CODENAME} == 'mantic' ]; then
+  elif [ ${RELEASE_CODENAME} == 'lunar' ]; then
+      PYTHON_PKGS+=" wxpython opencv-python"
+      SITL_PKGS+=" python3-wxgtk4.0"
+      SITL_PKGS+=" fonts-freefont-ttf libfreetype6-dev libpng16-16 libportmidi-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl1.2-dev"  # for pygame
+  elif [ ${RELEASE_CODENAME} == 'mantic' ] ||
+       [ ${RELEASE_CODENAME} == 'noble' ]; then
       PYTHON_PKGS+=" wxpython opencv-python"
       SITL_PKGS+=" python3-wxgtk4.0"
       SITL_PKGS+=" fonts-freefont-ttf libfreetype6-dev libpng16-16 libportmidi-dev libsdl-image1.2-dev libsdl-mixer1.2-dev libsdl-ttf2.0-dev libsdl1.2-dev"  # for pygame
@@ -330,7 +358,7 @@ $APT_GET install $BASE_PKGS $SITL_PKGS $PX4_PKGS $ARM_LINUX_PKGS $COVERAGE_PKGS
 
 heading "Check if we are inside docker environment..."
 IS_DOCKER=false
-if [[ -f /.dockerenv ]] || grep -Eq '(lxc|docker)' /proc/1/cgroup ; then
+if [[ ${AP_DOCKER_BUILD:-0} -eq 1 ]] || [[ -f /.dockerenv ]] || grep -Eq '(lxc|docker)' /proc/1/cgroup ; then
     IS_DOCKER=true
 fi
 echo "Done!"
@@ -345,10 +373,18 @@ fi
 PIP_USER_ARGUMENT="--user"
 
 # create a Python venv on more recent releases:
-if [ ${RELEASE_CODENAME} == 'lunar' ] ||
+PYTHON_VENV_PACKAGE=""
+if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
+   [ ${RELEASE_CODENAME} == 'lunar' ] ||
    [ ${RELEASE_CODENAME} == 'mantic' ]; then
-    $APT_GET install python3.11-venv
-    python3 -m venv $HOME/venv-ardupilot
+    PYTHON_VENV_PACKAGE=python3.11-venv
+elif [ ${RELEASE_CODENAME} == 'noble' ]; then
+    PYTHON_VENV_PACKAGE=python3.12-venv
+fi
+
+if [ -n "$PYTHON_VENV_PACKAGE" ]; then
+    $APT_GET install $PYTHON_VENV_PACKAGE
+    python3 -m venv --system-site-packages $HOME/venv-ardupilot
 
     # activate it:
     SOURCE_LINE="source $HOME/venv-ardupilot/bin/activate"
@@ -364,20 +400,30 @@ if [ ${RELEASE_CODENAME} == 'lunar' ] ||
     fi
 fi
 
-# try update setuptools and wheel before installing pip package that may need compilation
-$PIP install $PIP_USER_ARGUMENT -U pip setuptools wheel
+# try update packaging, setuptools and wheel before installing pip package that may need compilation
+SETUPTOOLS="setuptools"
+if [ ${RELEASE_CODENAME} == 'focal' ]; then
+    SETUPTOOLS=setuptools==70.3.0
+fi
+$PIP install $PIP_USER_ARGUMENT -U pip packaging $SETUPTOOLS wheel
 
 if [ "$GITHUB_ACTIONS" == "true" ]; then
     PIP_USER_ARGUMENT+=" --progress-bar off"
 fi
 
-if [ ${RELEASE_CODENAME} == 'lunar' ] ||
-   [ ${RELEASE_CODENAME} == 'mantic' ]; then
+if [ ${RELEASE_CODENAME} == 'bookworm' ] ||
+   [ ${RELEASE_CODENAME} == 'lunar' ] ||
+   [ ${RELEASE_CODENAME} == 'mantic' ] ||
+   [ ${RELEASE_CODENAME} == 'noble' ]; then
     # must do this ahead of wxPython pip3 run :-/
     $PIP install $PIP_USER_ARGUMENT -U attrdict3
 fi
 
-$PIP install $PIP_USER_ARGUMENT -U $PYTHON_PKGS
+# install Python packages one-at-a-time so it is clear which package
+# is causing problems:
+for PACKAGE in $PYTHON_PKGS; do
+    $PIP install $PIP_USER_ARGUMENT -U $PACKAGE
+done
 
 if [[ -z "${DO_AP_STM_ENV}" ]] && maybe_prompt_user "Install ArduPilot STM32 toolchain [N/y]?" ; then
     DO_AP_STM_ENV=1

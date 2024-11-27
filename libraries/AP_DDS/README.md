@@ -55,40 +55,7 @@ graph LR
 
 While DDS support in Ardupilot is mostly through git submodules, another tool needs to be available on your system: Micro XRCE DDS Gen.
 
-- Go to a directory on your system to clone the repo (perhaps next to `ardupilot`)
-- Install java
-  ```console
-  sudo apt install default-jre
-  ````
-- Follow instructions [here](https://micro-xrce-dds.docs.eprosima.com/en/latest/installation.html#installing-the-micro-xrce-dds-gen-tool) to install the latest version of the generator using Ardupilot's mirror
-  ```console
-  git clone --recurse-submodules https://github.com/ardupilot/Micro-XRCE-DDS-Gen.git
-  cd Micro-XRCE-DDS-Gen
-  ./gradlew assemble
-  ```
-
-- Add the generator directory to $PATH.
-  ```console
-  # Add this to ~/.bashrc
-
-  export PATH=$PATH:/your/path/to/Micro-XRCE-DDS-Gen/scripts
-  ```
-- Test it
-  ```console
-  cd /path/to/ardupilot
-  microxrceddsgen -version
-  # openjdk version "11.0.18" 2023-01-17
-  # OpenJDK Runtime Environment (build 11.0.18+10-post-Ubuntu-0ubuntu122.04)
-  # OpenJDK 64-Bit Server VM (build 11.0.18+10-post-Ubuntu-0ubuntu122.04, mixed mode, sharing)
-  # microxrceddsgen version: 1.0.0beta2
-  ```
-
-> :warning: **If you have installed FastDDS or FastDDSGen globally on your system**:
-eProsima's libraries and the packaging system in Ardupilot are not deterministic in this scenario.
-You may experience the wrong version of a library brought in, or runtime segfaults.
-For now, avoid having simultaneous local and global installs.
-If you followed the [global install](https://fast-dds.docs.eprosima.com/en/latest/installation/sources/sources_linux.html#global-installation)
-section, you should remove it and switch to local install.
+Follow the wiki [here](https://ardupilot.org/dev/docs/ros2.html#installation-ubuntu) to set up your environment.
 
 ### Serial Only: Set up serial for SITL with DDS
 
@@ -164,7 +131,7 @@ Next, follow the associated section for your chosen transport, and finally you c
 - Run the microROS agent
   ```console
   cd ardupilot/libraries/AP_DDS
-  ros2 run micro_ros_agent micro_ros_agent udp4 -p 2019 -r dds_xrce_profile.xml
+  ros2 run micro_ros_agent micro_ros_agent udp4 -p 2019
   ```
 - Run SITL (remember to kill any terminals running ardupilot SITL beforehand)
   ```console
@@ -184,7 +151,7 @@ Next, follow the associated section for your chosen transport, and finally you c
   ```console
   cd ardupilot/libraries/AP_DDS
   # assuming we are using tty/pts/2 for DDS Application
-  ros2 run micro_ros_agent micro_ros_agent serial -b 115200  -r dds_xrce_profile.xml -D /dev/pts/2
+  ros2 run micro_ros_agent micro_ros_agent serial -b 115200 -D /dev/pts/2
   ```
 - Run SITL (remember to kill any terminals running ardupilot SITL beforehand)
   ```console
@@ -202,11 +169,13 @@ $ ros2 node list
 ```
 
 ```bash
-$ ros2 topic list  -v
+$ ros2 topic list -v
 Published topics:
  * /ap/battery/battery0 [sensor_msgs/msg/BatteryState] 1 publisher
  * /ap/clock [rosgraph_msgs/msg/Clock] 1 publisher
  * /ap/geopose/filtered [geographic_msgs/msg/GeoPoseStamped] 1 publisher
+ * /ap/gps_global_origin/filtered [geographic_msgs/msg/GeoPointStamped] 1 publisher
+ * /ap/imu/experimental/data [sensor_msgs/msg/Imu] 1 publisher
  * /ap/navsat/navsat0 [sensor_msgs/msg/NavSatFix] 1 publisher
  * /ap/pose/filtered [geometry_msgs/msg/PoseStamped] 1 publisher
  * /ap/tf_static [tf2_msgs/msg/TFMessage] 1 publisher
@@ -316,11 +285,11 @@ If the message is custom for ardupilot, first create the ROS message in `Tools/r
 Then, build ardupilot_msgs with colcon.
 Finally, copy the IDL folder from the install directory into the source tree.
 
-### Rules for adding topics and services to `dds_xrce_profile.xml`
+### Rules for adding topics and services
 
 Topics and services available from `AP_DDS` are automatically mapped into ROS 2
-provided a few rules are followed when defining the entries in
-`dds_xrce_profile.xml`.
+provided a few rules are followed when defining the entries in the
+topic and service tables.
 
 #### ROS 2 message and service interface types
 
@@ -361,7 +330,9 @@ The table below provides example mappings for topics and services
 | ap/navsat/navsat0 | rt/ap/navsat/navsat0 |
 | ap/arm_motors | rq/ap/arm_motorsRequest, rr/ap/arm_motorsReply |
 
-Refer to existing mappings in [`dds_xrce_profile.xml`](https://github.com/ArduPilot/ardupilot/blob/master/libraries/AP_DDS/dds_xrce_profile.xml) for additional details.
+Refer to existing mappings in [`AP_DDS_Topic_Table`](https://github.com/ArduPilot/ardupilot/blob/master/libraries/AP_DDS/AP_DDS_Topic_Table.h)
+and [`AP_DDS_Service_Table`](https://github.com/ArduPilot/ardupilot/blob/master/libraries/AP_DDS/AP_DDS_Service_Table.h)
+for additional details.
 
 ### Development Requirements
 
@@ -410,7 +381,7 @@ Then run the Micro ROS agent
 cd /path/to/ros2_ws
 source install/setup.bash
 cd src/ardupilot/libraries/AP_DDS
-ros2 run micro_ros_agent micro_ros_agent serial -b 115200  -r dds_xrce_profile.xml -D /dev/serial/by-id/usb-ArduPilot_Pixhawk6X_210028000151323131373139-if02
+ros2 run micro_ros_agent micro_ros_agent serial -b 115200 -D /dev/serial/by-id/usb-ArduPilot_Pixhawk6X_210028000151323131373139-if02
 ```
 
 If connection fails, instead of running the Micro ROS agent, debug the stream

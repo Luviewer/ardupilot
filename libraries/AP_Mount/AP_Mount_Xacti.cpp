@@ -49,7 +49,7 @@ AP_Mount_Xacti::AP_Mount_Xacti(class AP_Mount &frontend, class AP_Mount_Params &
 void AP_Mount_Xacti::init()
 {
     // instantiate parameter queue, return on failure so init fails
-    _set_param_int32_queue = new ObjectArray<SetParamQueueItem>(XACTI_SET_PARAM_QUEUE_SIZE);
+    _set_param_int32_queue = NEW_NOTHROW ObjectArray<SetParamQueueItem>(XACTI_SET_PARAM_QUEUE_SIZE);
     if (_set_param_int32_queue == nullptr) {
         GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "%s init failed", send_text_prefix);
         return;
@@ -306,6 +306,48 @@ bool AP_Mount_Xacti::set_lens(uint8_t lens)
     }
 
     return set_param_int32(Param::SensorMode, lens);
+}
+
+// set_camera_source is functionally the same as set_lens except primary and secondary lenses are specified by type
+// primary and secondary sources use the AP_Camera::CameraSource enum cast to uint8_t
+bool AP_Mount_Xacti::set_camera_source(uint8_t primary_source, uint8_t secondary_source)
+{
+    // maps primary and secondary source to xacti SensorsMode
+    SensorsMode new_sensor_mode;
+    switch (primary_source) {
+    case 0: // Default (RGB)
+        FALLTHROUGH;
+    case 1: // RGB
+        switch (secondary_source) {
+        case 0: // RGB + Default (None)
+            new_sensor_mode = SensorsMode::RGB;
+            break;
+        case 2: // PIP RGB+IR
+            new_sensor_mode = SensorsMode::PIP;
+            break;
+        default:
+            return false;
+        }
+        break;
+    case 2: // IR
+        if (secondary_source != 0) {
+            return false;
+        }
+        new_sensor_mode = SensorsMode::IR;
+        break;
+    case 3: // NDVI
+        if (secondary_source != 0) {
+            return false;
+        }
+        // NDVI + Default (None)
+        new_sensor_mode = SensorsMode::NDVI;
+        break;
+    default:
+        return false;
+    }
+
+    // send desired sensor mode to camera
+    return set_param_int32(Param::SensorMode, (uint8_t)new_sensor_mode);
 }
 
 // send camera information message to GCS
