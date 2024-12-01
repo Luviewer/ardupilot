@@ -13,27 +13,22 @@ APJ_BOARD_ID 1062
 env AP_PERIPH 1
 
 FLASH_RESERVE_START_KB 0
-FLASH_BOOTLOADER_LOAD_KB 20
+FLASH_BOOTLOADER_LOAD_KB 18
 FLASH_SIZE_KB 128
 
 # reserve some space for params
 APP_START_OFFSET_KB 4
 
-# ---------------------------------------------
-PC14 LED_BOOTLOADER OUTPUT LOW  # blue
-define HAL_LED_ON 0
-
 # enable CAN support
 PA11 CAN1_RX CAN1
 PA12 CAN1_TX CAN1
-# PC13 GPIO_CAN1_SILENT OUTPUT PUSHPULL SPEED_LOW LOW
 
 CAN_ORDER 1
 
 # ---------------------------------------------
 
 # make bl baudrate match debug baudrate for easier debugging
-define BOOTLOADER_BAUDRATE 57600
+# define BOOTLOADER_BAUDRATE 57600
 
 # use a small bootloader timeout
 define HAL_BOOTLOADER_TIMEOUT 1000
