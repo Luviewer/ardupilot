@@ -129,11 +129,13 @@ public:
     AP_Int8 led_brightness;
 #endif
 #ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
-    AP_Int8 led_type;
-    AP_Int8 led_ms;
-    AP_Int8 led_blue;
-    AP_Int8 led_green;
-    AP_Int8 led_red;
+    AP_Int8  led_type;
+    AP_Int8  led_blue;
+    AP_Int8  led_green;
+    AP_Int8  led_red;
+    AP_Int16 led_id;
+    AP_Int32 led_high_ms;
+    AP_Int32 led_low_ms;
 #endif
 #if AP_PERIPH_BARO_ENABLED
     AP_Int8 baro_enable;

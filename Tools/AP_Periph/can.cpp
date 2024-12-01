@@ -638,6 +638,9 @@ void AP_Periph_FW::handle_lightscommand(CanardInstance* canard_instance, CanardR
         uint8_t red = cmd.color.red<<3U;
         uint8_t green = (cmd.color.green>>1U)<<3U;
         uint8_t blue = cmd.color.blue<<3U;
+#ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
+        uint8_t light_id = cmd.light_id;
+#endif
 #if AP_PERIPH_NOTIFY_ENABLED
         const int8_t brightness = notify.get_rgb_led_brightness_percent();
 #elif AP_PERIPH_HAVE_LED_WITHOUT_NOTIFY

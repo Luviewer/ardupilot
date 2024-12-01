@@ -469,11 +469,38 @@ void AP_Periph_FW::update()
     }
 
 #ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
-    static uint32_t POGO_CANRGB_last_update_ms;
-    if (g.led_type >= 1) {
-        if (now - POGO_CANRGB_last_update_ms >= g.led_ms) { 
-            POGO_CANRGB_last_update_ms = now;  
-            set_rgb_led(g.led_red, g.led_green, g.led_blue);
+#ifdef HAL_PERIPH_ENABLE_NOTIFY
+        const int8_t brightness = notify.get_rgb_led_brightness_percent();
+#elif defined(AP_PERIPH_HAVE_LED_WITHOUT_NOTIFY)
+        const int8_t brightness = g.led_brightness;
+#endif
+    uint8_t red = g.led_red;
+    uint8_t green = g.led_green;
+    uint8_t blue = g.led_blue;
+
+    if (brightness != 100 && brightness >= 0) {
+        const float scale = brightness * 0.01;
+        red = constrain_int16(red * scale, 0, 255);
+        green = constrain_int16(green * scale, 0, 255);
+        blue = constrain_int16(blue * scale, 0, 255);
+    }
+
+    if (g.led_type == 1) {
+        set_rgb_led(red, green, blue);
+    } else if (g.led_type == 2) {
+        static uint32_t POGO_CANRGB_last_update_ms;
+        static bool POGO_CANRGB_led_high = false;
+        static bool POGO_CANRGB_led_low = true;
+        if (POGO_CANRGB_led_high && now - POGO_CANRGB_last_update_ms >= g.led_high_ms) {
+            POGO_CANRGB_last_update_ms = now;
+            POGO_CANRGB_led_high = false;
+            POGO_CANRGB_led_low = true;
+            set_rgb_led(0, 0, 0);
+        } else if (POGO_CANRGB_led_low && now - POGO_CANRGB_last_update_ms >= g.led_low_ms) {
+            POGO_CANRGB_last_update_ms = now;
+            POGO_CANRGB_led_high = true;
+            POGO_CANRGB_led_low = false;
+            set_rgb_led(red, green, blue);
         }
     }
 #endif
