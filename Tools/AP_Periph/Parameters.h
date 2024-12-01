@@ -22,6 +22,11 @@ public:
         k_param_baro,
         k_param_buzz_volume,
         k_param_led_brightness,
+        k_param_led_type,
+        k_param_led_ms,
+        k_param_led_red,
+        k_param_led_green,
+        k_param_led_blue,
         k_param_airspeed,
         k_param_rangefinder,
         k_param_flash_bootloader,
@@ -122,6 +127,13 @@ public:
 #endif
 #if AP_PERIPH_HAVE_LED_WITHOUT_NOTIFY
     AP_Int8 led_brightness;
+#endif
+#ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
+    AP_Int8 led_type;
+    AP_Int8 led_ms;
+    AP_Int8 led_blue;
+    AP_Int8 led_green;
+    AP_Int8 led_red;
 #endif
 #if AP_PERIPH_BARO_ENABLED
     AP_Int8 baro_enable;

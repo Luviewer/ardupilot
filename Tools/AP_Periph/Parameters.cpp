@@ -294,6 +294,18 @@ const AP_Param::Info AP_Periph_FW::var_info[] = {
     GSCALAR(led_brightness, "LED_BRIGHTNESS", HAL_PERIPH_LED_BRIGHT_DEFAULT),
 #endif
 
+#ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
+    GSCALAR(led_type, "LED_TYPE", 0),
+
+    GSCALAR(led_ms, "LED_MS", 100),
+
+    GSCALAR(led_blue, "LED_BLUE", 0),
+
+    GSCALAR(led_green, "LED_GREEN", 0),
+ 
+    GSCALAR(led_red, "LED_RED", 0),
+#endif
+
 #if AP_PERIPH_AIRSPEED_ENABLED
     // Airspeed driver
     // @Group: ARSPD

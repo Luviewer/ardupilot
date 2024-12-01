@@ -468,6 +468,16 @@ void AP_Periph_FW::update()
         GCS_SEND_MESSAGE(MSG_SYS_STATUS);
     }
 
+#ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
+    static uint32_t POGO_CANRGB_last_update_ms;
+    if (g.led_type >= 1) {
+        if (now - POGO_CANRGB_last_update_ms >= g.led_ms) { 
+            POGO_CANRGB_last_update_ms = now;  
+            set_rgb_led(g.led_red, g.led_green, g.led_blue);
+        }
+    }
+#endif
+
     static uint32_t last_error_ms;
     const auto &ierr = AP::internalerror();
     if (now - last_error_ms > 5000 && ierr.errors()) {

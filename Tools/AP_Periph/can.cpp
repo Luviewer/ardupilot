@@ -882,7 +882,13 @@ void AP_Periph_FW::onTransferReceived(CanardInstance* canard_instance,
 
 #if AP_PERIPH_HAVE_LED_WITHOUT_NOTIFY || AP_PERIPH_NOTIFY_ENABLED
     case UAVCAN_EQUIPMENT_INDICATION_LIGHTSCOMMAND_ID:
+#ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
+        if (g.led_type == 0) {
+#endif
         handle_lightscommand(canard_instance, transfer);
+#ifdef AP_PERIPH_NEOPIXEL_POGO_CANRGB_ENABLED
+        }
+#endif
         break;
 #endif
 
