@@ -4,7 +4,7 @@
 MCU STM32L431 STM32L431xx
 
 # crystal frequency
-OSCILLATOR_HZ 8000000
+OSCILLATOR_HZ 0
 
 # board ID for firmware load
 APJ_BOARD_ID 1062
@@ -20,7 +20,7 @@ FLASH_SIZE_KB 256
 APP_START_OFFSET_KB 4
 
 # ---------------------------------------------
-PB12 LED_BOOTLOADER OUTPUT LOW  # blue
+PA3 LED_BOOTLOADER OUTPUT LOW  # blue
 define HAL_LED_ON 0
 
 # enable CAN support
@@ -36,7 +36,7 @@ CAN_ORDER 1
 define BOOTLOADER_BAUDRATE 57600
 
 # use a small bootloader timeout
-define HAL_BOOTLOADER_TIMEOUT 1000
+define HAL_BOOTLOADER_TIMEOUT 3000
 
 define HAL_USE_SERIAL FALSE
 
