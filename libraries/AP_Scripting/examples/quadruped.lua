@@ -22,12 +22,12 @@
 ---@diagnostic disable: cast-local-type
 
 
-local FRAME_LEN = 80    -- frame length in mm
-local FRAME_WIDTH = 150 -- frame width in mm
+local FRAME_LEN = 180    -- frame length in mm
+local FRAME_WIDTH = 180 -- frame width in mm
 
-local COXA_LEN = 30     -- distance (in mm) from coxa (aka hip) servo to femur servo
+local COXA_LEN = 53     -- distance (in mm) from coxa (aka hip) servo to femur servo
 local FEMUR_LEN = 85    -- distance (in mm) from femur servo to tibia servo
-local TIBIA_LEN = 125   -- distance (in mm) from tibia servo to foot
+local TIBIA_LEN = 128   -- distance (in mm) from tibia servo to foot
 
 --body position and rotation parameters
 local body_rot_max = 10 -- body rotation maximum for any individual axis
@@ -51,7 +51,7 @@ local control_input_throttle = 3
 local control_input_yaw = 4
 local control_input_height = 8
 
-local xy_travel_max = 80     -- x and y axis travel max (used to convert control input) in mm
+local xy_travel_max = 200     -- x and y axis travel max (used to convert control input) in mm
 local yaw_travel_max = 10    -- yaw travel maximum (used to convert control input)
 local height_max = 40       -- height maximum (used to convert control input)
 local travel_dz = 5          -- travel deadzone.  x, y and yaw travel requests are ignored if their absolute value is less than this number
@@ -312,10 +312,10 @@ function update()
     body_rot_y = -vehicle:get_control_output(control_input_pitch) * body_rot_max
     body_pos_z =  vehicle:get_control_output(control_input_height) * height_max
 
-    local servo_direction = { gait_direction *  1, -1,  1,    -- front right leg (coxa, femur, tibia)
-                              gait_direction *  1,  1, -1,    -- front left leg (coxa, femur, tibia)
-                              gait_direction * -1, -1,  1,    -- back left leg (coxa, femur, tibia)
-                              gait_direction * -1,  1, -1}    -- back right leg (coxa, femur, tibia)
+    local servo_direction = { gait_direction *  1, 1,  1,    -- front right leg (coxa, femur, tibia)
+                              gait_direction *  1, 1,  1,    -- front left leg (coxa, femur, tibia)
+                              gait_direction * -1, 1,  1,    -- back left leg (coxa, femur, tibia)
+                              gait_direction * -1, 1,  1}    -- back right leg (coxa, femur, tibia)
                               
     local angles
     if arming:is_armed() then
@@ -324,11 +324,27 @@ function update()
         angles = rest_angles
     end
 
-    for i = 1, 12 do
-        SRV_Channels:set_output_pwm_chan_timeout(i-1, math.floor(((angles[i] * servo_direction[i] * 1000)/90) + 1500), 1000)
-    end
+    -- for i = 1, 12 do
+    --     SRV_Channels:set_output_pwm_chan_timeout(i-1, math.floor(((angles[i] * servo_direction[i] * 1000)/90) + 1500), 1000)
+    -- end
 
-    return update,10
+    SRV_Channels:set_output_pwm_chan_timeout(0, math.floor(((angles[1] * servo_direction[1] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(3, math.floor(((angles[4] * servo_direction[4] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(2, math.floor(((angles[7] * servo_direction[7] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(1, math.floor(((angles[10] * servo_direction[10] * 1000)/90) + 1500), 1000)
+
+    SRV_Channels:set_output_pwm_chan_timeout(0+4, math.floor(((angles[2] * servo_direction[2] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(3+4, math.floor(((angles[5] * servo_direction[5] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(2+4, math.floor(((angles[8] * servo_direction[8] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(1+4, math.floor(((angles[11] * servo_direction[11] * 1000)/90) + 1500), 1000)
+
+    SRV_Channels:set_output_pwm_chan_timeout(0+8, math.floor(((angles[3] * servo_direction[3] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(3+8, math.floor(((angles[6] * servo_direction[6] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(2+8, math.floor(((angles[9] * servo_direction[9] * 1000)/90) + 1500), 1000)
+    SRV_Channels:set_output_pwm_chan_timeout(1+8, math.floor(((angles[12] * servo_direction[12] * 1000)/90) + 1500), 1000)
+
+    return update,50
+    
 end
 
 -- turn off rudder based arming/disarming
