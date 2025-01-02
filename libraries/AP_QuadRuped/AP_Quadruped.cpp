@@ -82,12 +82,12 @@ void AP_Quadruped::update_leg(int16_t x_travel, int16_t y_travel, int16_t yaw_tr
             gait_rot_z[moving_leg] = yaw_travel * 0.5;
             break;
 
-            // case -2:
-            //     gait_pos_x[moving_leg] = -x_travel * 0.5;
-            //     gait_pos_z[moving_leg] = -leg_lift_height * 0.5;
-            //     gait_pos_y[moving_leg] = -y_travel * 0.5;
-            //     gait_rot_z[moving_leg] = -yaw_travel * 0.5;
-            //     break;
+            case -2:
+                gait_pos_x[moving_leg] = -x_travel * 0.5;
+                gait_pos_z[moving_leg] = -leg_lift_height * 0.5;
+                gait_pos_y[moving_leg] = -y_travel * 0.5;
+                gait_rot_z[moving_leg] = -yaw_travel * 0.5;
+                break;
 
         default:
             gait_pos_x[moving_leg] = gait_pos_x[moving_leg] - (x_travel / gait_travel_divisor);
