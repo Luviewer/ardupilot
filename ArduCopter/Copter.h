@@ -72,6 +72,7 @@
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
 #include <AP_SurfaceDistance/AP_SurfaceDistance.h>
+#include <AP_QuadRuped/AP_Quadruped.h>
 
 // Configuration
 #include "defines.h"
@@ -1079,6 +1080,8 @@ private:
 
 public:
     void failsafe_check();      // failsafe.cpp
+
+    AP_Quadruped quadruped;
 };
 
 extern Copter copter;

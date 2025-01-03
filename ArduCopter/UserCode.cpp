@@ -5,6 +5,7 @@ void Copter::userhook_init()
 {
     // put your initialisation code here
     // this will be called once at start-up
+    quadruped.init();
 }
 #endif
 
@@ -19,6 +20,7 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
+
 }
 #endif
 
@@ -26,6 +28,8 @@ void Copter::userhook_50Hz()
 void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
+    quadruped.main_inverse_kinematics();
+    quadruped.output_leg_angle();
 }
 #endif
 
@@ -39,7 +43,8 @@ void Copter::userhook_SlowLoop()
 #ifdef USERHOOK_SUPERSLOWLOOP
 void Copter::userhook_SuperSlowLoop()
 {
-    // put your 1Hz code here
+    // put your 1Hz code here+
+
 }
 #endif
 
