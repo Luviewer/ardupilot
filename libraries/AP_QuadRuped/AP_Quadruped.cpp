@@ -1,4 +1,5 @@
 #include "AP_Quadruped.h"
+#include <RC_Channel/RC_Channel.h>
 #include <SRV_Channel/SRV_Channel.h>
 
 AP_Quadruped::AP_Quadruped()
@@ -21,14 +22,14 @@ void AP_Quadruped::init(void)
 {
     // starting positions of the legs
     for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
-        endpoint_leg_pos[leg_index] = Vector3f(cosf(radians(START_COXA_ANGLE + leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
-                                               sinf(radians(START_COXA_ANGLE + leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
+        endpoint_leg_pos[leg_index] = Vector3f(cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
+                                               sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
                                                TIBIA_LEN);
     }
 
     for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
-        endpoint_leg_frame[leg_index] = Vector3f(cosf(radians(START_COXA_ANGLE + leg_index * 90)) * FRAME_LEN,
-                                                 sinf(radians(START_COXA_ANGLE + leg_index * 90)) * FRAME_WIDTH,
+        endpoint_leg_frame[leg_index] = Vector3f(cosf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_LEN,
+                                                 sinf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_WIDTH,
                                                  0);
     }
 
@@ -61,9 +62,9 @@ void AP_Quadruped::gait_select(void)
 
 void AP_Quadruped::calc_gait_sequence(void)
 {
-    const float travel_dz = 10;
+    const float travel_dz = 5;
 
-    if ((fabsf(throttle_travel) > travel_dz) || (fabsf(yaw_travel) > travel_dz))
+    if ((fabsf(throttle_travel) > travel_dz) || (fabsf(yaw_travel) > travel_dz / 2))
         move_requested = true;
     else
         move_requested = false;
@@ -97,24 +98,16 @@ void AP_Quadruped::update_leg(uint8_t moving_leg)
             break;
 
         case 1:
-            gait_pos_xyz[moving_leg] = Vector3f(0,
-                                                throttle_travel / gait_lift_divisor,
+            gait_pos_xyz[moving_leg] = Vector3f(throttle_travel / gait_lift_divisor,
+                                                0,
                                                 -3.0f * leg_lift_height / (3.0f + gait_half_lift_height));
 
             gait_rot_z[moving_leg] = yaw_travel / gait_lift_divisor;
             break;
 
-        case 2:
-            gait_pos_xyz[moving_leg] = Vector3f(0,
-                                                throttle_travel,
-                                                -leg_lift_height * 0.5f);
-
-            gait_rot_z[moving_leg] = yaw_travel * 0.5f;
-            break;
-
         default:
-            gait_pos_xyz[moving_leg] = Vector3f(gait_pos_xyz[moving_leg].x,
-                                                gait_pos_xyz[moving_leg].y - (throttle_travel / gait_travel_divisor),
+            gait_pos_xyz[moving_leg] = Vector3f(gait_pos_xyz[moving_leg].x - (throttle_travel / gait_travel_divisor),
+                                                gait_pos_xyz[moving_leg].y,
                                                 0.0f);
 
             gait_rot_z[moving_leg] = gait_rot_z[moving_leg] - (yaw_travel / gait_travel_divisor);
@@ -126,11 +119,13 @@ Vector3f AP_Quadruped::body_forward_kinematics(uint8_t leg_index)
 {
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
+    totaldist_xyz.z += z_travel;
+
     Quaternion quat = { 1, 0, 0, 0 };
 
     body_rot_xyz_deg.x = 0;
     body_rot_xyz_deg.y = 0;
-    body_rot_xyz_deg.z = 0;
+    body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]);
 
     quat.from_euler(-body_rot_xyz_deg);
 
@@ -150,7 +145,7 @@ Vector3f AP_Quadruped::leg_inverse_kinematics(Vector3f posxyz)
     float q1    = atan2f(trueX, posxyz.z);
     float d1    = FEMUR_LEN * FEMUR_LEN - TIBIA_LEN * TIBIA_LEN + im * im;
     float d2    = 2 * FEMUR_LEN * im;
-    float q2    = acosf(d1 / d2);
+    float q2    = acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f));
     leg_deg.y   = -(degrees(q1 + q2) - 90);
 
     d1        = FEMUR_LEN * FEMUR_LEN - im * im + TIBIA_LEN * TIBIA_LEN;
@@ -164,14 +159,18 @@ void AP_Quadruped::main_inverse_kinematics(void)
 {
     Vector3f ansxyz = { 0, 0, 0 };
 
-    throttle_travel = 50;
+    throttle_travel = (rc().RC_Channels::get_throttle_channel().get_radio_in() - 1500) / 500.0f * 100;
+    yaw_travel      = (rc().RC_Channels::get_yaw_channel().get_radio_in() - 1500) / 500.0f * 30;
+    z_travel        = (rc().RC_Channels::get_pitch_channel().get_radio_in() - 1500) / 500.0f * 50;
 
     const Vector3f endpoint_leg_angle_offset[Leg_ALL] = {
         { -45, 0, 0 },
-        { -135, 0, 0 },
-        { -225, 0, 0 },
-        { -315, 0, 0 }
+        { 45, 0, 0 },
+        { 135, 0, 0 },
+        { 225, 0, 0 }
     };
+
+    const float endpoint_leg_angle_dir[Leg_ALL] = { 1, 1, 1, 1 };
 
     for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
         ansxyz = body_forward_kinematics(leg_index);
@@ -179,6 +178,8 @@ void AP_Quadruped::main_inverse_kinematics(void)
         endpoint_leg_angle[leg_index] = leg_inverse_kinematics(ansxyz) + endpoint_leg_angle_offset[leg_index];
 
         endpoint_leg_angle[leg_index].x = wrap_180(endpoint_leg_angle[leg_index].x);
+
+        endpoint_leg_angle[leg_index].x *= endpoint_leg_angle_dir[leg_index];
     }
 
     calc_gait_sequence();

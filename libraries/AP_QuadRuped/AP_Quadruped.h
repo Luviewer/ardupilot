@@ -30,7 +30,7 @@ protected:
 
     Vector3f gait_pos_xyz[Leg_ALL];
 
-    uint8_t gait_rot_z[Leg_ALL];
+    float gait_rot_z[Leg_ALL];
 
     float leg_lift_height; // leg lift height(in mm) while walking
 
@@ -48,10 +48,10 @@ protected:
 
     Vector3f body_rot_xyz_deg;
 
-    int16_t throttle_travel;
-    int16_t z_travel;
+    float throttle_travel;
+    float z_travel;
 
-    int16_t yaw_travel;
+    float yaw_travel;
 
 public:
     AP_Quadruped();
@@ -66,8 +66,8 @@ public:
     Vector3f body_forward_kinematics(uint8_t leg_index);
     Vector3f leg_inverse_kinematics(Vector3f posxyz);
 
-    void     set_throttle_travel(int16_t _throttle) { throttle_travel = _throttle; }
-    void     set_yaw_travel(int16_t _yaw_travel) { yaw_travel = _yaw_travel; }
+    void set_throttle_travel(int16_t _throttle) { throttle_travel = _throttle; }
+    void set_yaw_travel(int16_t _yaw_travel) { yaw_travel = _yaw_travel; }
     // Vector3f get_endpoint_leg(uint8_t leg) { return endpoint_leg[leg]; }
 
     void output_leg_angle();
