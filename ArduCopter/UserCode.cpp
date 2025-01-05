@@ -20,7 +20,8 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
-
+    quadruped.main_inverse_kinematics();
+    quadruped.output_leg_angle();
 }
 #endif
 
@@ -28,8 +29,7 @@ void Copter::userhook_50Hz()
 void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
-    quadruped.main_inverse_kinematics();
-    quadruped.output_leg_angle();
+
 }
 #endif
 

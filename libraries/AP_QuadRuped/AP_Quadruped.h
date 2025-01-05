@@ -53,11 +53,14 @@ protected:
 
     float yaw_travel;
 
+    uint32_t start_time;
+
 public:
     AP_Quadruped();
     ~AP_Quadruped() { };
 
     void init();
+
 
     void     gait_select();
     void     calc_gait_sequence(void);
@@ -71,4 +74,6 @@ public:
     // Vector3f get_endpoint_leg(uint8_t leg) { return endpoint_leg[leg]; }
 
     void output_leg_angle();
+
+    bool servo_estimate();
 };

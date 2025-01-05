@@ -150,7 +150,7 @@ Vector3f AP_Quadruped::leg_inverse_kinematics(Vector3f posxyz)
 
     d1        = FEMUR_LEN * FEMUR_LEN - im * im + TIBIA_LEN * TIBIA_LEN;
     d2        = 2 * TIBIA_LEN * FEMUR_LEN;
-    leg_deg.z = -(degrees(acosf(d1 / d2)) - 90);
+    leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90);
 
     return leg_deg;
 }
@@ -159,9 +159,15 @@ void AP_Quadruped::main_inverse_kinematics(void)
 {
     Vector3f ansxyz = { 0, 0, 0 };
 
-    throttle_travel = (rc().RC_Channels::get_throttle_channel().get_radio_in() - 1500) / 500.0f * 100;
-    yaw_travel      = (rc().RC_Channels::get_yaw_channel().get_radio_in() - 1500) / 500.0f * 30;
-    z_travel        = (rc().RC_Channels::get_pitch_channel().get_radio_in() - 1500) / 500.0f * 50;
+    float temp_rc;
+    temp_rc         = constrain_value((float)rc().RC_Channels::get_throttle_channel().get_radio_in(), (float)1000, (float)2000);
+    throttle_travel = (temp_rc - 1500) / 500.0f * 100;
+
+    temp_rc    = constrain_value((float)rc().RC_Channels::get_yaw_channel().get_radio_in(), (float)1000, (float)2000);
+    yaw_travel = (temp_rc - 1500) / 500.0f * 30;
+
+    temp_rc  = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
+    z_travel = (temp_rc - 1500) / 500.0f * 50;
 
     const Vector3f endpoint_leg_angle_offset[Leg_ALL] = {
         { -45, 0, 0 },
@@ -182,11 +188,25 @@ void AP_Quadruped::main_inverse_kinematics(void)
         endpoint_leg_angle[leg_index].x *= endpoint_leg_angle_dir[leg_index];
     }
 
-    calc_gait_sequence();
+    if (servo_estimate()) {
+        start_time = AP_HAL::millis();
 
-    for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
-        endpoint_leg_angle_last[leg_index] = endpoint_leg_angle[leg_index];
+        calc_gait_sequence();
+
+        for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
+            endpoint_leg_angle_last[leg_index] = endpoint_leg_angle[leg_index];
+        }
     }
+}
+
+bool AP_Quadruped::servo_estimate(void)
+{
+    uint32_t target_time = AP_HAL::millis();
+
+    if ((target_time - start_time) >= (1000.0f / 25.0f)) {
+        return true;
+    }
+    return false;
 }
 
 void AP_Quadruped::output_leg_angle(void)
