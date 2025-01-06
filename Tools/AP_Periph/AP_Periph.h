@@ -252,6 +252,13 @@ public:
 #endif
 #endif // HAL_PERIPH_ENABLE_RPM
 
+#ifdef HAL_USE_Hiwonder_Servo
+    uint32_t hiwonder_last_send_ms;
+    void send_hiwonder_pos();
+    void handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTransfer* transfer);
+
+#endif
+
 #ifdef HAL_PERIPH_ENABLE_BATTERY
     void handle_battery_failsafe(const char* type_str, const int8_t action) { }
     AP_BattMonitor battery_lib{0, FUNCTOR_BIND_MEMBER(&AP_Periph_FW::handle_battery_failsafe, void, const char*, const int8_t), nullptr};

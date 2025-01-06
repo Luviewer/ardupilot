@@ -529,6 +529,10 @@ void AP_Periph_FW::update()
     }
 #endif
 
+#ifdef HAL_USE_Hiwonder_Servo
+    send_hiwonder_pos();
+#endif
+
 #if HAL_LOGGING_ENABLED
     logger.periodic_tasks();
 #endif

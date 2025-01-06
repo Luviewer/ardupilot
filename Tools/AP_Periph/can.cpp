@@ -878,6 +878,12 @@ void AP_Periph_FW::onTransferReceived(CanardInstance* canard_instance,
         break;
 #endif
 
+#ifdef HAL_USE_Hiwonder_Servo
+    case COM_USL_SERVOCMD_ID:
+        handle_hiwonder_cmd(canard_instance, transfer);
+        break;
+#endif
+
     }
 }
 
@@ -990,6 +996,11 @@ bool AP_Periph_FW::shouldAcceptTransfer(const CanardInstance* canard_instance,
 #ifdef HAL_PERIPH_ENABLE_RELAY
     case UAVCAN_EQUIPMENT_HARDPOINT_COMMAND_ID:
         *out_data_type_signature = UAVCAN_EQUIPMENT_HARDPOINT_COMMAND_SIGNATURE;
+        return true;
+#endif
+#ifdef HAL_USE_Hiwonder_Servo
+    case COM_USL_SERVOCMD_ID:
+        *out_data_type_signature = COM_USL_SERVOCMD_SIGNATURE;
         return true;
 #endif
     default:
