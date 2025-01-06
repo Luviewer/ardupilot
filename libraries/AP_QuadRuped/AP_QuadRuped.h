@@ -13,7 +13,7 @@ enum {
     Leg_ALL,
 };
 
-class AP_Quadruped {
+class AP_QuadRuped {
 
 protected:
     bool move_requested;
@@ -56,8 +56,8 @@ protected:
     uint32_t start_time;
 
 public:
-    AP_Quadruped();
-    ~AP_Quadruped() { };
+    AP_QuadRuped();
+    ~AP_QuadRuped() { };
 
     void init();
 

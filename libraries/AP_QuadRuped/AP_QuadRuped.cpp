@@ -1,8 +1,8 @@
-#include "AP_Quadruped.h"
+#include "AP_QuadRuped.h"
 #include <RC_Channel/RC_Channel.h>
 #include <SRV_Channel/SRV_Channel.h>
 
-AP_Quadruped::AP_Quadruped()
+AP_QuadRuped::AP_QuadRuped()
 {
     gait_type      = 0;
     move_requested = false;
@@ -18,7 +18,7 @@ AP_Quadruped::AP_Quadruped()
 
 #define START_COXA_ANGLE 45
 
-void AP_Quadruped::init(void)
+void AP_QuadRuped::init(void)
 {
     // starting positions of the legs
     for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
@@ -41,7 +41,7 @@ void AP_Quadruped::init(void)
     // }
 }
 
-void AP_Quadruped::gait_select(void)
+void AP_QuadRuped::gait_select(void)
 {
     if (gait_type == 0) {
         gait_step_total       = 6;
@@ -60,7 +60,7 @@ void AP_Quadruped::gait_select(void)
     }
 }
 
-void AP_Quadruped::calc_gait_sequence(void)
+void AP_QuadRuped::calc_gait_sequence(void)
 {
     const float travel_dz = 5;
 
@@ -87,7 +87,7 @@ void AP_Quadruped::calc_gait_sequence(void)
     }
 }
 
-void AP_Quadruped::update_leg(uint8_t moving_leg)
+void AP_QuadRuped::update_leg(uint8_t moving_leg)
 {
     int8_t leg_step = gait_step - gait_step_leg_start[moving_leg];
 
@@ -115,7 +115,7 @@ void AP_Quadruped::update_leg(uint8_t moving_leg)
     }
 }
 
-Vector3f AP_Quadruped::body_forward_kinematics(uint8_t leg_index)
+Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
 {
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
@@ -134,7 +134,7 @@ Vector3f AP_Quadruped::body_forward_kinematics(uint8_t leg_index)
     return (totaldist_xyz_rot - endpoint_leg_frame[leg_index]);
 }
 
-Vector3f AP_Quadruped::leg_inverse_kinematics(Vector3f posxyz)
+Vector3f AP_QuadRuped::leg_inverse_kinematics(Vector3f posxyz)
 {
     Vector3f leg_deg = { 0, 0, 0 };
 
@@ -155,7 +155,7 @@ Vector3f AP_Quadruped::leg_inverse_kinematics(Vector3f posxyz)
     return leg_deg;
 }
 
-void AP_Quadruped::main_inverse_kinematics(void)
+void AP_QuadRuped::main_inverse_kinematics(void)
 {
     Vector3f ansxyz = { 0, 0, 0 };
 
@@ -199,7 +199,7 @@ void AP_Quadruped::main_inverse_kinematics(void)
     }
 }
 
-bool AP_Quadruped::servo_estimate(void)
+bool AP_QuadRuped::servo_estimate(void)
 {
     uint32_t target_time = AP_HAL::millis();
 
@@ -209,7 +209,7 @@ bool AP_Quadruped::servo_estimate(void)
     return false;
 }
 
-void AP_Quadruped::output_leg_angle(void)
+void AP_QuadRuped::output_leg_angle(void)
 {
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
 
