@@ -18,7 +18,8 @@
 	url = https://github.com/ArduPilot/gsoap
 [submodule "modules/DroneCAN/DSDL"]
 	path = modules/DroneCAN/DSDL
-	url = https://github.com/DroneCAN/DSDL.git
+	url = https://gitee.com/Luviewer/DSDL
+	branch = quadruped
 [submodule "modules/CrashDebug"]
 	path = modules/CrashDebug
 	url = https://github.com/ardupilot/CrashDebug
