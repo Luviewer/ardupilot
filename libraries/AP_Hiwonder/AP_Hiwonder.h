@@ -52,9 +52,9 @@ typedef struct
 
 class AP_Hiwonder {
 public:
-    AP_Hiwonder();
+    AP_Hiwonder() { _port = NULL; }
 
-    virtual void init(void) = 0;
+    virtual void init(void) { };
     void         set_position(uint32_t servo_id, int position, uint32_t duration);
     void         adjust_offset(uint32_t servo_id, int8_t adjust);
     void         write_offset(uint32_t servo_id);
@@ -63,40 +63,85 @@ public:
     AP_HAL::UARTDriver* _port;
 };
 
-class AP_Hiwonder_L : public AP_Hiwonder {
+class AP_Hiwonder_LF : public AP_Hiwonder {
 public:
-    AP_Hiwonder_L();
+    AP_Hiwonder_LF()
+    {
+        if (_singleton != nullptr) {
+            return;
+        }
+        _singleton = this;
+    }
 
     void init(void) override;
 
     // get singleton instance
-    static AP_Hiwonder_L* get_singleton()
-    {
-        return _singleton;
-    }
+    static AP_Hiwonder_LF* get_singleton() { return _singleton; }
 
 private:
-    static AP_Hiwonder_L* _singleton;
+    static AP_Hiwonder_LF* _singleton;
 };
 
-class AP_Hiwonder_R : public AP_Hiwonder {
+class AP_Hiwonder_LB : public AP_Hiwonder {
 public:
-    AP_Hiwonder_R();
+    AP_Hiwonder_LB()
+    {
+        if (_singleton != nullptr) {
+            return;
+        }
+        _singleton = this;
+    }
 
     void init(void) override;
 
     // get singleton instance
-    static AP_Hiwonder_R* get_singleton()
-    {
-        return _singleton;
-    }
+    static AP_Hiwonder_LB* get_singleton() { return _singleton; }
 
 private:
-    static AP_Hiwonder_R* _singleton;
+    static AP_Hiwonder_LB* _singleton;
+};
+
+class AP_Hiwonder_RB : public AP_Hiwonder {
+public:
+    AP_Hiwonder_RB()
+    {
+        if (_singleton != nullptr) {
+            return;
+        }
+        _singleton = this;
+    }
+    void init(void) override;
+
+    // get singleton instance
+    static AP_Hiwonder_RB* get_singleton() { return _singleton; }
+
+private:
+    static AP_Hiwonder_RB* _singleton;
+};
+
+class AP_Hiwonder_RF : public AP_Hiwonder {
+public:
+    AP_Hiwonder_RF()
+    {
+        if (_singleton != nullptr) {
+            return;
+        }
+        _singleton = this;
+    }
+
+    void init(void) override;
+
+    // get singleton instance
+    static AP_Hiwonder_RF* get_singleton() { return _singleton; }
+
+private:
+    static AP_Hiwonder_RF* _singleton;
 };
 
 namespace AP {
-AP_Hiwonder_L& hiwonder_l();
-AP_Hiwonder_R& hiwonder_r();
+AP_Hiwonder_RF& hiwonder_RF();
+AP_Hiwonder_RB& hiwonder_RB();
+AP_Hiwonder_LB& hiwonder_LB();
+AP_Hiwonder_LF& hiwonder_LF();
 
 };

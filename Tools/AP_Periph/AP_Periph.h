@@ -46,6 +46,9 @@
 #include <SITL/SITL.h>
 #endif
 #include <AP_AHRS/AP_AHRS.h>
+#ifdef HAL_USE_Hiwonder_Servo
+#include <AP_Hiwonder/AP_Hiwonder.h>
+#endif
 
 #ifdef HAL_PERIPH_ENABLE_RELAY
 #ifdef HAL_PERIPH_ENABLE_PWM_HARDPOINT
@@ -296,6 +299,13 @@ public:
 
 #ifdef HAL_PERIPH_ENABLE_AIRSPEED
     AP_Airspeed airspeed;
+#endif
+
+#ifdef HAL_USE_Hiwonder_Servo
+    AP_Hiwonder_RF hiwonder_RF;
+    AP_Hiwonder_RB hiwonder_RB;
+    AP_Hiwonder_LF hiwonder_LF;
+    AP_Hiwonder_LB hiwonder_LB;
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_RANGEFINDER

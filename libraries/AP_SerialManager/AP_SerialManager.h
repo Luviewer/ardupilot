@@ -86,6 +86,11 @@ public:
         // Reserving Serial Protocol 47 for SerialProtocol_IQ
         SerialProtocol_PPP = 48,
         SerialProtocol_IBUS_Telem = 49,                // i-BUS telemetry data, ie via sensor port of FS-iA6B
+        SerialProtocol_Hiwonder_RF = 50,     
+        SerialProtocol_Hiwonder_RB = 51,              
+        SerialProtocol_Hiwonder_LB = 52,              
+        SerialProtocol_Hiwonder_LF = 53,              
+         
         SerialProtocol_NumProtocols                    // must be the last value
     };
 

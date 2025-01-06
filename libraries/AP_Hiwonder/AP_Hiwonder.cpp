@@ -1,61 +1,18 @@
-#include "AP_Hiwonder.h"
+#include "AP_Hiwonder/AP_Hiwonder.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <SRV_Channel/SRV_Channel.h>
 
+// singleton instance
+AP_Hiwonder_RF* AP_Hiwonder_RF::_singleton;
+AP_Hiwonder_RB* AP_Hiwonder_RB::_singleton;
+AP_Hiwonder_LB* AP_Hiwonder_LB::_singleton;
+AP_Hiwonder_LF* AP_Hiwonder_LF::_singleton;
+
 #define AP_SERIALMANAGER_Hiwonder_BAUD       115200
 #define AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX 64
 #define AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX 64
-
-int8_t SERVO_DIR[4] = { -1, 1, -1, 1 };
-
-AP_Hiwonder::AP_Hiwonder()
-{
-    _port = NULL;
-}
-
-AP_Hiwonder_L::AP_Hiwonder_L()
-{
-    if (_singleton != nullptr) {
-        // it's an error to get here.  But I don't want to include
-        // AP_HAL here
-        return;
-    }
-    _singleton = this;
-}
-
-AP_Hiwonder_R::AP_Hiwonder_R()
-{
-    if (_singleton != nullptr) {
-        // it's an error to get here.  But I don't want to include
-        // AP_HAL here
-        return;
-    }
-    _singleton = this;
-}
-
-void AP_Hiwonder_L::init(void)
-{
-    AP_SerialManager& serial_manager = AP::serialmanager();
-    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_L, 0))) {
-        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
-        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
-                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
-                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
-    }
-}
-
-void AP_Hiwonder_R::init(void)
-{
-    AP_SerialManager& serial_manager = AP::serialmanager();
-    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_R, 0))) {
-        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
-        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
-                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
-                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
-    }
-}
 
 uint8_t AP_Hiwonder::serial_servo_checksum(const uint8_t buf[])
 {
@@ -77,13 +34,7 @@ void AP_Hiwonder::set_position(uint32_t servo_id, int position, uint32_t duratio
     frame.servo_id = servo_id;
     frame.command  = SERIAL_SERVO_MOVE_TIME_WRITE;
 
-    position = constrain_int32(position, 1000, 2000);
-
-    if (SERVO_DIR[servo_id - 1] == 1) {
-        position = 500 + (position - 1500);
-    } else if (SERVO_DIR[servo_id - 1] == -1) {
-        position = 500 - (position - 1500);
-    }
+    position = constrain_int32(position, 0, 1000);
 
     frame.args[0] = LOWBYTE(position);
     frame.args[1] = HIGHBYTE(position);
@@ -133,18 +84,70 @@ void AP_Hiwonder::write_offset(uint32_t servo_id)
     _port->write((uint8_t*)&frame, sizeof(frame));
 }
 
-// singleton instance
-AP_Hiwonder_L* AP_Hiwonder_L::_singleton;
-AP_Hiwonder_R* AP_Hiwonder_R::_singleton;
+void AP_Hiwonder_RF::init(void)
+{
+    AP_SerialManager& serial_manager = AP::serialmanager();
+    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_RF, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    }
+}
+
+void AP_Hiwonder_RB::init(void)
+{
+    AP_SerialManager& serial_manager = AP::serialmanager();
+    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_RB, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    }
+}
+
+void AP_Hiwonder_LB::init(void)
+{
+    AP_SerialManager& serial_manager = AP::serialmanager();
+    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_LB, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    }
+}
+
+void AP_Hiwonder_LF::init(void)
+{
+    AP_SerialManager& serial_manager = AP::serialmanager();
+    if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_LF, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    }
+}
 
 namespace AP {
-AP_Hiwonder_L& hiwonder_l()
+
+AP_Hiwonder_LF& hiwonder_LF()
 {
-    return *AP_Hiwonder_L::get_singleton();
+    return *AP_Hiwonder_LF::get_singleton();
 }
 
-AP_Hiwonder_R& hiwonder_r()
+AP_Hiwonder_RF& hiwonder_RF()
 {
-    return *AP_Hiwonder_R::get_singleton();
+    return *AP_Hiwonder_RF::get_singleton();
 }
+
+AP_Hiwonder_RB& hiwonder_RB()
+{
+    return *AP_Hiwonder_RB::get_singleton();
+}
+
+AP_Hiwonder_LB& hiwonder_LB()
+{
+    return *AP_Hiwonder_LB::get_singleton();
+}
+
 }
