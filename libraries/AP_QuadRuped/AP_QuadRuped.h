@@ -10,7 +10,7 @@ enum {
     Leg_LB,
     Leg_LF,
 
-    Leg_ALL,
+    LEG_ALL,
 };
 
 class AP_QuadRuped {
@@ -21,16 +21,16 @@ protected:
     uint8_t gait_type;
     uint8_t gait_step;
     uint8_t gait_step_total;
-    uint8_t gait_step_leg_start[Leg_ALL];
+    uint8_t gait_step_leg_start[LEG_ALL];
     uint8_t gait_lifted_steps;
     uint8_t gait_down_steps;
     uint8_t gait_lift_divisor;
     uint8_t gait_half_lift_height;
     uint8_t gait_travel_divisor;
 
-    Vector3f gait_pos_xyz[Leg_ALL];
+    Vector3f gait_pos_xyz[LEG_ALL];
 
-    float gait_rot_z[Leg_ALL];
+    float gait_rot_z[LEG_ALL];
 
     float leg_lift_height; // leg lift height(in mm) while walking
 
@@ -40,11 +40,11 @@ protected:
     float FRAME_LEN;   // frame length in mm
     float FRAME_WIDTH; // frame width in mm
 
-    Vector3f endpoint_leg_pos[Leg_ALL];
-    Vector3f endpoint_leg_frame[Leg_ALL];
+    Vector3f endpoint_leg_pos[LEG_ALL];
+    Vector3f endpoint_leg_frame[LEG_ALL];
 
-    Vector3f endpoint_leg_angle[Leg_ALL];
-    Vector3f endpoint_leg_angle_last[Leg_ALL];
+    Vector3f endpoint_leg_angle[LEG_ALL];
+    Vector3f endpoint_leg_angle_last[LEG_ALL];
 
     Vector3f body_rot_xyz_deg;
 

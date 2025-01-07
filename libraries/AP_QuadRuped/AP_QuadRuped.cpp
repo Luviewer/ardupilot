@@ -9,11 +9,12 @@ AP_QuadRuped::AP_QuadRuped()
 
     leg_lift_height = 50; // leg lift height(in mm) while walking
 
-    COXA_LEN    = 48;  // distance (in mm) from coxa (aka hip) servo to femur servo
-    FEMUR_LEN   = 83;  // distance (in mm) from femur servo to tibia servo
-    TIBIA_LEN   = 135; // distance (in mm) from tibia servo to foot
-    FRAME_LEN   = 180; // frame length in mm
-    FRAME_WIDTH = 180; // frame width in mm
+    COXA_LEN  = 47.1; // distance (in mm) from coxa (aka hip) servo to femur servo
+    FEMUR_LEN = 133;  // distance (in mm) from femur servo to tibia servo
+    TIBIA_LEN = 144;  // distance (in mm) from tibia servo to foot
+
+    FRAME_LEN   = 185; // frame length in mm
+    FRAME_WIDTH = 185; // frame width in mm
 }
 
 #define START_COXA_ANGLE 45
@@ -21,15 +22,15 @@ AP_QuadRuped::AP_QuadRuped()
 void AP_QuadRuped::init(void)
 {
     // starting positions of the legs
-    for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
-        endpoint_leg_pos[leg_index] = Vector3f(cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
-                                               sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
+                                               cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
                                                TIBIA_LEN);
     }
 
-    for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
-        endpoint_leg_frame[leg_index] = Vector3f(cosf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_LEN,
-                                                 sinf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_WIDTH,
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        endpoint_leg_frame[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_LEN,
+                                                 cosf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_WIDTH,
                                                  0);
     }
 
@@ -70,7 +71,7 @@ void AP_QuadRuped::calc_gait_sequence(void)
         move_requested = false;
 
     if (move_requested == true) {
-        for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
+        for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
             update_leg(leg_index);
         }
         gait_step += 1;
@@ -80,7 +81,7 @@ void AP_QuadRuped::calc_gait_sequence(void)
         }
 
     } else {
-        for (uint8_t moving_leg = 0; moving_leg < Leg_ALL; moving_leg++) {
+        for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
             gait_pos_xyz[moving_leg] = { 0, 0, 0 };
             gait_rot_z[moving_leg]   = 0;
         }
@@ -138,7 +139,7 @@ Vector3f AP_QuadRuped::leg_inverse_kinematics(Vector3f posxyz)
 {
     Vector3f leg_deg = { 0, 0, 0 };
 
-    leg_deg.x = degrees(atan2f(posxyz.y, posxyz.x));
+    leg_deg.x = -degrees(atan2f(posxyz.x, posxyz.y));
 
     float trueX = sqrtf(posxyz.x * posxyz.x + posxyz.y * posxyz.y) - COXA_LEN;
     float im    = sqrtf(trueX * trueX + posxyz.z * posxyz.z);
@@ -169,16 +170,16 @@ void AP_QuadRuped::main_inverse_kinematics(void)
     temp_rc  = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
     z_travel = (temp_rc - 1500) / 500.0f * 50;
 
-    const Vector3f endpoint_leg_angle_offset[Leg_ALL] = {
-        { -45, 0, 0 },
+    const Vector3f endpoint_leg_angle_offset[LEG_ALL] = {
         { 45, 0, 0 },
-        { 135, 0, 0 },
-        { 225, 0, 0 }
+        { -45, 0, 0 },
+        { -135, 0, 0 },
+        { -225, 0, 0 }
     };
 
-    const float endpoint_leg_angle_dir[Leg_ALL] = { 1, 1, 1, 1 };
+    const float endpoint_leg_angle_dir[LEG_ALL] = { 1, 1, 1, 1 };
 
-    for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
         ansxyz = body_forward_kinematics(leg_index);
 
         endpoint_leg_angle[leg_index] = leg_inverse_kinematics(ansxyz) + endpoint_leg_angle_offset[leg_index];
@@ -193,7 +194,7 @@ void AP_QuadRuped::main_inverse_kinematics(void)
 
         calc_gait_sequence();
 
-        for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
+        for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
             endpoint_leg_angle_last[leg_index] = endpoint_leg_angle[leg_index];
         }
     }
@@ -213,7 +214,7 @@ void AP_QuadRuped::output_leg_angle(void)
 {
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
 
-    for (uint8_t leg_index = 0; leg_index < Leg_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
         pwm_coxa  = endpoint_leg_angle[leg_index].x * 1000 / 90 + 1500;
         pwm_femur = endpoint_leg_angle[leg_index].y * 1000 / 90 + 1500;
         pwm_tibia = endpoint_leg_angle[leg_index].z * 1000 / 90 + 1500;
