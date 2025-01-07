@@ -48,6 +48,28 @@ typedef struct
     uint8_t command;
     uint8_t crc;
 } Hiwonder_WRITE_ADJUST_TypeDef;
+
+typedef struct
+{
+    uint8_t header_1;
+    uint8_t header_2;
+    uint8_t servo_id;
+    uint8_t length;
+    uint8_t command;
+    uint8_t args[2];
+    uint8_t crc;
+} Hiwonder_SERVO_POS_READ_TypeDef;
+
+typedef struct
+{
+    uint8_t header_1;
+    uint8_t header_2;
+    uint8_t servo_id;
+    uint8_t length;
+    uint8_t command;
+    uint8_t crc;
+} Hiwonder_SERVO_POS_READ_CMD_TypeDef;
+
 #pragma pack()
 
 class AP_Hiwonder {

@@ -45,6 +45,17 @@ void AP_Periph_FW::handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTrans
     hiwonder_RF.set_position(2, pkt.cmd.data[1], 0);
     hiwonder_RF.set_position(3, pkt.cmd.data[2], 0);
 
+    hiwonder_RB.set_position(1, pkt.cmd.data[3], 0);
+    hiwonder_RB.set_position(2, pkt.cmd.data[4], 0);
+    hiwonder_RB.set_position(3, pkt.cmd.data[5], 0);
+
+    hiwonder_LB.set_position(1, pkt.cmd.data[6], 0);
+    hiwonder_LB.set_position(2, pkt.cmd.data[7], 0);
+    hiwonder_LB.set_position(3, pkt.cmd.data[8], 0);
+
+    hiwonder_LF.set_position(1, pkt.cmd.data[9], 0);
+    hiwonder_LF.set_position(2, pkt.cmd.data[10], 0);
+    hiwonder_LF.set_position(3, pkt.cmd.data[11], 0);
 }
 
 #endif // HAL_PERIPH_ENABLE_RPM_STREAM
