@@ -2,7 +2,9 @@
 #include <RC_Channel/RC_Channel.h>
 #include <SRV_Channel/SRV_Channel.h>
 
-AP_QuadRuped::AP_QuadRuped()
+AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
+    : _ahrs(ahrs)
+    , _motors(motors)
 {
     gait_type      = 0;
     move_requested = false;
@@ -124,11 +126,11 @@ Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
 
     Quaternion quat = { 1, 0, 0, 0 };
 
-    body_rot_xyz_deg.x = 0;
-    body_rot_xyz_deg.y = 0;
+    body_rot_xyz_deg.x = -radians(roll_travel);
+    body_rot_xyz_deg.y = -radians(pitch_travel);
     body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]);
 
-    quat.from_euler(-body_rot_xyz_deg);
+    quat.from_euler(body_rot_xyz_deg);
 
     Vector3f totaldist_xyz_rot = quat * totaldist_xyz;
 
@@ -160,22 +162,14 @@ void AP_QuadRuped::main_inverse_kinematics(void)
 {
     Vector3f ansxyz = { 0, 0, 0 };
 
-    float temp_rc;
-    temp_rc         = constrain_value((float)rc().RC_Channels::get_throttle_channel().get_radio_in(), (float)1000, (float)2000);
-    throttle_travel = (temp_rc - 1500) / 500.0f * 100;
-
-    temp_rc    = constrain_value((float)rc().RC_Channels::get_yaw_channel().get_radio_in(), (float)1000, (float)2000);
-    yaw_travel = (temp_rc - 1500) / 500.0f * 30;
-
-    temp_rc  = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
-    z_travel = (temp_rc - 1500) / 500.0f * 50;
-
     const Vector3f endpoint_leg_angle_offset[LEG_ALL] = {
         { 45, 0, 0 },
         { -45, 0, 0 },
         { -135, 0, 0 },
         { -225, 0, 0 }
     };
+
+    contoller();
 
     const float endpoint_leg_angle_dir[LEG_ALL] = { 1, 1, 1, 1 };
 
@@ -223,4 +217,28 @@ void AP_QuadRuped::output_leg_angle(void)
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_2 + leg_index * 3), pwm_femur);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_3 + leg_index * 3), pwm_tibia);
     }
+}
+
+void AP_QuadRuped::contoller()
+{
+    float temp_rc;
+
+    temp_rc = constrain_value((float)rc().RC_Channels::get_yaw_channel().get_radio_in(), (float)1000, (float)2000);
+    temp_rc       = (temp_rc - 1500) / 500.0f * 35.0f;
+
+    // float yaw_out = yaw_pid.update_all(temp_rc, _ahrs->get_gyro().z, 1.0 / 50.0f);
+
+    yaw_travel = temp_rc;
+
+    temp_rc         = constrain_value((float)rc().RC_Channels::get_throttle_channel().get_radio_in(), (float)1000, (float)2000);
+    throttle_travel = (temp_rc - 1500) / 500.0f * 200;
+
+    // temp_rc     = constrain_value((float)rc().RC_Channels::get_roll_channel().get_radio_in(), (float)1000, (float)2000);
+    // roll_travel = (temp_rc - 1500) / 500.0f * 15.0f;
+
+    // temp_rc      = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
+    // pitch_travel = (temp_rc - 1500) / 500.0f * 5.0f;
+
+    temp_rc  = constrain_value((float)rc().RC_Channels::get_roll_channel().get_radio_in(), (float)1000, (float)2000);
+    z_travel = (temp_rc - 1500) / 500.0f * 120.0f;
 }

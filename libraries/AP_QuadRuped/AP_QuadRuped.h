@@ -1,7 +1,10 @@
 #pragma once
 
+#include <AC_PID/AC_PID.h>
+#include <AP_AHRS/AP_AHRS_View.h>
 #include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Math/AP_Math.h>
+#include <AP_Motors/AP_MotorsMulticopter.h>
 #include <AP_Param/AP_Param.h>
 
 enum {
@@ -50,17 +53,36 @@ protected:
 
     float throttle_travel;
     float z_travel;
-
+    float roll_travel;
+    float pitch_travel;
     float yaw_travel;
 
     uint32_t start_time;
 
+    AP_AHRS_View*&         _ahrs;
+    AP_MotorsMulticopter*& _motors;
+
+    AC_PID yaw_pid {
+        AC_PID::Defaults {
+            .p         = 0.35f,
+            .i         = 0.35f,
+            .d         = 0.001f,
+            .ff        = 0.0f,
+            .imax      = 1,
+            .filt_T_hz = 5.0f,
+            .filt_E_hz = 5.0f,
+            .filt_D_hz = 5.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+
+    float aim_yaw;
+
 public:
-    AP_QuadRuped();
+    AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors);
     ~AP_QuadRuped() { };
 
     void init();
-
 
     void     gait_select();
     void     calc_gait_sequence(void);
@@ -74,6 +96,7 @@ public:
     // Vector3f get_endpoint_leg(uint8_t leg) { return endpoint_leg[leg]; }
 
     void output_leg_angle();
-
     bool servo_estimate();
+
+    void contoller(void);
 };
