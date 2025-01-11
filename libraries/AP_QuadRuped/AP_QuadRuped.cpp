@@ -9,7 +9,7 @@ AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
     gait_type      = 0;
     move_requested = false;
 
-    leg_lift_height = 50; // leg lift height(in mm) while walking
+    leg_lift_height = 80; // leg lift height(in mm) while walking
 
     COXA_LEN  = 47.1; // distance (in mm) from coxa (aka hip) servo to femur servo
     FEMUR_LEN = 133;  // distance (in mm) from femur servo to tibia servo
@@ -204,6 +204,18 @@ bool AP_QuadRuped::servo_estimate(void)
     return false;
 }
 
+void AP_QuadRuped::reset_leg(void)
+{
+    uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
+
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_1 + leg_index * 3), pwm_coxa);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_2 + leg_index * 3), pwm_femur);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_3 + leg_index * 3), pwm_tibia);
+    }
+}
+
 void AP_QuadRuped::output_leg_angle(void)
 {
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
@@ -224,7 +236,7 @@ void AP_QuadRuped::contoller()
     float temp_rc;
 
     temp_rc = constrain_value((float)rc().RC_Channels::get_yaw_channel().get_radio_in(), (float)1000, (float)2000);
-    temp_rc       = (temp_rc - 1500) / 500.0f * 35.0f;
+    temp_rc = (temp_rc - 1500) / 500.0f * 35.0f;
 
     // float yaw_out = yaw_pid.update_all(temp_rc, _ahrs->get_gyro().z, 1.0 / 50.0f);
 

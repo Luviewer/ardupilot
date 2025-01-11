@@ -97,6 +97,7 @@ public:
 
     void output_leg_angle();
     bool servo_estimate();
+    void reset_leg(void);
 
     void contoller(void);
 };
