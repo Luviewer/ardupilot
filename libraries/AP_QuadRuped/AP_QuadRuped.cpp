@@ -231,7 +231,7 @@ void AP_QuadRuped::contoller()
     yaw_travel = temp_rc;
 
     temp_rc         = constrain_value((float)rc().RC_Channels::get_throttle_channel().get_radio_in(), (float)1000, (float)2000);
-    throttle_travel = (temp_rc - 1500) / 500.0f * 200;
+    throttle_travel = (temp_rc - 1000) / 500.0f * 200;
 
     // temp_rc     = constrain_value((float)rc().RC_Channels::get_roll_channel().get_radio_in(), (float)1000, (float)2000);
     // roll_travel = (temp_rc - 1500) / 500.0f * 15.0f;

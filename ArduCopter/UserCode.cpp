@@ -20,8 +20,10 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
-    quadruped.main_inverse_kinematics();
-    quadruped.output_leg_angle();
+    // if (is_landing() && arming.is_armed()==false) {
+    //     quadruped.main_inverse_kinematics();
+    //     quadruped.output_leg_angle();
+    // }
 }
 #endif
 

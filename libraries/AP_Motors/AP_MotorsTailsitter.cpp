@@ -26,7 +26,7 @@
 
 extern const AP_HAL::HAL& hal;
 
-#define SERVO_OUTPUT_RANGE  4500
+#define SERVO_OUTPUT_RANGE  9000
 
 // init
 void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type frame_type)
@@ -210,7 +210,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
-    _tilt_left  = pitch_thrust - yaw_thrust;
+    _tilt_left  = -pitch_thrust + yaw_thrust;
     _tilt_right = pitch_thrust + yaw_thrust;
 }
 
