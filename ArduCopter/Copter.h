@@ -1124,7 +1124,7 @@ private:
 public:
     void failsafe_check();      // failsafe.cpp
 
-    AP_QuadRuped quadruped{ahrs_view,motors};
+    AP_QuadRuped qrupd{ahrs_view,motors};
 };
 
 extern Copter copter;

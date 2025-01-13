@@ -5,7 +5,7 @@ void Copter::userhook_init()
 {
     // put your initialisation code here
     // this will be called once at start-up
-    quadruped.init();
+    qrupd.init();
 }
 #endif
 
@@ -20,11 +20,17 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
-    if (arming.is_armed() == false && ap.land_complete == true) {
-        quadruped.main_inverse_kinematics();
-        quadruped.output_leg_angle();
+    // if (arming.is_armed() == false && ap.land_complete == true) {
+    //     quadruped.main_inverse_kinematics();
+    //     quadruped.output_leg_angle();
+    // } else {
+    //     quadruped.reset_leg();
+    // }
+    if (hal.rcin->read(CH_6) > 1500) {
+        qrupd.main_inverse_kinematics();
+        qrupd.output_leg_angle();
     } else {
-        quadruped.reset_leg();
+        qrupd.reset_leg();
     }
 }
 #endif

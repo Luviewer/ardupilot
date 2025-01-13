@@ -3,6 +3,7 @@
 #include <AP_Gripper/AP_Gripper.h>
 #include <AP_InertialSensor/AP_InertialSensor_rate_config.h>
 
+#include <AP_QuadRuped/AP_QuadRuped.h>
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -719,6 +720,8 @@ const AP_Param::Info Copter::var_info[] = {
     // @Path: ../libraries/AC_CustomControl/AC_CustomControl.cpp
     GOBJECT(custom_control, "CC", AC_CustomControl),
 #endif
+
+    GOBJECT(qrupd, "QRUPD", AP_QuadRuped),
 
     // @Group:
     // @Path: Parameters.cpp

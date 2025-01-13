@@ -4,6 +4,8 @@
 #include <AP_SerialManager/AP_SerialManager.h>
 #include <SRV_Channel/SRV_Channel.h>
 
+extern const AP_HAL::HAL& hal;
+
 // singleton instance
 AP_Hiwonder_RF* AP_Hiwonder_RF::_singleton;
 AP_Hiwonder_RB* AP_Hiwonder_RB::_singleton;
@@ -92,6 +94,12 @@ void AP_Hiwonder_RF::init(void)
         _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    } else {
+        _port = hal.serial(1);
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
     }
 }
 
@@ -99,6 +107,12 @@ void AP_Hiwonder_RB::init(void)
 {
     AP_SerialManager& serial_manager = AP::serialmanager();
     if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_RB, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    } else {
+        _port = hal.serial(2);
         _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
         _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
@@ -114,6 +128,12 @@ void AP_Hiwonder_LB::init(void)
         _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    } else {
+        _port = hal.serial(3);
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
     }
 }
 
@@ -121,6 +141,12 @@ void AP_Hiwonder_LF::init(void)
 {
     AP_SerialManager& serial_manager = AP::serialmanager();
     if ((_port = serial_manager.find_serial(AP_SerialManager::SerialProtocol_Hiwonder_LF, 0))) {
+        _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
+        _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,
+                     AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX);
+    } else {
+        _port = hal.serial(4);
         _port->set_flow_control(AP_HAL::UARTDriver::FLOW_CONTROL_DISABLE);
         _port->begin(AP_SERIALMANAGER_Hiwonder_BAUD,
                      AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX,

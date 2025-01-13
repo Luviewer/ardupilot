@@ -312,6 +312,31 @@ void AP_Periph_FW::init()
     scripting.init();
 #endif
     start_ms = AP_HAL::millis();
+
+#ifdef HAL_USE_Hiwonder_Servo
+    uint16_t init_pos = 500;
+
+    hiwonder_RF.init();
+    hiwonder_LF.init();
+    hiwonder_RB.init();
+    hiwonder_LB.init();
+
+    hiwonder_RF.set_position(1, init_pos, 0);
+    hiwonder_RF.set_position(2, init_pos, 0);
+    hiwonder_RF.set_position(3, init_pos, 0);
+
+    hiwonder_RB.set_position(1, init_pos, 0);
+    hiwonder_RB.set_position(2, init_pos, 0);
+    hiwonder_RB.set_position(3, init_pos, 0);
+
+    hiwonder_LB.set_position(1, init_pos, 0);
+    hiwonder_LB.set_position(2, init_pos, 0);
+    hiwonder_LB.set_position(3, init_pos, 0);
+
+    hiwonder_LF.set_position(1, init_pos, 0);
+    hiwonder_LF.set_position(2, init_pos, 0);
+    hiwonder_LF.set_position(3, init_pos, 0);
+#endif
 }
 
 #if (defined(HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY) && HAL_PERIPH_NEOPIXEL_COUNT_WITHOUT_NOTIFY == 8) || defined(HAL_PERIPH_ENABLE_NOTIFY)
@@ -530,7 +555,7 @@ void AP_Periph_FW::update()
 #endif
 
 #ifdef HAL_USE_Hiwonder_Servo
-    send_hiwonder_pos();
+    // send_hiwonder_pos();
 #endif
 
 #if HAL_LOGGING_ENABLED

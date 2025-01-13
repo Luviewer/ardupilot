@@ -35,13 +35,13 @@ protected:
 
     float gait_rot_z[LEG_ALL];
 
-    float leg_lift_height; // leg lift height(in mm) while walking
-
-    float COXA_LEN;    // distance (in mm) from coxa (aka hip) servo to femur servo
-    float FEMUR_LEN;   // distance (in mm) from femur servo to tibia servo
-    float TIBIA_LEN;   // distance (in mm) from tibia servo to foot
-    float FRAME_LEN;   // frame length in mm
-    float FRAME_WIDTH; // frame width in mm
+    AP_Float leg_lift_height; // leg lift height(in mm) while walking
+    AP_Float COXA_LEN;        // distance (in mm) from coxa (aka hip) servo to femur servo
+    AP_Float FEMUR_LEN;       // distance (in mm) from femur servo to tibia servo
+    AP_Float TIBIA_LEN;       // distance (in mm) from tibia servo to foot
+    AP_Float FRAME_LEN;       // frame length in mm
+    AP_Float FRAME_WIDTH;     // frame width in mm
+    AP_Float speed_hz;
 
     Vector3f endpoint_leg_pos[LEG_ALL];
     Vector3f endpoint_leg_frame[LEG_ALL];
@@ -78,9 +78,13 @@ protected:
 
     float aim_yaw;
 
+    // Parameter block
+
 public:
     AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors);
-    ~AP_QuadRuped() { };
+    ~AP_QuadRuped() {};
+
+    static const struct AP_Param::GroupInfo var_info[];
 
     void init();
 

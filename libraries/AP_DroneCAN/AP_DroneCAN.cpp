@@ -584,7 +584,7 @@ void AP_DroneCAN::loop(void)
 #endif
     }
 
-    hiwonder_servocmd_send();
+    // hiwonder_servocmd_send();
 }
 
 #if AP_DRONECAN_HOBBYWING_ESC_SUPPORT

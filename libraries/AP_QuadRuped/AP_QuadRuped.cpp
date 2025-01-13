@@ -2,6 +2,28 @@
 #include <RC_Channel/RC_Channel.h>
 #include <SRV_Channel/SRV_Channel.h>
 
+#define COXA_LEN_DEFAULT    47.1f
+#define FEMUR_LEN_DEFAULT   133.0f
+#define TIBIA_LEN_DEFAULT   144.1f
+#define FRAME_LEN_DEFAULT   185.0f
+#define FRAME_WIDTH_DEFAULT 185.0f
+#define LIFT_HEIGHT_DEFAULT 50.0f
+#define SPEED_HZ_DEFAULT    25.0f
+
+const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
+    AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
+    AP_GROUPINFO("_FEMUR", 2, AP_QuadRuped, FEMUR_LEN, FEMUR_LEN_DEFAULT),
+    AP_GROUPINFO("_TIBIA", 3, AP_QuadRuped, TIBIA_LEN, TIBIA_LEN_DEFAULT),
+
+    AP_GROUPINFO("_FX", 4, AP_QuadRuped, FRAME_LEN, FRAME_LEN_DEFAULT),
+    AP_GROUPINFO("_FY", 5, AP_QuadRuped, FRAME_WIDTH, FRAME_WIDTH_DEFAULT),
+
+    AP_GROUPINFO("_LIFT", 6, AP_QuadRuped, leg_lift_height, LIFT_HEIGHT_DEFAULT),
+    AP_GROUPINFO("_Hz", 7, AP_QuadRuped, speed_hz, SPEED_HZ_DEFAULT),
+
+    AP_GROUPEND
+};
+
 AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
     : _ahrs(ahrs)
     , _motors(motors)
@@ -9,14 +31,16 @@ AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
     gait_type      = 0;
     move_requested = false;
 
-    leg_lift_height = 80; // leg lift height(in mm) while walking
+    AP_Param::setup_object_defaults(this, var_info);
 
-    COXA_LEN  = 47.1; // distance (in mm) from coxa (aka hip) servo to femur servo
-    FEMUR_LEN = 133;  // distance (in mm) from femur servo to tibia servo
-    TIBIA_LEN = 144;  // distance (in mm) from tibia servo to foot
+    // leg_lift_height = 80; // leg lift height(in mm) while walking
 
-    FRAME_LEN   = 185; // frame length in mm
-    FRAME_WIDTH = 185; // frame width in mm
+    // COXA_LEN  = 47.1; // distance (in mm) from coxa (aka hip) servo to femur servo
+    // FEMUR_LEN = 133;  // distance (in mm) from femur servo to tibia servo
+    // TIBIA_LEN = 144;  // distance (in mm) from tibia servo to foot
+
+    // FRAME_LEN   = 185; // frame length in mm
+    // FRAME_WIDTH = 185; // frame width in mm
 }
 
 #define START_COXA_ANGLE 45
@@ -198,17 +222,28 @@ bool AP_QuadRuped::servo_estimate(void)
 {
     uint32_t target_time = AP_HAL::millis();
 
-    if ((target_time - start_time) >= (1000.0f / 25.0f)) {
+    if ((target_time - start_time) >= (1000.0f / speed_hz)) {
         return true;
     }
     return false;
 }
+
+static const Vector3f leg_rot_dir[LEG_ALL] = {
+    { 1, 1, -1 },
+    { 1, 1, -1 },
+    { 1, 1, -1 },
+    { 1, 1, -1 },
+};
 
 void AP_QuadRuped::reset_leg(void)
 {
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+
+        pwm_coxa  = leg_rot_dir[leg_index].x * 45 * 500 / 120 + 1500;
+        pwm_femur = leg_rot_dir[leg_index].y * -45 * 500 / 120 + 1500;
+        pwm_tibia = leg_rot_dir[leg_index].z * 45 * 500 / 120 + 1500;
 
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_1 + leg_index * 3), pwm_coxa);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_2 + leg_index * 3), pwm_femur);
@@ -221,9 +256,9 @@ void AP_QuadRuped::output_leg_angle(void)
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        pwm_coxa  = endpoint_leg_angle[leg_index].x * 1000 / 90 + 1500;
-        pwm_femur = endpoint_leg_angle[leg_index].y * 1000 / 90 + 1500;
-        pwm_tibia = endpoint_leg_angle[leg_index].z * 1000 / 90 + 1500;
+        pwm_coxa  = leg_rot_dir[leg_index].x * endpoint_leg_angle[leg_index].x * 500 / 120 + 1500;
+        pwm_femur = leg_rot_dir[leg_index].y * endpoint_leg_angle[leg_index].y * 500 / 120 + 1500;
+        pwm_tibia = leg_rot_dir[leg_index].z * endpoint_leg_angle[leg_index].z * 500 / 120 + 1500;
 
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_1 + leg_index * 3), pwm_coxa);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_2 + leg_index * 3), pwm_femur);
@@ -243,14 +278,14 @@ void AP_QuadRuped::contoller()
     yaw_travel = temp_rc;
 
     temp_rc         = constrain_value((float)rc().RC_Channels::get_throttle_channel().get_radio_in(), (float)1000, (float)2000);
-    throttle_travel = (temp_rc - 1000) / 500.0f * 200;
-
+    throttle_travel = (temp_rc - 1500) / 500.0f * 200;
+    // throttle_travel = 20;
     // temp_rc     = constrain_value((float)rc().RC_Channels::get_roll_channel().get_radio_in(), (float)1000, (float)2000);
     // roll_travel = (temp_rc - 1500) / 500.0f * 15.0f;
 
     // temp_rc      = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
     // pitch_travel = (temp_rc - 1500) / 500.0f * 5.0f;
 
-    temp_rc  = constrain_value((float)rc().RC_Channels::get_roll_channel().get_radio_in(), (float)1000, (float)2000);
+    temp_rc  = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
     z_travel = (temp_rc - 1500) / 500.0f * 120.0f;
 }
