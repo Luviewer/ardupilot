@@ -22,8 +22,7 @@ protected:
     bool move_requested;
 
     uint8_t gait_type;
-    uint8_t gait_step;
-    uint8_t gait_step_total;
+
     uint8_t gait_step_leg_start[LEG_ALL];
     uint8_t gait_lifted_steps;
     uint8_t gait_down_steps;
@@ -31,26 +30,57 @@ protected:
     uint8_t gait_half_lift_height;
     uint8_t gait_travel_divisor;
 
-    Vector3f gait_pos_xyz[LEG_ALL];
-
     float gait_rot_z[LEG_ALL];
 
-    AP_Float leg_lift_height; // leg lift height(in mm) while walking
-    AP_Float COXA_LEN;        // distance (in mm) from coxa (aka hip) servo to femur servo
-    AP_Float FEMUR_LEN;       // distance (in mm) from femur servo to tibia servo
-    AP_Float TIBIA_LEN;       // distance (in mm) from tibia servo to foot
-    AP_Float FRAME_LEN;       // frame length in mm
-    AP_Float FRAME_WIDTH;     // frame width in mm
-    AP_Float speed_hz;
+    /* 抬腿的高度 */
+    AP_Float leg_lift_height;
+
+    /* COXA的长度 */
+    AP_Float COXA_LEN;
+
+    /* FEMUR的长度 */
+    AP_Float FEMUR_LEN;
+
+    /* TIBIA的长度 */
+    AP_Float TIBIA_LEN;
+
+    /* 机身的X长度 */
+    AP_Float FRAME_LEN;
+
+    /* 机身的Y长度 */
+    AP_Float FRAME_WIDTH;
+
+    /* 步态计算频率 */
+    AP_Float gait_hz;
+
+    /* 步态计算数 */
+    AP_Float gait_step_total;
+
+    /* 当前步态计数 */
+    uint16_t gait_step_now;
+
+    /* 油门最大值 */
     AP_Float throttle_max;
 
+    /* 四足腿末端位置 */
     Vector3f endpoint_leg_pos[LEG_ALL];
+
+    /* 四足腿对应机身点的位置 */
     Vector3f endpoint_leg_frame[LEG_ALL];
 
+    /* 四足腿的角度 */
     Vector3f endpoint_leg_angle[LEG_ALL];
     Vector3f endpoint_leg_angle_last[LEG_ALL];
 
+    /* 机体旋转角度 */
     Vector3f body_rot_xyz_deg;
+
+    /* 四足末端需要走的位置 */
+    Vector3f gait_pos_xyz[LEG_ALL];
+
+    AP_Int8 leg_coxa_direction[LEG_ALL];
+    AP_Int8 leg_femur_direction[LEG_ALL];
+    AP_Int8 leg_tibia_direction[LEG_ALL];
 
     float throttle_travel;
     float z_travel;
@@ -71,6 +101,7 @@ protected:
             .ff        = 0.0f,
             .imax      = 1,
             .filt_T_hz = 5.0f,
+
             .filt_E_hz = 5.0f,
             .filt_D_hz = 5.0f,
             .srmax     = 0,
@@ -91,7 +122,6 @@ public:
 
     void     gait_select();
     void     calc_gait_sequence(void);
-    void     update_leg(uint8_t moving_leg);
     void     main_inverse_kinematics();
     Vector3f body_forward_kinematics(uint8_t leg_index);
     Vector3f leg_inverse_kinematics(Vector3f posxyz);
@@ -102,7 +132,12 @@ public:
 
     void output_leg_angle();
     bool servo_estimate();
+
     void reset_leg(void);
+    void left_sleep_leg(void);
+    void update_leg();
 
     void contoller(void);
+
+    Vector3f trajectory_generation();
 };
