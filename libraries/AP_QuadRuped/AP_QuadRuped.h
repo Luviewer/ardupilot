@@ -42,6 +42,7 @@ protected:
     AP_Float FRAME_LEN;       // frame length in mm
     AP_Float FRAME_WIDTH;     // frame width in mm
     AP_Float speed_hz;
+    AP_Float throttle_max;
 
     Vector3f endpoint_leg_pos[LEG_ALL];
     Vector3f endpoint_leg_frame[LEG_ALL];

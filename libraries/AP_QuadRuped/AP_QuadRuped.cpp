@@ -2,13 +2,14 @@
 #include <RC_Channel/RC_Channel.h>
 #include <SRV_Channel/SRV_Channel.h>
 
-#define COXA_LEN_DEFAULT    47.1f
-#define FEMUR_LEN_DEFAULT   133.0f
-#define TIBIA_LEN_DEFAULT   144.1f
-#define FRAME_LEN_DEFAULT   185.0f
-#define FRAME_WIDTH_DEFAULT 185.0f
-#define LIFT_HEIGHT_DEFAULT 50.0f
-#define SPEED_HZ_DEFAULT    25.0f
+#define COXA_LEN_DEFAULT     47.1f
+#define FEMUR_LEN_DEFAULT    133.0f
+#define TIBIA_LEN_DEFAULT    144.1f
+#define FRAME_LEN_DEFAULT    185.0f
+#define FRAME_WIDTH_DEFAULT  185.0f
+#define LIFT_HEIGHT_DEFAULT  50.0f
+#define SPEED_HZ_DEFAULT     25.0f
+#define MAX_THROTTLE_DEFAULT 200.0f
 
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
@@ -20,6 +21,8 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 
     AP_GROUPINFO("_LIFT", 6, AP_QuadRuped, leg_lift_height, LIFT_HEIGHT_DEFAULT),
     AP_GROUPINFO("_Hz", 7, AP_QuadRuped, speed_hz, SPEED_HZ_DEFAULT),
+
+    AP_GROUPINFO("_THR", 8, AP_QuadRuped, throttle_max, MAX_THROTTLE_DEFAULT),
 
     AP_GROUPEND
 };
@@ -278,7 +281,7 @@ void AP_QuadRuped::contoller()
     yaw_travel = temp_rc;
 
     temp_rc         = constrain_value((float)rc().RC_Channels::get_throttle_channel().get_radio_in(), (float)1000, (float)2000);
-    throttle_travel = (temp_rc - 1500) / 500.0f * 200;
+    throttle_travel = (temp_rc - 1500) / 500.0f * throttle_max;
     // throttle_travel = 20;
     // temp_rc     = constrain_value((float)rc().RC_Channels::get_roll_channel().get_radio_in(), (float)1000, (float)2000);
     // roll_travel = (temp_rc - 1500) / 500.0f * 15.0f;
