@@ -121,7 +121,8 @@ void AP_QuadRuped::calc_gait_sequence(void)
 
 Vector3f AP_QuadRuped::trajectory_generation()
 {
-    float delta = M_2PI * (gait_step_now - gait_step_total) / gait_step_total;
+    float delta = M_2PI * gait_step_now / gait_step_total;
+    delta = wrap_2PI(delta);
 
     Vector2f leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI;
 
@@ -139,14 +140,20 @@ void AP_QuadRuped::update_leg()
     for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
         if (moving_leg == Leg_RF || moving_leg == Leg_LB) {
             dir = 1;
+            if (gait_step_now < gait_step_total) {
+                gait_pos_xyz[moving_leg] = trajectory_generation() * dir;
+            } else {
+                gait_pos_xyz[moving_leg]   = trajectory_generation() * -dir;
+                gait_pos_xyz[moving_leg].z = 0;
+            }
         } else {
             dir = -1;
-        }
-
-        if (gait_step_now < gait_step_total) {
-            gait_pos_xyz[moving_leg] = trajectory_generation() * dir;
-        } else {
-            gait_pos_xyz[moving_leg] = trajectory_generation() * -dir;
+            if (gait_step_now < gait_step_total) {
+                gait_pos_xyz[moving_leg]   = trajectory_generation() * dir;
+                gait_pos_xyz[moving_leg].z = 0;
+            } else {
+                gait_pos_xyz[moving_leg] = trajectory_generation() * -dir;
+            }
         }
     }
 }

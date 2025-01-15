@@ -30,7 +30,7 @@ void Copter::userhook_50Hz()
         qrupd.main_inverse_kinematics();
         qrupd.output_leg_angle();
     } else {
-        qrupd.reset_leg();
+        qrupd.left_sleep_leg();
     }
 }
 #endif
