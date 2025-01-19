@@ -54,7 +54,7 @@ protected:
     AP_Float gait_hz;
 
     /* 步态计算数 */
-    AP_Float gait_step_total;
+    AP_Int16 gait_step_total;
 
     /* 当前步态计数 */
     uint16_t gait_step_now;
@@ -114,7 +114,7 @@ protected:
 
 public:
     AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors);
-    ~AP_QuadRuped() {};
+    ~AP_QuadRuped() { };
 
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -139,5 +139,6 @@ public:
 
     void contoller(void);
 
-    Vector3f trajectory_generation();
+    Vector3f trajectory_generation(uint8_t leg_index);
+    void     yaw_trajectory_generation(uint8_t leg_index);
 };

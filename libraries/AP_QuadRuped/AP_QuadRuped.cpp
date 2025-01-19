@@ -10,7 +10,7 @@
 #define LIFT_HEIGHT_DEFAULT     50.0f
 #define SPEED_HZ_DEFAULT        25.0f
 #define MAX_THROTTLE_DEFAULT    200.0f
-#define GAIT_STEP_TOTAL_DEFAULT 10.0f
+#define GAIT_STEP_TOTAL_DEFAULT 12
 
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
@@ -93,14 +93,16 @@ void AP_QuadRuped::gait_select(void)
     // gait_step_total       = 6;
     // gait_lifted_steps     = 2;
     // gait_down_steps       = 1;
-    // gait_lift_divisor     = 2;
     // gait_half_lift_height = 1;
     // gait_travel_divisor   = 4;
 
-    // gait_step_leg_start[Leg_RF] = 1;
-    // gait_step_leg_start[Leg_RB] = 4;
-    // gait_step_leg_start[Leg_LB] = 1;
-    // gait_step_leg_start[Leg_LF] = 4;
+    gait_step_leg_start[Leg_RF] = 1;
+    gait_step_leg_start[Leg_RB] = gait_step_total / 2 + 1;
+    gait_step_leg_start[Leg_LB] = 1;
+    gait_step_leg_start[Leg_LF] = gait_step_total / 2 + 1;
+
+    gait_travel_divisor = gait_step_total / 2 + 1;
+    gait_lift_divisor   = 2;
 }
 
 void AP_QuadRuped::calc_gait_sequence(void)
@@ -119,42 +121,58 @@ void AP_QuadRuped::calc_gait_sequence(void)
     }
 }
 
-Vector3f AP_QuadRuped::trajectory_generation()
+Vector3f AP_QuadRuped::trajectory_generation(uint8_t leg_index)
 {
-    float delta = M_2PI * gait_step_now / gait_step_total;
-    delta = wrap_2PI(delta);
+    float    delta;
+    Vector2f leg_xy_target;
+    float    leg_z_target = 0;
 
-    Vector2f leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI;
+    int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+    if (delta_step < 0) {
+        delta_step = gait_step_total + delta_step + 1;
+    }
 
-    float leg_z_target = -leg_lift_height * (1.0f - cosf(delta)) / 2.0f;
+    delta = wrap_2PI(M_2PI * delta_step / gait_step_total * 2);
+
+    if (delta_step <= (gait_step_total / 2)) {
+        leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI;
+        leg_z_target  = -leg_lift_height * (1.0f - cosf(delta / 2));
+    } else {
+        leg_xy_target = -Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI + Vector2f(throttle_travel, 0);
+        leg_z_target  = 0;
+    }
 
     return Vector3f(leg_xy_target, leg_z_target);
+}
+
+void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
+{
+    int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+
+    switch (delta_step) {
+        case 0:
+            gait_rot_z[leg_index] = 0;
+            break;
+
+        case 1:
+            gait_rot_z[leg_index] = yaw_travel / gait_lift_divisor;
+            break;
+
+        default:
+            gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / gait_travel_divisor);
+            break;
+    }
 }
 
 void AP_QuadRuped::update_leg()
 {
     gait_step_now++;
-    if (gait_step_now > (gait_step_total * 2)) gait_step_now = 0;
+    if (gait_step_now > gait_step_total) gait_step_now = 0;
 
-    float dir = 1;
+    // float dir = 1;
     for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
-        if (moving_leg == Leg_RF || moving_leg == Leg_LB) {
-            dir = 1;
-            if (gait_step_now < gait_step_total) {
-                gait_pos_xyz[moving_leg] = trajectory_generation() * dir;
-            } else {
-                gait_pos_xyz[moving_leg]   = trajectory_generation() * -dir;
-                gait_pos_xyz[moving_leg].z = 0;
-            }
-        } else {
-            dir = -1;
-            if (gait_step_now < gait_step_total) {
-                gait_pos_xyz[moving_leg]   = trajectory_generation() * dir;
-                gait_pos_xyz[moving_leg].z = 0;
-            } else {
-                gait_pos_xyz[moving_leg] = trajectory_generation() * -dir;
-            }
-        }
+        gait_pos_xyz[moving_leg] = trajectory_generation(moving_leg);
+        yaw_trajectory_generation(moving_leg);
     }
 }
 

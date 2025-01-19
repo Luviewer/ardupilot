@@ -26,12 +26,6 @@ void Copter::userhook_50Hz()
     // } else {
     //     quadruped.reset_leg();
     // }
-    if (hal.rcin->read(CH_6) > 1500) {
-        qrupd.main_inverse_kinematics();
-        qrupd.output_leg_angle();
-    } else {
-        qrupd.left_sleep_leg();
-    }
 }
 #endif
 
@@ -39,6 +33,19 @@ void Copter::userhook_50Hz()
 void Copter::userhook_MediumLoop()
 {
     // put your 10Hz code here
+
+    static uint32_t lasttime = 0;
+
+    if ((AP_HAL::millis() - lasttime) > 500) {
+        lasttime = AP_HAL::millis();
+
+        if (hal.rcin->read(CH_6) > 1500) {
+            qrupd.main_inverse_kinematics();
+            qrupd.output_leg_angle();
+        } else {
+            qrupd.left_sleep_leg();
+        }
+    }
 }
 #endif
 
