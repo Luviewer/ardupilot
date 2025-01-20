@@ -121,7 +121,7 @@ void AP_QuadRuped::calc_gait_sequence(void)
     }
 }
 
-Vector3f AP_QuadRuped::trajectory_generation(uint8_t leg_index)
+void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
 {
     float    delta;
     Vector2f leg_xy_target;
@@ -132,17 +132,22 @@ Vector3f AP_QuadRuped::trajectory_generation(uint8_t leg_index)
         delta_step = gait_step_total + delta_step + 1;
     }
 
-    delta = wrap_2PI(M_2PI * delta_step / gait_step_total * 2);
-
     if (delta_step <= (gait_step_total / 2)) {
-        leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI;
-        leg_z_target  = -leg_lift_height * (1.0f - cosf(delta / 2));
+        delta = M_2PI * delta_step / gait_step_total * 2.0f;
+        // leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI * 2.0f - Vector2f(throttle_travel, 0);
+        leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel;
+        leg_xy_target[1] = 0;
+        leg_z_target = -leg_lift_height * (1.0f - cosf(delta));
     } else {
-        leg_xy_target = -Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI + Vector2f(throttle_travel, 0);
-        leg_z_target  = 0;
+        delta = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;
+        // leg_xy_target = -Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI * 2.0f + Vector2f(throttle_travel, 0);
+        leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel;
+        leg_xy_target[1] = 0;
+
+        leg_z_target = 0;
     }
 
-    return Vector3f(leg_xy_target, leg_z_target);
+    gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
 }
 
 void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
@@ -171,7 +176,7 @@ void AP_QuadRuped::update_leg()
 
     // float dir = 1;
     for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
-        gait_pos_xyz[moving_leg] = trajectory_generation(moving_leg);
+        trajectory_generation(moving_leg);
         yaw_trajectory_generation(moving_leg);
     }
 }
@@ -350,5 +355,5 @@ void AP_QuadRuped::contoller()
     // pitch_travel = (temp_rc - 1500) / 500.0f * 5.0f;
 
     temp_rc  = constrain_value((float)rc().RC_Channels::get_pitch_channel().get_radio_in(), (float)1000, (float)2000);
-    z_travel = (temp_rc - 1500) / 500.0f * 120.0f;
+    z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
 }

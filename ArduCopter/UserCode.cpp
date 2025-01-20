@@ -13,30 +13,10 @@ void Copter::userhook_init()
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
-}
-#endif
-
-#ifdef USERHOOK_50HZLOOP
-void Copter::userhook_50Hz()
-{
-    // put your 50Hz code here
-    // if (arming.is_armed() == false && ap.land_complete == true) {
-    //     quadruped.main_inverse_kinematics();
-    //     quadruped.output_leg_angle();
-    // } else {
-    //     quadruped.reset_leg();
-    // }
-}
-#endif
-
-#ifdef USERHOOK_MEDIUMLOOP
-void Copter::userhook_MediumLoop()
-{
-    // put your 10Hz code here
 
     static uint32_t lasttime = 0;
 
-    if ((AP_HAL::millis() - lasttime) > 500) {
+    if ((AP_HAL::millis() - lasttime) > (1000 / qrupd.getFreq())) {
         lasttime = AP_HAL::millis();
 
         if (hal.rcin->read(CH_6) > 1500) {
@@ -46,6 +26,20 @@ void Copter::userhook_MediumLoop()
             qrupd.left_sleep_leg();
         }
     }
+}
+#endif
+
+#ifdef USERHOOK_50HZLOOP
+void Copter::userhook_50Hz()
+{
+    // put your 50Hz code here
+}
+#endif
+
+#ifdef USERHOOK_MEDIUMLOOP
+void Copter::userhook_MediumLoop()
+{
+    // put your 10Hz code here
 }
 #endif
 

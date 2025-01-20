@@ -114,7 +114,7 @@ protected:
 
 public:
     AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors);
-    ~AP_QuadRuped() { };
+    ~AP_QuadRuped() {};
 
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -139,6 +139,8 @@ public:
 
     void contoller(void);
 
-    Vector3f trajectory_generation(uint8_t leg_index);
-    void     yaw_trajectory_generation(uint8_t leg_index);
+    void trajectory_generation(uint8_t leg_index);
+    void yaw_trajectory_generation(uint8_t leg_index);
+
+    float getFreq() { return gait_hz; }
 };
