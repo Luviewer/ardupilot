@@ -130,11 +130,11 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
         accel.z *= accel_scale.z;
     }
 
-    Quaternion quat;
-    extern float aim_pitch_deg;
+    // Quaternion quat;
+    // extern float aim_pitch_deg;
 
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
-    accel = quat * accel;
+    // quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
+    // accel = quat * accel;
 
     // rotate to body frame
     accel.rotate(_imu._board_orientation);
@@ -162,14 +162,14 @@ void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vecto
         gyro -= _imu._gyro_offset(instance);
     }
 
-    Quaternion quat;
-    extern float aim_pitch_deg;
-    extern float delta_aim_pitch_deg;
+    // Quaternion quat;
+    // extern float aim_pitch_deg;
+    // extern float delta_aim_pitch_deg;
 
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
-    gyro = quat * gyro;
+    // quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
+    // gyro = quat * gyro;
 
-    gyro.y -= radians(delta_aim_pitch_deg) / 20.0f / 0.001f;
+    // gyro.y -= radians(delta_aim_pitch_deg) / 20.0f / 0.001f;
 
     gyro.rotate(_imu._board_orientation);
 }

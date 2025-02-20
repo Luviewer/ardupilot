@@ -143,8 +143,8 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
-    float tilt2_l = tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
-    float tilt2_r = tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    // float tilt2_l = tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    // float tilt2_r = tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
 
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
@@ -160,9 +160,12 @@ void AP_MotorsTailsitter::output_to_motors()
 
     static uint16_t cnt = 0;
 
+    float tilt_2_left = _tilt_2_left*SERVO2_OUTPUT_RANGE;
+    float tilt_2_right = _tilt_2_right*SERVO2_OUTPUT_RANGE;
+
     if ((++cnt % 2) == 0) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt2_l);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt2_r);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorLeft, tilt_2_left);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tilt2MotorRight, tilt_2_right);
     }
 }
 
@@ -202,6 +205,11 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     pitch_thrust                   = _pitch_in + _pitch_in_ff;
     yaw_thrust                     = _yaw_in + _yaw_in_ff;
     throttle_thrust                = get_throttle() * compensation_gain;
+
+    float _aim_pitch_deg=0;
+    Matrix3f rot;
+    rot.from_euler312(0, _aim_pitch_deg, 0.0f);
+
     const float max_boost_throttle = _throttle_avg_max * compensation_gain;
 
     // never boost above max, derived from throttle mix params
@@ -224,9 +232,27 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
         limit.roll  = true;
     }
 
+    Vector3f rpy_vec = rot * Vector3f(roll_thrust, pitch_thrust, yaw_thrust);
+
+    float n1s2, n1c2, n2s2, n2c2;
+    n1s2 = rpy_vec[1] / 2 + rpy_vec[2] / 2;
+    n1c2 = -rpy_vec[0] / 2 + throttle_thrust / 2;
+    n2s2 = -rpy_vec[1] / 2 + rpy_vec[2] / 2;
+    n2c2 = rpy_vec[0] / 2 + throttle_thrust / 2;
+
+    _thrust_right = sqrtf(n1s2 * n1s2 + n1c2 * n1c2); 
+    _thrust_left  = sqrtf(n2s2 * n2s2 + n2c2 * n2c2);
+    if (throttle_thrust < 0.1) {
+        _tilt_right = 0;
+        _tilt_right = 0;
+    } else {
+        _tilt_right = atan2f(n1s2, n1c2);
+        _tilt_left  = atan2f(n2s2, n2c2);
+    }
+
     // calculate left and right throttle outputs
-    _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
-    _thrust_right = throttle_thrust - roll_thrust * 0.5f;
+    // _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
+    // _thrust_right = throttle_thrust - roll_thrust * 0.5f;
 
     thrust_max = MAX(_thrust_right, _thrust_left);
     thrust_min = MIN(_thrust_right, _thrust_left);
@@ -264,18 +290,21 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // thrust vectoring
-    pitch_thrust *= 0.75f;
-    yaw_thrust *= yaw_factor_f;
+    // pitch_thrust *= 0.75f;
+    // yaw_thrust *= yaw_factor_f;
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_SITL
-    _tilt_left  = -pitch_thrust + yaw_thrust;
-    _tilt_right = pitch_thrust + yaw_thrust;
+    // _tilt_left  = -pitch_thrust + yaw_thrust;
+    // _tilt_right = pitch_thrust + yaw_thrust;
 #else
-    _tilt_left  = pitch_thrust - yaw_thrust;
-    _tilt_right = -pitch_thrust - yaw_thrust;
+    // _tilt_left  = pitch_thrust - yaw_thrust;
+    // _tilt_right = -pitch_thrust - yaw_thrust;
 #endif
 
     forward_thrust = get_forward();
+
+    _tilt_2_right = forward_thrust;
+    _tilt_2_left = _tilt_2_right;
 }
 
 // output_test_seq - spin a motor at the pwm value specified

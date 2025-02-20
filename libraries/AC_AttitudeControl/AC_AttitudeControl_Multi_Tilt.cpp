@@ -76,10 +76,8 @@ void AC_AttitudeControl_Multi_Tilt::set_forward_lateral(float& euler_pitch_angle
 
     // extern const AP_HAL::HAL& hal;
 
-    extern bool fly_mode_rc;
-
     // pitch/forward
-    if (forward_enable && fly_mode_rc) {
+    if (forward_enable) {
         _motors.set_forward(-sinf(radians(euler_pitch_angle_cd * 0.01f)));
         // euler_pitch_angle_cd = pitch_offset_deg * 100.0f * 0.2f;
         euler_pitch_angle_cd = wrap_180_cd(euler_pitch_angle_cd);
