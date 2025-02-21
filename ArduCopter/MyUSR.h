@@ -9,7 +9,7 @@ public:
     static const struct AP_Param::GroupInfo var_info[];
 
     AP_Float get_MaxDegParam() const { return _maxDeg; }
-    AP_Float get_TiltSPParam() const { return _TILSP; }
+    AP_Float get_TiltSPParam() const { return _TILT_TC; }
 
     AP_Float get_tilt2R_Param() const { return _tilt2R; }
     AP_Float get_tilt2L_Param() const { return _tilt2L; }
@@ -23,7 +23,7 @@ public:
 
 private:
     AP_Float _maxDeg;
-    AP_Float _TILSP;
+    AP_Float _TILT_TC;
 
     AP_Float _tilt2R;
     AP_Float _tilt2L;

@@ -11,7 +11,7 @@ const AP_Param::GroupInfo MYUSR::var_info[] = {
     // Put your parameters definition here
     // Note the maximum length of parameter name is 13 chars
     AP_GROUPINFO("_MaxDeg", 0, MYUSR, _maxDeg, 0),
-    AP_GROUPINFO("_TILSP", 1, MYUSR, _TILSP, 0),
+    AP_GROUPINFO("_TILTC", 1, MYUSR, _TILT_TC, 0),
 
     AP_GROUPINFO("_tilt2R", 2, MYUSR, _tilt2R, 0),
     AP_GROUPINFO("_tilt2L", 3, MYUSR, _tilt2L, 0),

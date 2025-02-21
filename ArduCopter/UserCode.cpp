@@ -1,6 +1,6 @@
 #include "Copter.h"
 
-const float alpha = 0.02f;
+float _tilt_tc;
 
 bool fly_mode_rc;
 
@@ -98,7 +98,7 @@ void Copter::userhook_50Hz()
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         aim_pitch_deg_before = ((float)chin - 1500) / 500.0f * tilt_MaxDeg;
 
-        aim_pitch_deg = aim_pitch_deg_before * alpha + (1.0f - alpha) * aim_pitch_deg;
+        aim_pitch_deg = aim_pitch_deg_before * _tilt_tc + (1.0f - _tilt_tc) * aim_pitch_deg;
 
         delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
         aim_pitch_deg_last  = aim_pitch_deg;
@@ -152,12 +152,10 @@ void Copter::userhook_SuperSlowLoop()
     tilt_cdeg_L  = myusr.get_tiltL_Param() * 100.0f;
     tilt2_cdeg_R = myusr.get_tilt2R_Param() * 100.0f;
     tilt2_cdeg_L = myusr.get_tilt2L_Param() * 100.0f;
-
     yaw_factor_f = myusr.get_yaw_fact_Param();
-
-    tilt_MaxDeg = myusr.get_MaxDegParam();
-
+    tilt_MaxDeg  = myusr.get_MaxDegParam();
     pitch_offset = myusr.get_pitch_offset_Param();
+    _tilt_tc     = myusr.get_TiltSPParam();
 
     pitch_b = degrees(ahrs.get_pitch()) + aim_pitch_deg;
     // gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));
