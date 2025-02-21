@@ -118,9 +118,12 @@ void Copter::userhook_MediumLoop()
     copter.Log_Write_Virtual_Pitch(degrees(ahrs.get_pitch()), pitch_b, aim_pitch_deg);
 
 # ifdef MANUAL_TILT
-    chin = hal.rcin->read(CH_7);
-    if (chin > 1480 && chin < 1520)
+    if (hal.rcin->read(CH_7) > 1480 && hal.rcin->read(CH_7) < 1520)
         chin = 1500;
+    else if (hal.rcin->read(CH_7) < 2000 && hal.rcin->read(CH_7) > 1000) {
+        chin = hal.rcin->read(CH_7);
+    }
+
 # else
     if (hal.rcin->read(CH_7) > 1600)
         trans_speed(chin);
