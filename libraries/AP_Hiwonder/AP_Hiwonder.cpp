@@ -43,7 +43,7 @@ uint8_t AP_Hiwonder::serial_servo_checksum(const uint8_t buf[])
     return (uint8_t)(~temp);
 }
 
-void AP_Hiwonder::serial_servo_set_position(uint32_t servo_id, int position, uint32_t duration)
+void AP_Hiwonder::set_position(uint32_t servo_id, int position, uint32_t duration)
 {
     if (_port == NULL)
         return;
