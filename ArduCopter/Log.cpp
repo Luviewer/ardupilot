@@ -423,6 +423,8 @@ void Copter::Log_Write_Rate_Thread_Dt(float dt, float dtAvg, float dtMax, float 
     };
     logger.WriteBlock(&pkt, sizeof(pkt));
 #endif
+}
+
 void Copter::Log_Write_Virtual_Pitch(float pitch_v, float pitch_b, float pitch_des)
 {
     const log_Virtual_Pitch pkt {

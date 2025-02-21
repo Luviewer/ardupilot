@@ -13,10 +13,6 @@
  #include <AC_AttitudeControl/AC_WeatherVane.h>
 #endif
 
-#if USER_PARAMS_ENABLED == ENABLED 
- #include "UserParameters.h"
-#endif
-
 // Global parameter class.
 //
 class Parameters {
@@ -385,6 +381,7 @@ public:
         k_param_vehicle = 257, // vehicle common block of parameters
         k_param_throw_altitude_min,
         k_param_throw_altitude_max,
+        k_param_myusr,
 
         // the k_param_* space is 9-bits in size
         // 511: reserved
@@ -589,11 +586,6 @@ public:
 #if MODE_FOLLOW_ENABLED
     // follow
     AP_Follow follow;
-#endif
-
-#if USER_PARAMS_ENABLED
-    // User custom parameters
-    UserParameters user_parameters;
 #endif
 
 #if AUTOTUNE_ENABLED

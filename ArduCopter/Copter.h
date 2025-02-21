@@ -175,6 +175,9 @@
 #if HAL_ADSB_ENABLED
 #include "avoidance_adsb.h"
 #endif
+
+#include "MyUSR.h"
+
 // Local modules
 #include "Parameters.h"
 #if USER_PARAMS_ENABLED
@@ -246,6 +249,8 @@ private:
     // Global parameters are all contained within the 'g' class.
     Parameters g;
     ParametersG2 g2;
+
+    MYUSR myusr;
 
     // used to detect MAVLink acks from GCS to stop compassmot
     uint8_t command_ack_counter;

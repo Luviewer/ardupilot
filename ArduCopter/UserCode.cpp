@@ -148,16 +148,16 @@ void Copter::userhook_SuperSlowLoop()
     else
         fly_mode_rc = false;
 
-    tilt_cdeg_R  = g2.user_parameters.get_tiltR_Param() * 100.0f;
-    tilt_cdeg_L  = g2.user_parameters.get_tiltL_Param() * 100.0f;
-    tilt2_cdeg_R = g2.user_parameters.get_tilt2R_Param() * 100.0f;
-    tilt2_cdeg_L = g2.user_parameters.get_tilt2L_Param() * 100.0f;
+    tilt_cdeg_R  = myusr.get_tiltR_Param() * 100.0f;
+    tilt_cdeg_L  = myusr.get_tiltL_Param() * 100.0f;
+    tilt2_cdeg_R = myusr.get_tilt2R_Param() * 100.0f;
+    tilt2_cdeg_L = myusr.get_tilt2L_Param() * 100.0f;
 
-    yaw_factor_f = g2.user_parameters.get_yaw_fact_Param();
+    yaw_factor_f = myusr.get_yaw_fact_Param();
 
-    tilt_MaxDeg = g2.user_parameters.get_MaxDegParam();
+    tilt_MaxDeg = myusr.get_MaxDegParam();
 
-    pitch_offset = g2.user_parameters.get_pitch_offset_Param();
+    pitch_offset = myusr.get_pitch_offset_Param();
 
     pitch_b = degrees(ahrs.get_pitch()) + aim_pitch_deg;
     // gcs().send_text(MAV_SEVERITY_NOTICE, "ab=%f, ch=[%d]", pitch_b, hal.rcin->read(CH_8));

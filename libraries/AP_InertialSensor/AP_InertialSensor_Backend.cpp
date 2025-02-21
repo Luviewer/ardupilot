@@ -114,6 +114,11 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
     // rotate for sensor orientation
     accel.rotate(_imu._accel_orientation[instance]);
 
+    Quaternion quat;
+    extern float aim_pitch_deg;
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
+    accel = quat * accel;
+
 #if HAL_INS_TEMPERATURE_CAL_ENABLE
     if (_imu.tcal_learning) {
         _imu.tcal(instance).update_accel_learning(accel, _imu.get_temperature(instance));
@@ -141,12 +146,6 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
         accel.y *= accel_scale.y;
         accel.z *= accel_scale.z;
     }
-
-    Quaternion quat;
-    extern float aim_pitch_deg;
-
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
-    accel = quat * accel;
 
     // rotate to body frame
     accel.rotate(_imu._board_orientation);
