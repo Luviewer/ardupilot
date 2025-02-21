@@ -206,7 +206,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     yaw_thrust                     = _yaw_in + _yaw_in_ff;
     throttle_thrust                = get_throttle() * compensation_gain;
 
-    float _aim_pitch_deg=0;
+    extern float _aim_pitch_deg;
     Matrix3f rot;
     rot.from_euler312(0, _aim_pitch_deg, 0.0f);
 

@@ -186,8 +186,8 @@ void ModeLoiter::run()
 #endif
 
         // call attitude controller
-        float    _aim_pitch_deg = 0;
-        Matrix3f rot;
+        extern float _aim_pitch_deg;
+        Matrix3f     rot;
         rot.from_euler312(0, _aim_pitch_deg, 0.0f);
 
         attitude_control->input_thrust_vector_rate_heading(rot * loiter_nav->get_thrust_vector(), target_yaw_rate, false);

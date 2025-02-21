@@ -4,6 +4,7 @@ const float alpha = 0.02f;
 
 bool fly_mode_rc;
 
+float _aim_pitch_deg;
 float aim_pitch_deg_before;
 float aim_pitch_deg;
 float delta_aim_pitch_deg;
@@ -97,16 +98,10 @@ void Copter::userhook_50Hz()
     // put your 50Hz code here
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         aim_pitch_deg_before = ((float)chin - 1500) / 500.0f * tilt_MaxDeg;
-
-        aim_pitch_deg = aim_pitch_deg_before * alpha + (1.0f - alpha) * aim_pitch_deg;
-
-        delta_aim_pitch_deg = (aim_pitch_deg - aim_pitch_deg_last);
-        aim_pitch_deg_last  = aim_pitch_deg;
-
+        _aim_pitch_deg       = aim_pitch_deg_before * alpha + (1.0f - alpha) * aim_pitch_deg;
     } else {
         delta_aim_pitch_deg = 0;
-        aim_pitch_deg_last  = 0;
-        aim_pitch_deg       = 0;
+        _aim_pitch_deg      = 0;
     }
 }
 #endif
