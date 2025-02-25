@@ -95,6 +95,28 @@ void Copter::userhook_FastLoop()
 void Copter::userhook_50Hz()
 {
     // put your 50Hz code here
+
+}
+#endif
+
+#ifdef USERHOOK_MEDIUMLOOP
+void Copter::userhook_MediumLoop()
+{
+    // put your 10Hz code here
+    copter.Log_Write_Virtual_Pitch(degrees(ahrs.get_pitch()), pitch_b, aim_pitch_deg);
+
+# ifdef MANUAL_TILT
+    if (hal.rcin->read(CH_7) > 1480 && hal.rcin->read(CH_7) < 1520)
+        chin = 1500;
+    else if (hal.rcin->read(CH_7) <= 2000 && hal.rcin->read(CH_7) >= 1000) {
+        chin = hal.rcin->read(CH_7);
+    }
+
+# else
+    if (hal.rcin->read(CH_7) > 1600)
+        trans_speed(chin);
+# endif
+
     if ((!copter.failsafe.radio) && rc().has_had_rc_receiver()) {
         aim_pitch_deg_before = ((float)chin - 1500) / 500.0f * tilt_MaxDeg;
 
@@ -108,26 +130,7 @@ void Copter::userhook_50Hz()
         aim_pitch_deg_last  = 0;
         aim_pitch_deg       = 0;
     }
-}
-#endif
 
-#ifdef USERHOOK_MEDIUMLOOP
-void Copter::userhook_MediumLoop()
-{
-    // put your 10Hz code here
-    copter.Log_Write_Virtual_Pitch(degrees(ahrs.get_pitch()), pitch_b, aim_pitch_deg);
-
-# ifdef MANUAL_TILT
-    if (hal.rcin->read(CH_7) > 1480 && hal.rcin->read(CH_7) < 1520)
-        chin = 1500;
-    else if (hal.rcin->read(CH_7) < 2000 && hal.rcin->read(CH_7) > 1000) {
-        chin = hal.rcin->read(CH_7);
-    }
-
-# else
-    if (hal.rcin->read(CH_7) > 1600)
-        trans_speed(chin);
-# endif
 }
 #endif
 

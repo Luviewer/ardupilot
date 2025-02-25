@@ -582,6 +582,15 @@ void Copter::rc_loop()
     // -----------------------------------------
     read_radio();
     rc().read_mode_switch();
+
+    // extern float aim_pitch_deg_before;
+    // extern float tilt_MaxDeg;
+    // extern float _tilt_tc;
+    // extern float aim_pitch_deg_last;
+    // extern uint16_t chin;
+    // extern float delta_aim_pitch_deg;
+    // extern float aim_pitch_deg;
+
 }
 
 // throttle_loop - should be run at 50 hz

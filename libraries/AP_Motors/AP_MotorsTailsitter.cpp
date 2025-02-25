@@ -143,8 +143,8 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
-    float tilt2_l = tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE * throttle;
-    float tilt2_r = tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE * throttle;
+    float tilt2_l = tilt2_cdeg_L + aim_pitch_deg * 100 + _forward_in * SERVO2_OUTPUT_RANGE * throttle * 2.0f;
+    float tilt2_r = tilt2_cdeg_R - aim_pitch_deg * 100 - _forward_in * SERVO2_OUTPUT_RANGE * throttle * 2.0f;
 
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
     SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
