@@ -119,6 +119,7 @@ void AP_MotorsTailsitter::output_to_motors()
     else if (throttle < 0)
         throttle = 0;
 
+
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN:
             _actuator[0]           = 0.0f;

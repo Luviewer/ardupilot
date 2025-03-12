@@ -139,6 +139,11 @@ void AP_Compass_Backend::correct_field(Vector3f &mag, uint8_t i)
 void AP_Compass_Backend::accumulate_sample(Vector3f &field, uint8_t instance,
                                            uint32_t max_samples)
 {
+    Quaternion quat;
+    extern float aim_pitch_deg;
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
+    field = quat * field;
+
     /* rotate raw_field from sensor frame to body frame */
     rotate_field(field, instance);
 
@@ -147,11 +152,6 @@ void AP_Compass_Backend::accumulate_sample(Vector3f &field, uint8_t instance,
 
     /* correct raw_field for known errors */
     correct_field(field, instance);
-
-    Quaternion quat;
-    extern float aim_pitch_deg;
-    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
-    field = quat * field;
 
     if (!field_ok(field)) {
         return;
