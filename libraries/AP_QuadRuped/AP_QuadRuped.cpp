@@ -238,6 +238,7 @@ static const Vector3f leg_rot_dir[LEG_ALL] = {
     { 1, 1, -1 },
 };
 
+/* 复位状态，每个coxa向右旋45度，femur、tibia抬起45度 */
 void AP_QuadRuped::reset_leg(void)
 {
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
