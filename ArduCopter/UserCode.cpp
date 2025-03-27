@@ -25,6 +25,7 @@ void Copter::userhook_FastLoop()
         } else {
             qrupd.left_sleep_leg();
         }
+        qrupd.hw_set_servo_cmd();
     }
 }
 #endif

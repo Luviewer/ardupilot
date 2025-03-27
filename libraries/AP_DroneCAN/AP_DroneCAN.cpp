@@ -416,6 +416,9 @@ void AP_DroneCAN::init(uint8_t driver_index, bool enable_filters)
     act_out_array.set_timeout_ms(5);
     act_out_array.set_priority(CANARD_TRANSFER_PRIORITY_HIGH);
 
+    com_usl_servocmd.set_timeout_ms(5);
+    com_usl_servocmd.set_priority(CANARD_TRANSFER_PRIORITY_HIGH);
+
     esc_raw.set_timeout_ms(2);
     // esc_raw is one higher than high priority to ensure that it is given higher priority over act_out_array
     esc_raw.set_priority(CANARD_TRANSFER_PRIORITY_HIGH - 1);
@@ -456,8 +459,8 @@ void AP_DroneCAN::init(uint8_t driver_index, bool enable_filters)
     gnss_status.set_priority(CANARD_TRANSFER_PRIORITY_LOW);
 #endif
 
-    hiwonder_servocmd.set_timeout_ms(20);
-    hiwonder_servocmd.set_priority(CANARD_TRANSFER_PRIORITY_LOW);
+    // hiwonder_servocmd.set_timeout_ms(20);
+    // hiwonder_servocmd.set_priority(CANARD_TRANSFER_PRIORITY_LOW);
 
     rtcm_stream.set_timeout_ms(20);
     rtcm_stream.set_priority(CANARD_TRANSFER_PRIORITY_LOW);
@@ -1294,24 +1297,24 @@ void AP_DroneCAN::relay_hardpoint_send()
 }
 #endif // AP_RELAY_DRONECAN_ENABLED
 
-void AP_DroneCAN::hiwonder_servocmd_send()
-{
-    const uint32_t now = AP_HAL::millis();
-    if ((now - _hiwonder.last_send_ms) < uint32_t(1000 / 100)) {
-        // Rate limit per user config
-        return;
-    }
-    _hiwonder.last_send_ms = now;
+// void AP_DroneCAN::hiwonder_servocmd_send()
+// {
+//     const uint32_t now = AP_HAL::millis();
+//     if ((now - _hiwonder.last_send_ms) < uint32_t(1000 / 100)) {
+//         // Rate limit per user config
+//         return;
+//     }
+//     _hiwonder.last_send_ms = now;
 
-    com_usl_ServoCmd msg {};
+//     com_usl_ServoCmd msg {};
 
-    msg.cmd.len = 12;
+//     msg.cmd.len = 12;
 
-    for (uint8_t leg_index = 0; leg_index < msg.cmd.len; leg_index++)
-        SRV_Channels::get_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_1 + leg_index), msg.cmd.data[leg_index]);
+//     for (uint8_t leg_index = 0; leg_index < msg.cmd.len; leg_index++)
+//         SRV_Channels::get_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_1 + leg_index), msg.cmd.data[leg_index]);
 
-    hiwonder_servocmd.broadcast(msg);
-}
+//     hiwonder_servocmd.broadcast(msg);
+// }
 
 /*
   handle Button message

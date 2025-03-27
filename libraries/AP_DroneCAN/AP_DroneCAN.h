@@ -172,6 +172,8 @@ public:
     Canard::Publisher<com_xacti_GimbalControlData> xacti_gimbal_control_data{canard_iface};
     Canard::Publisher<com_xacti_GnssStatus> xacti_gnss_status{canard_iface};
 
+    Canard::Publisher<com_usl_ServoCmd> com_usl_servocmd{canard_iface};
+
 #if AP_RELAY_DRONECAN_ENABLED
     // Hardpoint for relay
     // Needs to be public so relay can edge trigger as well as streaming
@@ -324,12 +326,12 @@ private:
     Canard::Publisher<ardupilot_gnss_Status> gnss_status{canard_iface};
 #endif
 
-    Canard::Publisher<com_usl_ServoCmd> hiwonder_servocmd{canard_iface};
-    void hiwonder_servocmd_send();
-    struct {
-        uint8_t rate_hz;
-        uint32_t last_send_ms;
-    } _hiwonder;
+    // Canard::Publisher<com_usl_ServoCmd> hiwonder_servocmd{canard_iface};
+    // // void hiwonder_servocmd_send();
+    // struct {
+    //     uint8_t rate_hz;
+    //     uint32_t last_send_ms;
+    // } _hiwonder;
 
     // incoming messages
     Canard::ObjCallback<AP_DroneCAN, ardupilot_indication_Button> safety_button_cb{this, &AP_DroneCAN::handle_button};

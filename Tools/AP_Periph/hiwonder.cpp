@@ -41,23 +41,51 @@ void AP_Periph_FW::handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTrans
         return;
     }
 
-    hiwonder_RF.set_position(1, pkt.cmd.data[0], 0);
-    hiwonder_RF.set_position(2, pkt.cmd.data[1], 0);
-    hiwonder_RF.set_position(3, pkt.cmd.data[2], 0);
+    // for (uint8_t i = 0; i < 12; i++) {
+    //     if (pkt.cmd.data[i] > 1750) {
+    //         pkt.cmd.data[i] = 1750;
+    //     } else if (pkt.cmd.data[i] < 1250) {
+    //         pkt.cmd.data[i] = 1250;
+    //     }
+    // }
 
-    hiwonder_RB.set_position(1, pkt.cmd.data[3], 0);
-    hiwonder_RB.set_position(2, pkt.cmd.data[4], 0);
-    hiwonder_RB.set_position(3, pkt.cmd.data[5], 0);
+    AP_Hiwonder* hiwonder_ptr = nullptr;
 
-    hiwonder_LB.set_position(1, pkt.cmd.data[6], 0);
-    hiwonder_LB.set_position(2, pkt.cmd.data[7], 0);
-    hiwonder_LB.set_position(3, pkt.cmd.data[8], 0);
+    for (uint8_t index = 0; index < 4; index++) {
+        switch (index) {
+            case 0:
+                hiwonder_ptr = &hiwonder_RF;
+                break;
 
-    hiwonder_LF.set_position(1, pkt.cmd.data[9], 0);
-    hiwonder_LF.set_position(2, pkt.cmd.data[10], 0);
-    hiwonder_LF.set_position(3, pkt.cmd.data[11], 0);
+            case 1:
+                hiwonder_ptr = &hiwonder_RB;
+                break;
+
+            case 2:
+                hiwonder_ptr = &hiwonder_LB;
+                break;
+
+            case 3:
+                hiwonder_ptr = &hiwonder_LF;
+                break;
+        }
+
+        hiwonder_ptr->set_position(1, pkt.cmd.data[0 + index * 3] - 1000, 0);
+        hiwonder_ptr->set_position(2, pkt.cmd.data[1 + index * 3] - 1000, 0);
+        hiwonder_ptr->set_position(3, pkt.cmd.data[2 + index * 3] - 1000, 0);
+    }
+
+    // hiwonder_RB.set_position(0, pkt.cmd.data[3] - 1000, 0);
+    // hiwonder_RB.set_position(1, pkt.cmd.data[4] - 1000, 0);
+    // hiwonder_RB.set_position(2, pkt.cmd.data[5] - 1000, 0);
+
+    // hiwonder_LB.set_position(0, pkt.cmd.data[6] - 1000, 0);
+    // hiwonder_LB.set_position(1, pkt.cmd.data[7] - 1000, 0);
+    // hiwonder_LB.set_position(2, pkt.cmd.data[8] - 1000, 0);
+
+    // hiwonder_LF.set_position(0, pkt.cmd.data[9] - 1000, 0);
+    // hiwonder_LF.set_position(1, pkt.cmd.data[10] - 1000, 0);
+    // hiwonder_LF.set_position(2, pkt.cmd.data[11] - 1000, 0);
 }
-
-
 
 #endif // HAL_PERIPH_ENABLE_RPM_STREAM

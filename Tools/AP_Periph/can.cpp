@@ -660,33 +660,33 @@ void AP_Periph_FW::handle_act_command(CanardInstance* canard_instance, CanardRxT
         return;
     }
 
-    // for (uint8_t i=0; i < cmd.commands.len; i++) {
-    //     const auto &c = cmd.commands.data[i];
-    //     // switch (c.command_type) {
-    //     // case UAVCAN_EQUIPMENT_ACTUATOR_COMMAND_COMMAND_TYPE_UNITLESS:
-    //     //     rcout_srv_unitless(c.actuator_id, c.command_value);
-    //     //     break;
-    //     // case UAVCAN_EQUIPMENT_ACTUATOR_COMMAND_COMMAND_TYPE_PWM:
-    //     //     rcout_srv_PWM(c.actuator_id, c.command_value);
-    //     //     break;
-    //     // }
-    // }
+    for (uint8_t i=0; i < cmd.commands.len; i++) {
+        const auto &c = cmd.commands.data[i];
+        switch (c.command_type) {
+        case UAVCAN_EQUIPMENT_ACTUATOR_COMMAND_COMMAND_TYPE_UNITLESS:
+            rcout_srv_unitless(c.actuator_id, c.command_value);
+            break;
+        case UAVCAN_EQUIPMENT_ACTUATOR_COMMAND_COMMAND_TYPE_PWM:
+            rcout_srv_PWM(c.actuator_id, c.command_value);
+            break;
+        }
+    }
 
-    hiwonder_RF.set_position(1, cmd.commands.data[0].command_value * 500 + 500, 0);
-    hiwonder_RF.set_position(2, cmd.commands.data[1].command_value * 500 + 500, 0);
-    hiwonder_RF.set_position(3, cmd.commands.data[2].command_value * 500 + 500, 0);
+    // hiwonder_RF.set_position(1, cmd.commands.data[0].command_value * 500 + 500, 0);
+    // hiwonder_RF.set_position(2, cmd.commands.data[1].command_value * 500 + 500, 0);
+    // hiwonder_RF.set_position(3, cmd.commands.data[2].command_value * 500 + 500, 0);
 
-    hiwonder_RB.set_position(1, cmd.commands.data[3].command_value * 500 + 500, 0);
-    hiwonder_RB.set_position(2, cmd.commands.data[4].command_value * 500 + 500, 0);
-    hiwonder_RB.set_position(3, cmd.commands.data[5].command_value * 500 + 500, 0);
+    // hiwonder_RB.set_position(1, cmd.commands.data[3].command_value * 500 + 500, 0);
+    // hiwonder_RB.set_position(2, cmd.commands.data[4].command_value * 500 + 500, 0);
+    // hiwonder_RB.set_position(3, cmd.commands.data[5].command_value * 500 + 500, 0);
 
-    hiwonder_LB.set_position(1, cmd.commands.data[6].command_value * 500 + 500, 0);
-    hiwonder_LB.set_position(2, cmd.commands.data[7].command_value * 500 + 500, 0);
-    hiwonder_LB.set_position(3, cmd.commands.data[8].command_value * 500 + 500, 0);
+    // hiwonder_LB.set_position(1, cmd.commands.data[6].command_value * 500 + 500, 0);
+    // hiwonder_LB.set_position(2, cmd.commands.data[7].command_value * 500 + 500, 0);
+    // hiwonder_LB.set_position(3, cmd.commands.data[8].command_value * 500 + 500, 0);
 
-    hiwonder_LF.set_position(1, cmd.commands.data[9].command_value * 500 + 500, 0);
-    hiwonder_LF.set_position(2, cmd.commands.data[10].command_value * 500 + 500, 0);
-    hiwonder_LF.set_position(3, cmd.commands.data[11].command_value * 500 + 500, 0);
+    // hiwonder_LF.set_position(1, cmd.commands.data[9].command_value * 500 + 500, 0);
+    // hiwonder_LF.set_position(2, cmd.commands.data[10].command_value * 500 + 500, 0);
+    // hiwonder_LF.set_position(3, cmd.commands.data[11].command_value * 500 + 500, 0);
 }
 #endif // HAL_PERIPH_ENABLE_RC_OUT
 

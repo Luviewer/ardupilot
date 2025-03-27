@@ -82,6 +82,14 @@ protected:
     AP_Int8 leg_femur_direction[LEG_ALL];
     AP_Int8 leg_tibia_direction[LEG_ALL];
 
+    AP_Int16 coxa_offset[LEG_ALL];
+    AP_Int16 femur_offset[LEG_ALL];
+    AP_Int16 tibia_offset[LEG_ALL];
+
+    AP_Int8 throttle_channel;
+    AP_Int8 zpos_channel;
+    AP_Int8 yaw_channel;
+
     float throttle_travel;
     float z_travel;
     float roll_travel;
@@ -110,11 +118,13 @@ protected:
 
     float aim_yaw;
 
+    Vector3ui servo_output_cmd[LEG_ALL];
+
     // Parameter block
 
 public:
     AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors);
-    ~AP_QuadRuped() {};
+    ~AP_QuadRuped() { };
 
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -143,4 +153,5 @@ public:
     void yaw_trajectory_generation(uint8_t leg_index);
 
     float getFreq() { return gait_hz; }
+    bool  hw_set_servo_cmd();
 };
