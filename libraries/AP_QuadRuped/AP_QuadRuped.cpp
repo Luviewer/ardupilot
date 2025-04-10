@@ -63,14 +63,13 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 
     AP_GROUPINFO("_GAITCH", 38, AP_QuadRuped, gait_channel, -1),
 
-
     AP_GROUPEND
 };
 
 AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
-    : _ahrs(ahrs)           //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
-    , _motors(motors)       //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
-    //使用引用传递指针（*&）确保外部传入的指针在类内部可被修改
+    : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
+    , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
+// 使用引用传递指针（*&）确保外部传入的指针在类内部可被修改
 {
     gait_type      = 0;
     move_requested = false;
@@ -119,7 +118,7 @@ void AP_QuadRuped::gait_select(void)
     // gait_down_steps       = 1;
     // gait_half_lift_height = 1;
     // gait_travel_divisor   = 4;
-    if(gait_type == GAIT_DIAGONAL){
+    if (gait_type == GAIT_DIAGONAL) {
         gait_step_leg_start[Leg_RF] = 1;
         gait_step_leg_start[Leg_RB] = gait_step_total / 2 + 1;
         gait_step_leg_start[Leg_LB] = 1;
@@ -127,19 +126,17 @@ void AP_QuadRuped::gait_select(void)
 
         gait_travel_divisor = gait_step_total / 2 + 1;
         gait_lift_divisor   = 2;
-    }
-    else if (gait_type == GAIT_WAVE) {
+    } else if (gait_type == GAIT_WAVE) {
         // 波浪步态设置 - 四条腿依次移动
         gait_step_leg_start[Leg_RF] = 1;
         gait_step_leg_start[Leg_LF] = gait_step_total / 4 + 1;
         gait_step_leg_start[Leg_LB] = gait_step_total / 2 + 1;
         gait_step_leg_start[Leg_RB] = 3 * gait_step_total / 4 + 1;
-        
-        gait_travel_divisor = gait_step_total / 4 + 1 ;
-        gait_lift_divisor = 4;
+
+        gait_travel_divisor = gait_step_total / 4 + 1;
+        gait_lift_divisor   = 4;
     }
 }
-    
 
 void AP_QuadRuped::calc_gait_sequence(void)
 {
@@ -174,28 +171,28 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
             // leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI * 2.0f - Vector2f(throttle_travel, 0);
             leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel;
             leg_xy_target[1] = 0;
-            leg_z_target     = -leg_lift_height * (1.0f - cosf(delta))       *3.0f;
+            leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * 3.0f;
         } else {
             delta = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;
             // leg_xy_target = -Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI * 2.0f + Vector2f(throttle_travel, 0);
             leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel;
             leg_xy_target[1] = 0;
-            leg_z_target = 0;
+            leg_z_target     = 0;
         }
     }
 
     else if (gait_type == GAIT_WAVE) {
         // 波浪步态轨迹生成
         if (delta_step <= (gait_step_total / 4)) {
-            delta = M_2PI * delta_step / (gait_step_total / 4);
+            delta            = M_2PI * delta_step / (gait_step_total / 4);
             leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 4.0f - throttle_travel;
             leg_xy_target[1] = 0;
-            leg_z_target = -leg_lift_height * (1.0f - cosf(delta))        *3.0f;
+            leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * 3.0f;
         } else {
-            delta = M_2PI * (delta_step - gait_step_total / 4) / (3 * gait_step_total / 4);
-            leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * (4.0f/3.0f) + throttle_travel;
+            delta            = M_2PI * (delta_step - gait_step_total / 4) / (3 * gait_step_total / 4);
+            leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * (4.0f / 3.0f) + throttle_travel;
             leg_xy_target[1] = 0;
-            leg_z_target = 0;
+            leg_z_target     = 0;
         }
     }
 
@@ -423,14 +420,14 @@ void AP_QuadRuped::contoller()
         z_travel = -50;
     }
 
-    //添加步态切换控制
+    // 添加步态切换控制
     if (gait_channel != -1) {
-        float gait_switch = constrain_value((float)rc().RC_Channels::get_radio_in(gait_channel - 1), (float)1000, (float)2000);
+        float   gait_switch   = constrain_value((float)rc().RC_Channels::get_radio_in(gait_channel - 1), (float)1000, (float)2000);
         uint8_t new_gait_type = (gait_switch > 1500) ? GAIT_WAVE : GAIT_DIAGONAL;
-        
+
         if (new_gait_type != gait_type) {
             gait_type = new_gait_type;
-            gait_select();  // 步态变化时重新初始化步态参数
+            gait_select(); // 步态变化时重新初始化步态参数
         }
     }
 
