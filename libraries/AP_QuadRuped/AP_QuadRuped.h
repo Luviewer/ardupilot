@@ -16,6 +16,11 @@ enum {
     LEG_ALL,
 };
 
+enum GaitType {
+    GAIT_DIAGONAL = 0,
+    GAIT_WAVE = 1
+};
+
 class AP_QuadRuped {
 
 protected:
@@ -89,6 +94,7 @@ protected:
     AP_Int8 throttle_channel;
     AP_Int8 zpos_channel;
     AP_Int8 yaw_channel;
+    AP_Int8 gait_channel;
 
     float throttle_travel;
     float z_travel;
