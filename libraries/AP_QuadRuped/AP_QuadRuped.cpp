@@ -63,6 +63,8 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 
     AP_GROUPINFO("_GAITCH", 38, AP_QuadRuped, gait_channel, -1),
 
+    AP_SUBGROUPINFO(yaw_pid, "_YAW_", 39, AP_QuadRuped, AC_PID),
+
     AP_GROUPEND
 };
 
