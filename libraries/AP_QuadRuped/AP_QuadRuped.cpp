@@ -69,6 +69,9 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_pitchCH", 41, AP_QuadRuped, pitch_channel, -1),
 
     AP_SUBGROUPINFO(yaw_pid, "_YAW_", 42, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(roll_pid, "_RLL_", 43, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 44, AP_QuadRuped, AC_PID),
+
     AP_GROUPEND
 };
 
@@ -336,7 +339,6 @@ void AP_QuadRuped::main_inverse_kinematics(void)
         { -225, 0, 0 }
     };
     controller();
-    balance_controller();
 
     // const float endpoint_leg_angle_dir[LEG_ALL] = { 1, 1, 1, 1 };
 

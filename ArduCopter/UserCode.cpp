@@ -14,7 +14,8 @@ void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here
 
-    static uint32_t lasttime = 0;
+    static uint32_t lasttime         = 0;
+    static uint32_t balance_lasttime = 0;
 
     if ((AP_HAL::millis() - lasttime) > (1000 / qrupd.getFreq())) {
         lasttime = AP_HAL::millis();
@@ -26,6 +27,15 @@ void Copter::userhook_FastLoop()
             qrupd.left_sleep_leg();
         }
         qrupd.hw_set_servo_cmd();
+    }
+
+    if ((AP_HAL::millis() - balance_lasttime) > (1000 / 100)) {
+        balance_lasttime = AP_HAL::millis();
+
+        if (hal.rcin->read(CH_6) > 1500) {
+            qrupd.balance_controller();
+        } else {
+        }
     }
 }
 #endif
