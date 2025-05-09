@@ -9,7 +9,7 @@ void AP_Periph_FW::send_hiwonder_pos(void)
 {
 
     const uint32_t now_ms = AP_HAL::millis();
-    if (now_ms - hiwonder_last_send_ms < (1000U / 10)) {
+    if (now_ms - hiwonder_last_send_ms < (1000U / 100)) {
         return;
     }
     hiwonder_last_send_ms = now_ms;
