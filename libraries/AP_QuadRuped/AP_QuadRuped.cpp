@@ -5,7 +5,6 @@
 
 extern const AP_HAL::HAL& hal;
 
-
 #define COXA_LEN_DEFAULT        47.1f
 #define FEMUR_LEN_DEFAULT       133.0f
 #define TIBIA_LEN_DEFAULT       144.1f
@@ -76,13 +75,13 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
     : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
     , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
-    ,yaw_pid(0.1f, 0.05f, 0.01f, 0.0f, 50.0f, 0.0f, 0.0f, 0.0f, 0.0f)
+    , yaw_pid(0.1f, 0.05f, 0.01f, 0.0f, 50.0f, 0.0f, 0.0f, 0.0f, 0.0f)
 // 使用引用传递指针（*&）确保外部传入的指针在类内部可被修改
 {
     gait_type      = 0;
     move_requested = false;
-    max_yaw_rate = radians(30.0f); // 限制最大25°/s
-    
+    max_yaw_rate   = radians(30.0f); // 限制最大25°/s
+
     AP_Param::setup_object_defaults(this, var_info);
 
     // leg_lift_height = 80; // leg lift height(in mm) while walking
@@ -169,12 +168,10 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
     Vector2f leg_xy_target;
     float    leg_z_target = 0;
 
-
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
-    
-    
+
     if (delta_step < 0) {
-        delta_step = gait_step_total + delta_step + 1;                              
+        delta_step = gait_step_total + delta_step + 1;
     }
 
     if (gait_type == GAIT_DIAGONAL) {
@@ -197,9 +194,9 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
         // 波浪步态轨迹生成
         if (delta_step <= (gait_step_total / 4)) {
             delta            = M_2PI * delta_step / (gait_step_total / 4);
-            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 4.0f - throttle_travel;   //钟型曲线，由于1-cosf(delta)的导数特性，运动开始和结束时的速度为0    M_2PI * 4.0f：适配波浪步态的1/4周期时间窗口
+            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 4.0f - throttle_travel; // 钟型曲线，由于1-cosf(delta)的导数特性，运动开始和结束时的速度为0    M_2PI * 4.0f：适配波浪步态的1/4周期时间窗口
             leg_xy_target[1] = 0;
-            leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * zfactor;   //抬升之后放下
+            leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * zfactor; // 抬升之后放下
         } else {
             delta            = M_2PI * (delta_step - gait_step_total / 4) / (3 * gait_step_total / 4);
             leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * (4.0f / 3.0f) + throttle_travel;
@@ -259,7 +256,6 @@ void AP_QuadRuped::update_leg()
         yaw_trajectory_generation(moving_leg);
     }
 }
-
 
 // void AP_QuadRuped::update_leg(uint8_t moving_leg)
 // {
@@ -345,7 +341,7 @@ void AP_QuadRuped::main_inverse_kinematics(void)
     // const float endpoint_leg_angle_dir[LEG_ALL] = { 1, 1, 1, 1 };
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        
+
         ansxyz = body_forward_kinematics(leg_index);
 
         endpoint_leg_angle[leg_index] = leg_inverse_kinematics(ansxyz) + endpoint_leg_angle_offset[leg_index];
@@ -419,19 +415,19 @@ void AP_QuadRuped::balance_controller()
 {
 
     // float temp_rc;
-    float target_roll = 0;
+    float target_roll  = 0;
     float target_pitch = 0;
 
-    float current_roll = degrees(_ahrs->roll);
+    float current_roll  = degrees(_ahrs->roll);
     float current_pitch = degrees(_ahrs->pitch);
 
     if (roll_channel != -1) {
         // temp_rc    = constrain_value((float)rc().RC_Channels::get_radio_in(roll_channel - 1), (float)1000, (float)2000);   //通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
         // target_roll = (temp_rc - 1500) / 500.0f * 15.0f;      //将遥控器输入转换为目标偏航角（-180°到+180°）
         // roll_travel = (temp_rc - 1500) / 500.0f * 15.0f;
-        float roll_error = wrap_180(current_roll - target_roll);        //计算偏航角误差（将弧度值规范到[-π, π]区间）
+        float roll_error = wrap_180(current_roll - target_roll); // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
-        roll_travel = roll_pid.update_all(0, roll_error, 1.0f/gait_hz);
+        roll_travel = roll_pid.update_all(0, roll_error, 1.0f / gait_hz);
 
     } else {
         roll_travel = 0;
@@ -439,9 +435,9 @@ void AP_QuadRuped::balance_controller()
     if (pitch_channel != -1) {
         // temp_rc    = constrain_value((float)rc().RC_Channels::get_radio_in(pitch_channel - 1), (float)1000, (float)2000);   //通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
         // target_pitch = (temp_rc - 1500) / 500.0f * 15.0f;      //将遥控器输入转换为目标偏航角（-180°到+180°）
-        float pitch_error = wrap_180(current_pitch - target_pitch);        //计算偏航角误差（将弧度值规范到[-π, π]区间）
+        float pitch_error = wrap_180(current_pitch - target_pitch); // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
-        pitch_travel = pitch_pid.update_all(0, pitch_error, 1.0f/gait_hz);
+        pitch_travel = pitch_pid.update_all(0, pitch_error, 1.0f / gait_hz);
     } else {
         pitch_travel = 0;
     }
@@ -451,15 +447,15 @@ void AP_QuadRuped::controller()
 {
 
     float temp_rc;
-    float target_yaw = 0;
+    float target_yaw  = 0;
     float current_yaw = degrees(_ahrs->yaw);
 
     if (yaw_channel != -1) {
-        temp_rc    = constrain_value((float)rc().RC_Channels::get_radio_in(yaw_channel - 1), (float)1000, (float)2000);   //通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
-        target_yaw = (temp_rc - 1500) / 500.0f * 180.0f;      //将遥控器输入转换为目标偏航角（-180°到+180°）
-        float yaw_error = wrap_180(current_yaw - target_yaw);        //计算偏航角误差（将弧度值规范到[-π, π]区间）
+        temp_rc         = constrain_value((float)rc().RC_Channels::get_radio_in(yaw_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_yaw      = (temp_rc - 1500) / 500.0f * 180.0f;                                                                // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float yaw_error = wrap_180(current_yaw - target_yaw);                                                                // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
-        yaw_travel = yaw_pid.update_all(0, yaw_error, 1.0f/gait_hz);
+        yaw_travel = yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
     } else {
         yaw_travel = 0;
     }
