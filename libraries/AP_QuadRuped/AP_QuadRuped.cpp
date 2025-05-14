@@ -250,30 +250,28 @@ void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
     else if (gait_type == GAIT_WAVE) {
         // 更平滑的偏航控制曲线
         float progress = (float)delta_step / gait_step_total;
-        
+
         if (progress < 0.25f) {
             // 抬腿阶段: 逐渐增加偏航
-            float phase = progress * 4.0f;
+            float phase           = progress * 4.0f;
             gait_rot_z[leg_index] = yaw_travel * (1.0f - cosf(phase * M_PI)) / 4.0f;
-        } 
-        else if (progress < 0.75f) {
+        } else if (progress < 0.75f) {
             // 支撑阶段: 保持偏航
             gait_rot_z[leg_index] = yaw_travel / 2.0f;
-        }
-        else {
+        } else {
             // 放下阶段: 逐渐减少偏航
-            float phase = (progress - 0.75f) * 4.0f;
+            float phase           = (progress - 0.75f) * 4.0f;
             gait_rot_z[leg_index] = yaw_travel * (1.0f + cosf(phase * M_PI)) / 4.0f;
         }
-        
+
         // 根据腿的位置调整偏航量
-        switch(leg_index) {
-            case Leg_RF: // 右前腿
-            case Leg_LB: // 左后腿
+        switch (leg_index) {
+            case Leg_RF:                       // 右前腿
+            case Leg_LB:                       // 左后腿
                 gait_rot_z[leg_index] *= 1.2f; // 增加主力腿的偏航贡献
                 break;
-            case Leg_LF: // 左前腿
-            case Leg_RB: // 右后腿
+            case Leg_LF:                       // 左前腿
+            case Leg_RB:                       // 右后腿
                 gait_rot_z[leg_index] *= 0.8f; // 减少辅助腿的偏航贡献
                 break;
         }
@@ -456,7 +454,6 @@ void AP_QuadRuped::balance_controller()
     float temp_rc;
     float target_roll  = 0;
     float target_pitch = 0;
-    float target_yaw   = 0;
 
     float current_roll  = degrees(_ahrs->roll);
     float current_pitch = degrees(_ahrs->pitch);
@@ -484,10 +481,14 @@ void AP_QuadRuped::balance_controller()
     }
 
     if (yaw_channel != -1) {
-        temp_rc         = constrain_value((float)rc().RC_Channels::get_radio_in(yaw_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
-        target_yaw      = (temp_rc - 1500) / 500.0f * 180.0f;                                                                // 将遥控器输入转换为目标偏航角（-180°到+180°）
-        float yaw_error = wrap_180(current_yaw - target_yaw);                                                                // 计算偏航角误差（将弧度值规范到[-π, π]区间）
-        // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(yaw_channel - 1), (float)1000, (float)2000);
+        // 将遥控器输入转换为目标角速度（-max_yaw_rate到+max_yaw_rate）
+        float delta_yaw = (temp_rc - 1500) / 500.0f * 1.0f;
+        // 计算角度误差
+        target_yaw += delta_yaw;
+        float yaw_error = wrap_180(current_yaw - target_yaw);
+        // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f,delta_yaw=%f\n",yaw_error,target_yaw,current_yaw,delta_yaw);
+        // 使用PID控制器计算角速度增量
         if (gait_type == GAIT_DIAGONAL) {
             yaw_travel = diag_yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
         } else {

@@ -100,6 +100,7 @@ protected:
     AP_Int8  gait_channel;
     AP_Float zfactor;
 
+    float target_yaw = 0;
     float throttle_travel;
     float z_travel;
     float yaw_travel;
