@@ -1,12 +1,11 @@
 #pragma once
-#include <stdio.h>
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
 #include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Math/AP_Math.h>
 #include <AP_Motors/AP_MotorsMulticopter.h>
 #include <AP_Param/AP_Param.h>
-
+#include <stdio.h>
 
 enum {
     Leg_RF = 0,
@@ -19,7 +18,7 @@ enum {
 
 enum GaitType {
     GAIT_DIAGONAL = 0,
-    GAIT_WAVE = 1
+    GAIT_WAVE     = 1
 };
 
 class AP_QuadRuped {
@@ -37,7 +36,6 @@ protected:
     uint8_t gait_travel_divisor;
 
     float gait_rot_z[LEG_ALL];
-
 
     /* 抬腿的高度 */
     AP_Float leg_lift_height;
@@ -99,7 +97,7 @@ protected:
     AP_Int8 roll_channel;
     AP_Int8 pitch_channel;
 
-    AP_Int8 gait_channel;
+    AP_Int8  gait_channel;
     AP_Float zfactor;
 
     float throttle_travel;
@@ -107,12 +105,11 @@ protected:
     float yaw_travel;
     float roll_travel;
     float pitch_travel;
-    float terrain_roll = 0.0f;  // 地形滚转角（度）
+    float terrain_roll  = 0.0f; // 地形滚转角（度）
     float terrain_pitch = 0.0f; // 地形俯仰角（度）
 
     float roll_correction;
     float pitch_correction;
-
 
     float max_yaw_rate; // 最大允许角速度（rad/s）
 
@@ -121,10 +118,8 @@ protected:
     AP_AHRS_View*&         _ahrs;
     AP_MotorsMulticopter*& _motors;
 
-    
-
-    AC_PID yaw_pid {
-        AC_PID::Defaults{
+    AC_PID diag_yaw_pid {
+        AC_PID::Defaults {
             .p         = 0.5f,
             .i         = 0.01f,
             .d         = 0.05f,
@@ -133,12 +128,23 @@ protected:
             .filt_E_hz = 10.0f,
             .filt_D_hz = 10.0f,
             .srmax     = 0,
-            .srtau     = 1.0 
-        }
+            .srtau     = 1.0 }
+    };
+    AC_PID wave_yaw_pid {
+        AC_PID::Defaults {
+            .p         = 0.5f,
+            .i         = 0.01f,
+            .d         = 0.05f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
     };
 
     AC_PID roll_pid {
-        AC_PID::Defaults{
+        AC_PID::Defaults {
             .p         = 1.0f,
             .i         = 0.02f,
             .d         = 0.05f,
@@ -147,12 +153,11 @@ protected:
             .filt_E_hz = 10.0f,
             .filt_D_hz = 10.0f,
             .srmax     = 0,
-            .srtau     = 1.0 
-        }
+            .srtau     = 1.0 }
     };
 
     AC_PID pitch_pid {
-        AC_PID::Defaults{
+        AC_PID::Defaults {
             .p         = 1.0f,
             .i         = 0.02f,
             .d         = 0.1f,
@@ -161,8 +166,7 @@ protected:
             .filt_E_hz = 10.0f,
             .filt_D_hz = 10.0f,
             .srmax     = 0,
-            .srtau     = 1.0 
-        }
+            .srtau     = 1.0 }
     };
 
     float aim_yaw;
@@ -179,11 +183,11 @@ public:
 
     void init();
 
-    void     gait_select();
-    void     calc_gait_sequence(void);
-    void     main_inverse_kinematics();
+    void gait_select();
+    void calc_gait_sequence(void);
+    void main_inverse_kinematics();
 
-    void     balance_controller();
+    void balance_controller();
 
     Vector3f body_forward_kinematics(uint8_t leg_index);
     Vector3f leg_inverse_kinematics(Vector3f posxyz);

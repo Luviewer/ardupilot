@@ -67,9 +67,11 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_ROLLCH", 39, AP_QuadRuped, roll_channel, -1),
     AP_GROUPINFO("_pitchCH", 40, AP_QuadRuped, pitch_channel, -1),
 
-    AP_SUBGROUPINFO(yaw_pid, "_YAW_", 41, AP_QuadRuped, AC_PID),
-    AP_SUBGROUPINFO(roll_pid, "_RLL_", 42, AP_QuadRuped, AC_PID),
-    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 43, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(diag_yaw_pid, "_DYAW_", 41, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(wave_yaw_pid, "_WYAW_", 42, AP_QuadRuped, AC_PID),
+
+    AP_SUBGROUPINFO(roll_pid, "_RLL_", 43, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 44, AP_QuadRuped, AC_PID),
 
     AP_GROUPEND
 };
@@ -77,12 +79,11 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
     : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
     , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
-    , yaw_pid(0.1f, 0.05f, 0.01f, 0.0f, 50.0f, 0.0f, 0.0f, 0.0f, 0.0f)
 // 使用引用传递指针（*&）确保外部传入的指针在类内部可被修改
 {
     gait_type      = 0;
     move_requested = false;
-    max_yaw_rate   = radians(30.0f); // 限制最大25°/s
+    max_yaw_rate   = radians(30.0f); // 限制最大30°/s
 
     AP_Param::setup_object_defaults(this, var_info);
 
@@ -226,6 +227,9 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
 void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
 {
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+    if (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
     // float progress = (float)delta_step / gait_step_total;
     if (gait_type == GAIT_DIAGONAL) {
         switch (delta_step) {
@@ -244,19 +248,33 @@ void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
     }
 
     else if (gait_type == GAIT_WAVE) {
-        // 根据腿部运动阶段分配航向角
-        // 根据腿部运动阶段平滑分配航向角
-        switch (delta_step) {
-            case 0:
-                gait_rot_z[leg_index] = 0;
+        // 更平滑的偏航控制曲线
+        float progress = (float)delta_step / gait_step_total;
+        
+        if (progress < 0.25f) {
+            // 抬腿阶段: 逐渐增加偏航
+            float phase = progress * 4.0f;
+            gait_rot_z[leg_index] = yaw_travel * (1.0f - cosf(phase * M_PI)) / 4.0f;
+        } 
+        else if (progress < 0.75f) {
+            // 支撑阶段: 保持偏航
+            gait_rot_z[leg_index] = yaw_travel / 2.0f;
+        }
+        else {
+            // 放下阶段: 逐渐减少偏航
+            float phase = (progress - 0.75f) * 4.0f;
+            gait_rot_z[leg_index] = yaw_travel * (1.0f + cosf(phase * M_PI)) / 4.0f;
+        }
+        
+        // 根据腿的位置调整偏航量
+        switch(leg_index) {
+            case Leg_RF: // 右前腿
+            case Leg_LB: // 左后腿
+                gait_rot_z[leg_index] *= 1.2f; // 增加主力腿的偏航贡献
                 break;
-
-            case 1:
-                gait_rot_z[leg_index] = yaw_travel / gait_lift_divisor;
-                break;
-
-            default:
-                gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / gait_travel_divisor);
+            case Leg_LF: // 左前腿
+            case Leg_RB: // 右后腿
+                gait_rot_z[leg_index] *= 0.8f; // 减少辅助腿的偏航贡献
                 break;
         }
     }
@@ -470,7 +488,11 @@ void AP_QuadRuped::balance_controller()
         target_yaw      = (temp_rc - 1500) / 500.0f * 180.0f;                                                                // 将遥控器输入转换为目标偏航角（-180°到+180°）
         float yaw_error = wrap_180(current_yaw - target_yaw);                                                                // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
-        yaw_travel = yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
+        if (gait_type == GAIT_DIAGONAL) {
+            yaw_travel = diag_yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
+        } else {
+            yaw_travel = wave_yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
+        }
     } else {
         yaw_travel = 0;
     }
