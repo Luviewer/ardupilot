@@ -1,5 +1,6 @@
 #include "AP_QuadRuped.h"
 #include "AP_DroneCAN/AP_DroneCAN.h"
+#include "AP_QuadRuped_Params.h"
 #include <RC_Channel/RC_Channel.h>
 #include <SRV_Channel/SRV_Channel.h>
 
@@ -19,9 +20,8 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
     AP_GROUPINFO("_FEMUR", 2, AP_QuadRuped, FEMUR_LEN, FEMUR_LEN_DEFAULT),
     AP_GROUPINFO("_TIBIA", 3, AP_QuadRuped, TIBIA_LEN, TIBIA_LEN_DEFAULT),
-
-    AP_GROUPINFO("_FX", 4, AP_QuadRuped, FRAME_LEN, FRAME_LEN_DEFAULT),
-    AP_GROUPINFO("_FY", 5, AP_QuadRuped, FRAME_WIDTH, FRAME_WIDTH_DEFAULT),
+    AP_GROUPINFO("_FLEN", 4, AP_QuadRuped, FRAME_LEN, FRAME_LEN_DEFAULT),
+    AP_GROUPINFO("_FWID", 5, AP_QuadRuped, FRAME_WIDTH, FRAME_WIDTH_DEFAULT),
 
     AP_GROUPINFO("_LIFT", 6, AP_QuadRuped, leg_lift_height, LIFT_HEIGHT_DEFAULT),
     AP_GROUPINFO("_Hz", 7, AP_QuadRuped, gait_hz, SPEED_HZ_DEFAULT),
@@ -29,49 +29,18 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_THR", 8, AP_QuadRuped, throttle_max, MAX_THROTTLE_DEFAULT),
     AP_GROUPINFO("_STEP", 9, AP_QuadRuped, gait_step_total, GAIT_STEP_TOTAL_DEFAULT),
 
-    AP_GROUPINFO("_COXA1", 10, AP_QuadRuped, leg_coxa_direction[Leg_RF], 1),
-    AP_GROUPINFO("_COXA2", 12, AP_QuadRuped, leg_coxa_direction[Leg_RB], 1),
-    AP_GROUPINFO("_COXA3", 13, AP_QuadRuped, leg_coxa_direction[Leg_LB], 1),
-    AP_GROUPINFO("_COXA4", 14, AP_QuadRuped, leg_coxa_direction[Leg_LF], 1),
+    AP_SUBGROUPINFO(channel, "_CH_", 15, AP_QuadRuped, AP_QuadRuped_CHANNEL_Params),
 
-    AP_GROUPINFO("_FEMU1", 15, AP_QuadRuped, leg_femur_direction[Leg_RF], 1),
-    AP_GROUPINFO("_FEMU2", 16, AP_QuadRuped, leg_femur_direction[Leg_RB], 1),
-    AP_GROUPINFO("_FEMU3", 17, AP_QuadRuped, leg_femur_direction[Leg_LB], 1),
-    AP_GROUPINFO("_FEMU4", 18, AP_QuadRuped, leg_femur_direction[Leg_LF], 1),
+    AP_SUBGROUPINFO(leg_param[Leg_RF], "_RF_", 17, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(leg_param[Leg_RB], "_RB_", 18, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(leg_param[Leg_LB], "_LB_", 19, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(leg_param[Leg_LF], "_LF_", 20, AP_QuadRuped, AP_QuadRuped_Params),
 
-    AP_GROUPINFO("_TIBI1", 19, AP_QuadRuped, leg_tibia_direction[Leg_RF], 1),
-    AP_GROUPINFO("_TIBI2", 20, AP_QuadRuped, leg_tibia_direction[Leg_RB], 1),
-    AP_GROUPINFO("_TIBI3", 21, AP_QuadRuped, leg_tibia_direction[Leg_LB], 1),
-    AP_GROUPINFO("_TIBI4", 22, AP_QuadRuped, leg_tibia_direction[Leg_LF], 1),
-
-    AP_GROUPINFO("_COX1OF", 23, AP_QuadRuped, coxa_offset[Leg_RF], 0),
-    AP_GROUPINFO("_COX2OF", 24, AP_QuadRuped, coxa_offset[Leg_RB], 0),
-    AP_GROUPINFO("_COX3OF", 25, AP_QuadRuped, coxa_offset[Leg_LB], 0),
-    AP_GROUPINFO("_COX4OF", 26, AP_QuadRuped, coxa_offset[Leg_LF], 0),
-
-    AP_GROUPINFO("_FEM1OF", 27, AP_QuadRuped, femur_offset[Leg_RF], 0),
-    AP_GROUPINFO("_FEM2OF", 28, AP_QuadRuped, femur_offset[Leg_RB], 0),
-    AP_GROUPINFO("_FEM3OF", 29, AP_QuadRuped, femur_offset[Leg_LB], 0),
-    AP_GROUPINFO("_FEM4OF", 30, AP_QuadRuped, femur_offset[Leg_LF], 0),
-
-    AP_GROUPINFO("_TIB1OF", 31, AP_QuadRuped, tibia_offset[Leg_RF], 0),
-    AP_GROUPINFO("_TIB2OF", 32, AP_QuadRuped, tibia_offset[Leg_RB], 0),
-    AP_GROUPINFO("_TIB3OF", 33, AP_QuadRuped, tibia_offset[Leg_LB], 0),
-    AP_GROUPINFO("_TIB4OF", 34, AP_QuadRuped, tibia_offset[Leg_LF], 0),
-
-    AP_GROUPINFO("_THRCH", 35, AP_QuadRuped, throttle_channel, -1),
-    AP_GROUPINFO("_POSCH", 36, AP_QuadRuped, zpos_channel, -1),
-    AP_GROUPINFO("_YAWCH", 37, AP_QuadRuped, yaw_channel, -1),
-
-    AP_GROUPINFO("_GAITCH", 38, AP_QuadRuped, gait_channel, -1),
-    AP_GROUPINFO("_ROLLCH", 39, AP_QuadRuped, roll_channel, -1),
-    AP_GROUPINFO("_pitchCH", 40, AP_QuadRuped, pitch_channel, -1),
+    AP_SUBGROUPINFO(roll_pid, "_RLL_", 22, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 23, AP_QuadRuped, AC_PID),
 
     AP_SUBGROUPINFO(diag_yaw_pid, "_DYAW_", 41, AP_QuadRuped, AC_PID),
     AP_SUBGROUPINFO(wave_yaw_pid, "_WYAW_", 42, AP_QuadRuped, AC_PID),
-
-    AP_SUBGROUPINFO(roll_pid, "_RLL_", 43, AP_QuadRuped, AC_PID),
-    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 44, AP_QuadRuped, AC_PID),
 
     AP_GROUPEND
 };
@@ -415,9 +384,9 @@ void AP_QuadRuped::left_sleep_leg(void)
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
 
-        pwm_coxa  = leg_coxa_direction[leg_index] * 45 * 500 / 120 + 1500;
-        pwm_femur = leg_femur_direction[leg_index] * -65 * 500 / 120 + 1500;
-        pwm_tibia = leg_tibia_direction[leg_index] * 30 * 500 / 120 + 1500;
+        pwm_coxa  = leg_param[leg_index]._COXA_DIR * 45 * 500 / 120 + 1500;
+        pwm_femur = leg_param[leg_index]._FEMU_DIR * -65 * 500 / 120 + 1500;
+        pwm_tibia = leg_param[leg_index]._TIBI_DIR * 30 * 500 / 120 + 1500;
 
         servo_output_cmd[leg_index].x = pwm_coxa;
         servo_output_cmd[leg_index].y = pwm_femur;
@@ -438,9 +407,9 @@ void AP_QuadRuped::output_leg_angle(void)
     uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        pwm_coxa  = leg_coxa_direction[leg_index] * endpoint_leg_angle[leg_index].x * 500 / 120 + 1500;
-        pwm_femur = leg_femur_direction[leg_index] * endpoint_leg_angle[leg_index].y * 500 / 120 + 1500;
-        pwm_tibia = leg_tibia_direction[leg_index] * endpoint_leg_angle[leg_index].z * 500 / 120 + 1500;
+        pwm_coxa  = leg_param[leg_index]._COXA_DIR * endpoint_leg_angle[leg_index].x * 500 / 120 + 1500;
+        pwm_femur = leg_param[leg_index]._FEMU_DIR * endpoint_leg_angle[leg_index].y * 500 / 120 + 1500;
+        pwm_tibia = leg_param[leg_index]._TIBI_DIR * endpoint_leg_angle[leg_index].z * 500 / 120 + 1500;
 
         servo_output_cmd[leg_index].x = pwm_coxa;
         servo_output_cmd[leg_index].y = pwm_femur;
@@ -450,7 +419,6 @@ void AP_QuadRuped::output_leg_angle(void)
 
 void AP_QuadRuped::balance_controller()
 {
-
     float temp_rc;
     float target_roll  = 0;
     float target_pitch = 0;
@@ -459,35 +427,38 @@ void AP_QuadRuped::balance_controller()
     float current_pitch = degrees(_ahrs->pitch);
     float current_yaw   = degrees(_ahrs->yaw);
 
-    if (roll_channel != -1) {
-        temp_rc     = constrain_value((float)rc().RC_Channels::get_radio_in(roll_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
-        target_roll = (temp_rc - 1500) / 500.0f * 15.0f;                                                                  // 将遥控器输入转换为目标偏航角（-180°到+180°）
-        // roll_travel = (temp_rc - 1500) / 500.0f * 15.0f;
-        float roll_error = wrap_180(current_roll - target_roll); // 计算偏航角误差（将弧度值规范到[-π, π]区间）
+    if (channel.roll_channel != -1) {
+        temp_rc          = constrain_value((float)rc().RC_Channels::get_radio_in(channel.roll_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_roll      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                          // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float roll_error = wrap_180(current_roll - target_roll);                                                                       // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
         roll_travel = roll_pid.update_all(0, roll_error, 1.0f / gait_hz);
-
     } else {
         roll_travel = 0;
     }
-    if (pitch_channel != -1) {
-        temp_rc           = constrain_value((float)rc().RC_Channels::get_radio_in(pitch_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
-        target_pitch      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                   // 将遥控器输入转换为目标偏航角（-180°到+180°）
-        float pitch_error = wrap_180(current_pitch - target_pitch);                                                              // 计算偏航角误差（将弧度值规范到[-π, π]区间）
+
+    if (channel.pitch_channel != -1) {
+        temp_rc           = constrain_value((float)rc().RC_Channels::get_radio_in(channel.pitch_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_pitch      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                           // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float pitch_error = wrap_180(current_pitch - target_pitch);                                                                      // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
         pitch_travel = pitch_pid.update_all(0, pitch_error, 1.0f / gait_hz);
     } else {
         pitch_travel = 0;
     }
 
-    if (yaw_channel != -1) {
-        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(yaw_channel - 1), (float)1000, (float)2000);
+    if (channel.yaw_channel != -1) {
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.yaw_channel - 1), (float)1000, (float)2000);
+        if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
+
         // 将遥控器输入转换为目标角速度（-max_yaw_rate到+max_yaw_rate）
         float delta_yaw = (temp_rc - 1500) / 500.0f * 1.0f;
         // 计算角度误差
         target_yaw += delta_yaw;
         float yaw_error = wrap_180(current_yaw - target_yaw);
-        // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f,delta_yaw=%f\n",yaw_error,target_yaw,current_yaw,delta_yaw);
+
+        if (fabsf(yaw_error) < radians(1.0f)) yaw_error = 0.0f;
+
         // 使用PID控制器计算角速度增量
         if (gait_type == GAIT_DIAGONAL) {
             yaw_travel = diag_yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
@@ -501,26 +472,27 @@ void AP_QuadRuped::balance_controller()
 
 void AP_QuadRuped::controller()
 {
-
     float temp_rc;
 
-    if (throttle_channel != -1) {
-        temp_rc         = constrain_value((float)rc().RC_Channels::get_radio_in(throttle_channel - 1), (float)1000, (float)2000);
+    if (channel.throttle_channel != -1) {
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_channel - 1), (float)1000, (float)2000);
+        if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
+
         throttle_travel = (temp_rc - 1500) / 500.0f * throttle_max;
     } else {
         throttle_travel = 0;
     }
 
-    if (zpos_channel != -1) {
-        temp_rc  = constrain_value((float)rc().RC_Channels::get_radio_in(zpos_channel - 1), (float)1000, (float)2000);
+    if (channel.height_channel != -1) {
+        temp_rc  = constrain_value((float)rc().RC_Channels::get_radio_in(channel.height_channel - 1), (float)1000, (float)2000);
         z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
     } else {
         z_travel = -50;
     }
 
     // 添加步态切换控制
-    if (gait_channel != -1) {
-        float   gait_switch   = constrain_value((float)rc().RC_Channels::get_radio_in(gait_channel - 1), (float)1000, (float)2000);
+    if (channel.gait_channel != -1) {
+        float   gait_switch   = constrain_value((float)rc().RC_Channels::get_radio_in(channel.gait_channel - 1), (float)1000, (float)2000);
         uint8_t new_gait_type = (gait_switch > 1500) ? GAIT_WAVE : GAIT_DIAGONAL;
 
         if (new_gait_type != gait_type) {
@@ -537,13 +509,16 @@ bool AP_QuadRuped::hw_set_servo_cmd()
     msg.cmd.len = 12;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + coxa_offset[leg_index];
-        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + femur_offset[leg_index];
-        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + tibia_offset[leg_index];
+        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param[leg_index]._COXA_OFS;
+        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param[leg_index]._FEMU_OFS;
+        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + leg_param[leg_index]._TIBI_OFS;
 
-        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_coxa + leg_index * 3), servo_output_cmd[leg_index].x + coxa_offset[leg_index]);
-        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_femu + leg_index * 3), servo_output_cmd[leg_index].y + femur_offset[leg_index]);
-        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_tibi + leg_index * 3), servo_output_cmd[leg_index].z + tibia_offset[leg_index]);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_coxa + leg_index * 3),
+                                     servo_output_cmd[leg_index].x + leg_param[leg_index]._COXA_OFS);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_femu + leg_index * 3),
+                                     servo_output_cmd[leg_index].y + leg_param[leg_index]._FEMU_OFS);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_tibi + leg_index * 3),
+                                     servo_output_cmd[leg_index].z + leg_param[leg_index]._TIBI_OFS);
     }
 
     // broadcast the message on all ifaces

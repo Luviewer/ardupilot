@@ -574,6 +574,33 @@ void AP_Periph_FW::update()
 #ifdef HAL_PERIPH_ENABLE_ADSB
     adsb_update();
 #endif
+    // static uint32_t last_test_ms=0;
+    // static int16_t pos_cnt=0;
+    // uint32_t now_test = AP_HAL::millis();
+
+    // if (now_test - last_test_ms > 20) {
+    //     last_test_ms = AP_HAL::millis();
+    //     hiwonder_RF.set_position(1, pos_cnt+500, 0);
+    //     hiwonder_RF.set_position(2, pos_cnt+500, 0);
+    //     hiwonder_RF.set_position(3, pos_cnt+500, 0);
+
+    //     hiwonder_RB.set_position(1, pos_cnt+500, 0);
+    //     hiwonder_RB.set_position(2, pos_cnt+500, 0);
+    //     hiwonder_RB.set_position(3, pos_cnt+500, 0);
+
+    //     hiwonder_LB.set_position(1, pos_cnt+500, 0);
+    //     hiwonder_LB.set_position(2, pos_cnt+500, 0);
+    //     hiwonder_LB.set_position(3, pos_cnt+500, 0);
+
+    //     hiwonder_LF.set_position(1, pos_cnt+500, 0);
+    //     hiwonder_LF.set_position(2, pos_cnt+500, 0);
+    //     hiwonder_LF.set_position(3, pos_cnt+500, 0);
+
+    //     pos_cnt+=5;
+
+    //     if(pos_cnt>150)
+    //         pos_cnt = -150;
+    // }
 }
 
 #ifdef HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT

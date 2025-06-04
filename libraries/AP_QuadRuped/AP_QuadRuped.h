@@ -1,4 +1,6 @@
 #pragma once
+
+#include "AP_QuadRuped_Params.h"
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
 #include <AP_HAL/AP_HAL_Boards.h>
@@ -83,21 +85,10 @@ protected:
     /* 四足末端需要走的位置 */
     Vector3f gait_pos_xyz[LEG_ALL];
 
-    AP_Int8 leg_coxa_direction[LEG_ALL];
-    AP_Int8 leg_femur_direction[LEG_ALL];
-    AP_Int8 leg_tibia_direction[LEG_ALL];
+    AP_QuadRuped_Params leg_param[LEG_ALL];
 
-    AP_Int16 coxa_offset[LEG_ALL];
-    AP_Int16 femur_offset[LEG_ALL];
-    AP_Int16 tibia_offset[LEG_ALL];
+    AP_QuadRuped_CHANNEL_Params channel;
 
-    AP_Int8 throttle_channel;
-    AP_Int8 zpos_channel;
-    AP_Int8 yaw_channel;
-    AP_Int8 roll_channel;
-    AP_Int8 pitch_channel;
-
-    AP_Int8  gait_channel;
     AP_Float zfactor;
 
     float target_yaw = 0;
@@ -131,6 +122,7 @@ protected:
             .srmax     = 0,
             .srtau     = 1.0 }
     };
+    
     AC_PID wave_yaw_pid {
         AC_PID::Defaults {
             .p         = 0.5f,

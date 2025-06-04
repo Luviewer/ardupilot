@@ -41,14 +41,6 @@ void AP_Periph_FW::handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTrans
         return;
     }
 
-    // for (uint8_t i = 0; i < 12; i++) {
-    //     if (pkt.cmd.data[i] > 1750) {
-    //         pkt.cmd.data[i] = 1750;
-    //     } else if (pkt.cmd.data[i] < 1250) {
-    //         pkt.cmd.data[i] = 1250;
-    //     }
-    // }
-
     AP_Hiwonder* hiwonder_ptr = nullptr;
 
     for (uint8_t index = 0; index < 4; index++) {

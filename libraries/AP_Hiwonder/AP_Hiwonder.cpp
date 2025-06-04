@@ -13,8 +13,8 @@ AP_Hiwonder_LB* AP_Hiwonder_LB::_singleton;
 AP_Hiwonder_LF* AP_Hiwonder_LF::_singleton;
 
 #define AP_SERIALMANAGER_Hiwonder_BAUD       115200
-#define AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX 64
-#define AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX 64
+#define AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX 0
+#define AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX 0
 
 uint8_t AP_Hiwonder::serial_servo_checksum(const uint8_t buf[])
 {
@@ -36,7 +36,7 @@ void AP_Hiwonder::set_position(uint32_t servo_id, int position, uint32_t duratio
     frame.servo_id = servo_id;
     frame.command  = SERIAL_SERVO_MOVE_TIME_WRITE;
 
-    position = constrain_int32(position, 0, 1000);
+    position = constrain_int32(position, 100, 900);
 
     frame.args[0] = LOWBYTE(position);
     frame.args[1] = HIGHBYTE(position);
