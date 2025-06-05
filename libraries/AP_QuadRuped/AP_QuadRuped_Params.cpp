@@ -25,6 +25,7 @@ const AP_Param::GroupInfo AP_QuadRuped_CHANNEL_Params::var_info[] = {
     AP_GROUPINFO("ROL", 4, AP_QuadRuped_CHANNEL_Params, roll_channel, -1),
     AP_GROUPINFO("PIT", 5, AP_QuadRuped_CHANNEL_Params, pitch_channel, -1),
     AP_GROUPINFO("YAW", 6, AP_QuadRuped_CHANNEL_Params, yaw_channel, -1),
+    AP_GROUPINFO("COM", 7, AP_QuadRuped_CHANNEL_Params, com_offset_channel, -1),
 
     AP_GROUPEND
 };

@@ -15,6 +15,8 @@ extern const AP_HAL::HAL& hal;
 #define SPEED_HZ_DEFAULT        25.0f
 #define MAX_THROTTLE_DEFAULT    200.0f
 #define GAIT_STEP_TOTAL_DEFAULT 12
+#define BODY_MASS               5.0f
+#define LEG_MASS                1.0f
 
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
@@ -38,6 +40,9 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 
     AP_SUBGROUPINFO(roll_pid, "_RLL_", 22, AP_QuadRuped, AC_PID),
     AP_SUBGROUPINFO(pitch_pid, "_PIT_", 23, AP_QuadRuped, AC_PID),
+
+    AP_GROUPINFO("_COMX_P", 30, AP_QuadRuped, _com_x_pid.kP(), 0.5f),
+    AP_GROUPINFO("_COMY_P", 31, AP_QuadRuped, _com_y_pid.kP(), 0.5f),
 
     AP_SUBGROUPINFO(diag_yaw_pid, "_DYAW_", 41, AP_QuadRuped, AC_PID),
     AP_SUBGROUPINFO(wave_yaw_pid, "_WYAW_", 42, AP_QuadRuped, AC_PID),
@@ -119,13 +124,13 @@ void AP_QuadRuped::gait_select(void)
         gait_lift_divisor   = 2;
     } else if (gait_type == GAIT_WAVE) {
         // 波浪步态设置 - 四条腿依次移动
-        gait_step_leg_start[Leg_RF] = 1;
-        gait_step_leg_start[Leg_LF] = gait_step_total / 4 + 1;
-        gait_step_leg_start[Leg_LB] = gait_step_total / 2 + 1;
-        gait_step_leg_start[Leg_RB] = 3 * gait_step_total / 4 + 1;
+        gait_step_leg_start[Leg_RF] = 2 * gait_step_total / 3 + 1;
+        gait_step_leg_start[Leg_LF] = 1;
+        gait_step_leg_start[Leg_LB] = gait_step_total;
+        gait_step_leg_start[Leg_RB] = gait_step_total / 3 + 1;
 
-        gait_travel_divisor = gait_step_total / 4 + 1;
-        gait_lift_divisor   = 4;
+        gait_travel_divisor = gait_step_total / 3;
+        gait_lift_divisor   = 3;
     }
 }
 
@@ -143,6 +148,120 @@ void AP_QuadRuped::calc_gait_sequence(void)
     } else {
         reset_leg();
     }
+}
+
+// 计算当前重心位置
+Vector3f AP_QuadRuped::calculate_com_position()
+{
+    Vector3f com { 0, 0, 0 };
+    float    total_mass = 0;
+    // 主身体重心位置和质量
+    Vector3f body_pos = get_body_position();
+    com += body_pos * BODY_MASS;
+    total_mass += BODY_MASS;
+    // 各条腿的重心和质量
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        Vector3f leg_com = get_leg_com_position(leg_index); // 世界坐标中这条腿的重心
+        com += leg_com * LEG_MASS;
+        total_mass += LEG_MASS;
+    }
+    if (total_mass > 0) {
+        com /= total_mass;
+    }
+    hal.console->printf("current_com: x=%.3f, y=%.3f, z=%.3f\n", com.x, com.y, com.z);
+
+    return com;
+}
+
+Vector3f AP_QuadRuped::get_body_position()
+{
+    Vector3f body_centre_local(0, 0, 0);
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        body_centre_local += endpoint_leg_frame[leg_index];
+    }
+    body_centre_local /= LEG_ALL;
+
+    float current_roll  = degrees(_ahrs->roll);
+    float current_pitch = degrees(_ahrs->pitch);
+    float current_yaw   = degrees(_ahrs->yaw);
+    // 构造旋转四元数
+    Quaternion body_quat;
+    body_quat.from_euler(current_roll, current_pitch, current_yaw);
+    // 转换到世界坐标系（假设初始位置为原点）
+    Vector3f body_pos_global = body_quat * body_centre_local;
+    // 叠加主动重心偏移量（如果启用了重心控制）
+    body_pos_global += _current_com_offset;
+
+    return body_pos_global;
+}
+
+Vector3f AP_QuadRuped::get_leg_com_position(uint8_t leg_index)
+{
+    // 计算腿的重心在机体坐标系中的位置（重心近似位于腿的几何中心）
+    Vector3f leg_com_local;
+    Vector3f foot_pos_local = body_forward_kinematics(leg_index); // 足端位置（机体坐标系）
+    // 简化模型：腿重心 = 髋关节位置 + 足端位置除以2
+    leg_com_local = endpoint_leg_frame[leg_index] + (foot_pos_local - endpoint_leg_frame[leg_index]) * 0.5f;
+    // 获取机身姿态
+    Quaternion body_quat;
+    body_quat.from_euler(_ahrs->roll, _ahrs->pitch, _ahrs->yaw);
+    // 转换到世界坐标系
+    Vector3f leg_com_global = body_quat * leg_com_local;
+    // 叠加机身全局位置
+    leg_com_global += get_body_position();
+
+    return leg_com_global;
+}
+
+// 设置目标重心偏移 (世界坐标系)
+void AP_QuadRuped::set_com_offset(float x, float y, float z = 0)
+{
+    _active_com_offset = Vector3f(x, y, z);
+}
+
+// 调整重心偏移
+void AP_QuadRuped::adjust_com_offset()
+{
+    // 根据步态阶段调整目标重心
+    if (gait_type == GAIT_DIAGONAL) {
+        // 对角步态：重心偏向支撑腿对角线
+        if (gait_step_now < gait_step_total / 2) {
+            _target_com_offset.x = throttle_travel * 0.3f; // 前进时重心稍前移
+            _target_com_offset.y = (gait_step_leg_start[Leg_RF] == gait_step_now) ? -0.1f * FRAME_WIDTH : 0.1f * FRAME_WIDTH;
+        } else {
+            _target_com_offset.x = -throttle_travel * 0.2f; // 回位时重心稍后移
+            _target_com_offset.y = 0;
+        }
+    } else {
+        // 波浪步态：重心始终偏向支撑三角形中心
+        _target_com_offset.x = throttle_travel * 0.2f;
+        _target_com_offset.y = 0;
+    }
+
+    // 添加高度补偿
+    _target_com_offset.z = -leg_lift_height * 0.2f;
+
+    // 使用PID平滑调整
+    float dt              = 1.0f / gait_hz;
+    _current_com_offset.x = _com_x_pid.update_all(_target_com_offset.x, _center_of_mass.x, dt);
+    _current_com_offset.y = _com_y_pid.update_all(_target_com_offset.y, _center_of_mass.y, dt);
+    _current_com_offset.z = _target_com_offset.z;
+}
+
+void AP_QuadRuped::update_com_control()
+{
+    float dt = 1.0f / gait_hz;
+
+    // 将目标偏移转换到机体坐标系
+    Vector3f body_offset_target = _ahrs->get_rotation_body_to_ned().transposed() * _active_com_offset_target;
+
+    // PID控制平滑过渡
+    _active_com_offset.x = _com_x_pid.update_all(body_offset_target.x, _active_com_offset.x, dt);
+    _active_com_offset.y = _com_y_pid.update_all(body_offset_target.y, _active_com_offset.y, dt);
+
+    // 限制偏移范围（防止过度倾斜）
+    _active_com_offset.x = constrain_float(_active_com_offset.x, -FRAME_LEN / 3, FRAME_LEN / 3);
+    _active_com_offset.y = constrain_float(_active_com_offset.y, -FRAME_WIDTH / 3, FRAME_WIDTH / 3);
 }
 
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
@@ -179,15 +298,17 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
     else if (gait_type == GAIT_WAVE) {
         // 波浪步态轨迹生成
         if (delta_step <= (gait_step_total / 4)) {
-            delta            = M_2PI * delta_step / (gait_step_total / 4);
-            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 4.0f - throttle_travel; // 钟型曲线，由于1-cosf(delta)的导数特性，运动开始和结束时的速度为0    M_2PI * 4.0f：适配波浪步态的1/4周期时间窗口
+            // 使用更平滑的三段式轨迹
+            float phase      = (float)delta_step / (gait_step_total / 4);
+            leg_xy_target[0] = throttle_travel * (phase - sinf(phase * M_2PI) / M_2PI) * 2.0f; // 钟型曲线，由于1-cosf(delta)的导数特性，运动开始和结束时的速度为0    M_2PI * 4.0f：适配波浪步态的1/4周期时间窗口
             leg_xy_target[1] = 0;
-            leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * 1.0f; // 抬升之后放下
+            leg_z_target     = -leg_lift_height * (1.0f - cosf(phase * M_PI)) * 1.8f; // 抬升之后放下
         } else {
-            delta            = M_2PI * (delta_step - gait_step_total / 4) / (3 * gait_step_total / 4);
-            leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * (4.0f / 3.0f) + throttle_travel;
+            float phase      = (float)(delta_step - gait_step_total * 3 / 4) / (gait_step_total / 4);
+            leg_xy_target[0] = -throttle_travel * (1.0f + (phase - sinf(phase * M_2PI) / M_2PI) * 2.0f);
             leg_xy_target[1] = 0;
-            leg_z_target     = 0;
+            leg_z_target     = -leg_lift_height * (1.0f - cosf((1.0f - phase) * M_PI)) * 0.5f;
+            ;
         }
     }
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target); // x：横向移动（如左右踏步）    y：前后移动（如前进/后退）
@@ -258,34 +379,6 @@ void AP_QuadRuped::update_leg()
     }
 }
 
-// void AP_QuadRuped::update_leg(uint8_t moving_leg)
-// {
-//     int8_t leg_step = gait_step - gait_step_leg_start[moving_leg];
-
-//     switch (leg_step) {
-//         case 0:
-//             gait_pos_xyz[moving_leg] = { 0, 0, -(float)leg_lift_height };
-//             gait_rot_z[moving_leg]   = 0;
-//             break;
-
-//         case 1:
-//             gait_pos_xyz[moving_leg] = Vector3f(throttle_travel / gait_lift_divisor,
-//                                                 0,
-//                                                 -3.0f * leg_lift_height / (3.0f + gait_half_lift_height));
-
-//             gait_rot_z[moving_leg] = yaw_travel / gait_lift_divisor;
-//             break;
-
-//         default:
-//             gait_pos_xyz[moving_leg] = Vector3f(gait_pos_xyz[moving_leg].x - (throttle_travel / gait_travel_divisor),
-//                                                 gait_pos_xyz[moving_leg].y,
-//                                                 0.0f);
-
-//             gait_rot_z[moving_leg] = gait_rot_z[moving_leg] - (yaw_travel / gait_travel_divisor);
-//             break;
-//     }
-// }
-
 Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
 {
     // gait_pos_xyz：步态生成的目标位置
@@ -293,12 +386,16 @@ Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
     // endpoint_leg_frame：机体框架几何尺寸（机体的几何偏移）（如FRAME_LEN和FRAME_WIDTH）
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
+    // 添加重心偏移补偿
+    totaldist_xyz -= _active_com_offset;
+
     totaldist_xyz.z += z_travel;
 
     Quaternion quat = { 1, 0, 0, 0 };
 
-    body_rot_xyz_deg.x = -radians(roll_travel);          // 横滚角（绕X轴）
-    body_rot_xyz_deg.y = -radians(pitch_travel);         // 俯仰角（绕Y轴）
+    body_rot_xyz_deg.x = -radians(roll_travel);  // 横滚角（绕X轴）
+    body_rot_xyz_deg.y = -radians(pitch_travel); // 俯仰角（绕Y轴）
+    // hal.console->printf("pitch_travel_1=%f\n", pitch_travel);
     body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]); // 偏航角（绕Z轴）
 
     quat.from_euler(body_rot_xyz_deg);
@@ -346,6 +443,9 @@ void AP_QuadRuped::main_inverse_kinematics(void)
 
     // const float endpoint_leg_angle_dir[LEG_ALL] = { 1, 1, 1, 1 };
 
+    // 更新重心控制
+    update_com_control();
+
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
 
         ansxyz = body_forward_kinematics(leg_index);
@@ -388,6 +488,7 @@ void AP_QuadRuped::left_sleep_leg(void)
         pwm_femur = leg_param[leg_index]._FEMU_DIR * -65 * 500 / 120 + 1500;
         pwm_tibia = leg_param[leg_index]._TIBI_DIR * 30 * 500 / 120 + 1500;
 
+        // 将计算出的PWM值存入输出命令数组
         servo_output_cmd[leg_index].x = pwm_coxa;
         servo_output_cmd[leg_index].y = pwm_femur;
         servo_output_cmd[leg_index].z = pwm_tibia;
@@ -397,8 +498,8 @@ void AP_QuadRuped::left_sleep_leg(void)
 void AP_QuadRuped::reset_leg(void)
 {
     for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
-        gait_pos_xyz[moving_leg] = { 0, 0, 0 };
-        gait_rot_z[moving_leg]   = 0;
+        gait_pos_xyz[moving_leg] = { 0, 0, 0 }; // 重置位置坐标为原点
+        gait_rot_z[moving_leg]   = 0;           // 重置旋转角度为0
     }
 }
 
@@ -411,6 +512,7 @@ void AP_QuadRuped::output_leg_angle(void)
         pwm_femur = leg_param[leg_index]._FEMU_DIR * endpoint_leg_angle[leg_index].y * 500 / 120 + 1500;
         pwm_tibia = leg_param[leg_index]._TIBI_DIR * endpoint_leg_angle[leg_index].z * 500 / 120 + 1500;
 
+        // 存储PWM命令
         servo_output_cmd[leg_index].x = pwm_coxa;
         servo_output_cmd[leg_index].y = pwm_femur;
         servo_output_cmd[leg_index].z = pwm_tibia;
@@ -443,6 +545,7 @@ void AP_QuadRuped::balance_controller()
         float pitch_error = wrap_180(current_pitch - target_pitch);                                                                      // 计算偏航角误差（将弧度值规范到[-π, π]区间）
         // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
         pitch_travel = pitch_pid.update_all(0, pitch_error, 1.0f / gait_hz);
+        // hal.console->printf("pitch_error=%f,pitch_travel=%f\n", pitch_error, pitch_travel);
     } else {
         pitch_travel = 0;
     }
@@ -467,6 +570,15 @@ void AP_QuadRuped::balance_controller()
         }
     } else {
         yaw_travel = 0;
+    }
+
+    // 添加新的遥控通道处理
+    if (channel.com_offset_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.com_offset_channel - 1), (float)1000, (float)2000);
+        if (val > 1525 || val < 1475) {                      // 死区检测
+            float offset_x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+            set_com_offset(offset_x, 0);
+        }
     }
 }
 
@@ -504,10 +616,10 @@ void AP_QuadRuped::controller()
 
 bool AP_QuadRuped::hw_set_servo_cmd()
 {
-    com_usl_ServoCmd msg {};
+    com_usl_ServoCmd msg {}; // 创建DroneCAN伺服控制消息结构体
+    msg.cmd.len = 12;        // 设置消息长度(4条腿×3个关节)
 
-    msg.cmd.len = 12;
-
+    // 遍历所有腿部(LEG_ALL=4)
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
         msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param[leg_index]._COXA_OFS;
         msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param[leg_index]._FEMU_OFS;
@@ -521,15 +633,16 @@ bool AP_QuadRuped::hw_set_servo_cmd()
                                      servo_output_cmd[leg_index].z + leg_param[leg_index]._TIBI_OFS);
     }
 
-    // broadcast the message on all ifaces
-    uint8_t can_num_drivers = AP::can().get_num_drivers();
+    // 这段代码的主要功能是在所有可用的CAN总线接口上广播伺服控制命令(com_usl_servocmd消息)。
+    uint8_t can_num_drivers = AP::can().get_num_drivers(); // 获取CAN驱动数量
+    bool    ok              = false;                       // 成功标志
 
-    bool ok = false;
     for (uint8_t i = 0; i < can_num_drivers; i++) {
-        auto* dronecan = AP_DroneCAN::get_dronecan(i);
+        auto* dronecan = AP_DroneCAN::get_dronecan(i); // 获取第i个CAN驱动实例
         if (dronecan != nullptr) {
-            ok |= dronecan->com_usl_servocmd.broadcast(msg);
+            // 尝试广播消息，使用|=确保只要有一个接口成功就返回true
+            ok |= dronecan->com_usl_servocmd.broadcast(msg); // 访问该CAN实例的伺服命令接口
         }
     }
-    return ok;
+    return ok; // 返回广播结果
 }

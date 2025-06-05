@@ -104,6 +104,13 @@ protected:
     float pitch_correction;
 
     float max_yaw_rate; // 最大允许角速度（rad/s）
+    bool  first_run = true;
+
+    Vector3f _active_com_offset;      // 主动控制的重心偏移量
+    Vector3f _active_com_offset_target;      // 主动控制的重心偏移量
+
+    bool _com_lock_mode = false;      // 重心锁定模式标志
+
 
     uint32_t start_time;
 
@@ -165,6 +172,45 @@ protected:
     float aim_yaw;
 
     Vector3ui servo_output_cmd[LEG_ALL];
+    // 添加重心控制相关变量
+    Vector3f _center_of_mass;         // 当前重心位置
+    Vector3f _target_com_offset;      // 目标重心偏移量
+    Vector3f _current_com_offset;     // 当前重心偏移量
+    AP_Float _com_adjust_gain ; // 重心调整增益系数
+    float    _com_filter_hz   = 5.0f; // 重心调整低通滤波频率
+
+    AC_PID _com_x_pid {
+        AC_PID::Defaults {
+            .p         = 0.5f,
+            .i         = 0.1f,
+            .d         = 0.05f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+    AC_PID _com_y_pid {
+        AC_PID::Defaults {
+            .p         = 0.5f,
+            .i         = 0.1f,
+            .d         = 0.05f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+    // 添加重心控制方法
+    void     adjust_com_offset();
+    void     set_com_offset(float x, float y, float z);
+    void     update_com_control();
+    Vector3f calculate_com_position();
+    Vector3f get_body_position();
+    Vector3f get_leg_com_position(uint8_t leg_index);
+
 
     // Parameter block
 
