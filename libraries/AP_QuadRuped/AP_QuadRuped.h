@@ -107,7 +107,6 @@ protected:
     bool  first_run = true;
 
     Vector3f _active_com_offset;      // 主动控制的重心偏移量
-    Vector3f _active_com_offset_target;      // 主动控制的重心偏移量
 
     bool _com_lock_mode = false;      // 重心锁定模式标志
 
@@ -204,7 +203,8 @@ protected:
             .srtau     = 1.0 }
     };
     // 添加重心控制方法
-    void     adjust_com_offset();
+
+    Vector3f com { 0, 0, 0 };
     void     set_com_offset(float x, float y, float z);
     void     update_com_control();
     Vector3f calculate_com_position();

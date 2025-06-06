@@ -153,7 +153,6 @@ void AP_QuadRuped::calc_gait_sequence(void)
 // 计算当前重心位置
 Vector3f AP_QuadRuped::calculate_com_position()
 {
-    Vector3f com { 0, 0, 0 };
     float    total_mass = 0;
     // 主身体重心位置和质量
     Vector3f body_pos = get_body_position();
@@ -168,7 +167,7 @@ Vector3f AP_QuadRuped::calculate_com_position()
     if (total_mass > 0) {
         com /= total_mass;
     }
-    hal.console->printf("current_com: x=%.3f, y=%.3f, z=%.3f\n", com.x, com.y, com.z);
+    // hal.console->printf("current_com: x=%.3f, y=%.3f, z=%.3f\n", com.x, com.y, com.z);
 
     return com;
 }
@@ -219,46 +218,16 @@ void AP_QuadRuped::set_com_offset(float x, float y, float z = 0)
     _active_com_offset = Vector3f(x, y, z);
 }
 
-// 调整重心偏移
-void AP_QuadRuped::adjust_com_offset()
-{
-    // 根据步态阶段调整目标重心
-    if (gait_type == GAIT_DIAGONAL) {
-        // 对角步态：重心偏向支撑腿对角线
-        if (gait_step_now < gait_step_total / 2) {
-            _target_com_offset.x = throttle_travel * 0.3f; // 前进时重心稍前移
-            _target_com_offset.y = (gait_step_leg_start[Leg_RF] == gait_step_now) ? -0.1f * FRAME_WIDTH : 0.1f * FRAME_WIDTH;
-        } else {
-            _target_com_offset.x = -throttle_travel * 0.2f; // 回位时重心稍后移
-            _target_com_offset.y = 0;
-        }
-    } else {
-        // 波浪步态：重心始终偏向支撑三角形中心
-        _target_com_offset.x = throttle_travel * 0.2f;
-        _target_com_offset.y = 0;
-    }
-
-    // 添加高度补偿
-    _target_com_offset.z = -leg_lift_height * 0.2f;
-
-    // 使用PID平滑调整
-    float dt              = 1.0f / gait_hz;
-    _current_com_offset.x = _com_x_pid.update_all(_target_com_offset.x, _center_of_mass.x, dt);
-    _current_com_offset.y = _com_y_pid.update_all(_target_com_offset.y, _center_of_mass.y, dt);
-    _current_com_offset.z = _target_com_offset.z;
-}
-
 void AP_QuadRuped::update_com_control()
 {
     float dt = 1.0f / gait_hz;
-
-    // 将目标偏移转换到机体坐标系
-    Vector3f body_offset_target = _ahrs->get_rotation_body_to_ned().transposed() * _active_com_offset_target;
-
+    // hal.console->printf("body_offset_target: x=%.3f, y=%.3f, z=%.3f\n", body_offset_target.x, body_offset_target.y, body_offset_target.z);
     // PID控制平滑过渡
-    _active_com_offset.x = _com_x_pid.update_all(body_offset_target.x, _active_com_offset.x, dt);
-    _active_com_offset.y = _com_y_pid.update_all(body_offset_target.y, _active_com_offset.y, dt);
-
+    calculate_com_position();
+    _active_com_offset.x = _com_x_pid.update_all( _active_com_offset.x, com.x, dt);
+    _active_com_offset.y = _com_y_pid.update_all( _active_com_offset.y, com.y, dt);
+    hal.console->printf("current_com: x=%.3f, y=%.3f, z=%.3f\n", com.x, com.y, com.z);
+    hal.console->printf("_active_com_offset: x=%.3f, y=%.3f, z=%.3f\n", _active_com_offset.x, _active_com_offset.y, _active_com_offset.z);
     // 限制偏移范围（防止过度倾斜）
     _active_com_offset.x = constrain_float(_active_com_offset.x, -FRAME_LEN / 3, FRAME_LEN / 3);
     _active_com_offset.y = constrain_float(_active_com_offset.y, -FRAME_WIDTH / 3, FRAME_WIDTH / 3);
@@ -573,11 +542,18 @@ void AP_QuadRuped::balance_controller()
     }
 
     // 添加新的遥控通道处理
-    if (channel.com_offset_channel != -1) {
-        float val = constrain_value((float)rc().get_radio_in(channel.com_offset_channel - 1), (float)1000, (float)2000);
+    if (channel.com_offset_x_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.com_offset_x_channel - 1), (float)1000, (float)2000);
         if (val > 1525 || val < 1475) {                      // 死区检测
             float offset_x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
             set_com_offset(offset_x, 0);
+        }
+    }
+    if (channel.com_offset_y_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.com_offset_y_channel - 1), (float)1000, (float)2000);
+        if (val > 1525 || val < 1475) {                      // 死区检测
+            float offset_y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+            set_com_offset(0, offset_y);
         }
     }
 }
