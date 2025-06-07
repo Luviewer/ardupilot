@@ -30,6 +30,6 @@ public:
     AP_Int8 roll_channel;
     AP_Int8 pitch_channel;
     AP_Int8 yaw_channel;
-    AP_Int8 com_offset_x_channel;
-    AP_Int8 com_offset_y_channel;
+    AP_Int8 centre_offset_x_channel;
+    AP_Int8 centre_offset_y_channel;
 };

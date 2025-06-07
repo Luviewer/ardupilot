@@ -15,8 +15,6 @@ extern const AP_HAL::HAL& hal;
 #define SPEED_HZ_DEFAULT        25.0f
 #define MAX_THROTTLE_DEFAULT    200.0f
 #define GAIT_STEP_TOTAL_DEFAULT 12
-#define BODY_MASS               5.0f
-#define LEG_MASS                1.0f
 
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
@@ -40,9 +38,6 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 
     AP_SUBGROUPINFO(roll_pid, "_RLL_", 22, AP_QuadRuped, AC_PID),
     AP_SUBGROUPINFO(pitch_pid, "_PIT_", 23, AP_QuadRuped, AC_PID),
-
-    AP_GROUPINFO("_COMX_P", 30, AP_QuadRuped, _com_x_pid.kP(), 0.5f),
-    AP_GROUPINFO("_COMY_P", 31, AP_QuadRuped, _com_y_pid.kP(), 0.5f),
 
     AP_SUBGROUPINFO(diag_yaw_pid, "_DYAW_", 41, AP_QuadRuped, AC_PID),
     AP_SUBGROUPINFO(wave_yaw_pid, "_WYAW_", 42, AP_QuadRuped, AC_PID),
@@ -150,87 +145,19 @@ void AP_QuadRuped::calc_gait_sequence(void)
     }
 }
 
-// 计算当前重心位置
-Vector3f AP_QuadRuped::calculate_com_position()
-{
-    float    total_mass = 0;
-    // 主身体重心位置和质量
-    Vector3f body_pos = get_body_position();
-    com += body_pos * BODY_MASS;
-    total_mass += BODY_MASS;
-    // 各条腿的重心和质量
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        Vector3f leg_com = get_leg_com_position(leg_index); // 世界坐标中这条腿的重心
-        com += leg_com * LEG_MASS;
-        total_mass += LEG_MASS;
-    }
-    if (total_mass > 0) {
-        com /= total_mass;
-    }
-    // hal.console->printf("current_com: x=%.3f, y=%.3f, z=%.3f\n", com.x, com.y, com.z);
-
-    return com;
-}
-
 Vector3f AP_QuadRuped::get_body_position()
 {
-    Vector3f body_centre_local(0, 0, 0);
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        body_centre_local += endpoint_leg_frame[leg_index];
+        body_centre += endpoint_leg_frame[leg_index];
     }
-    body_centre_local /= LEG_ALL;
-
-    float current_roll  = degrees(_ahrs->roll);
-    float current_pitch = degrees(_ahrs->pitch);
-    float current_yaw   = degrees(_ahrs->yaw);
-    // 构造旋转四元数
-    Quaternion body_quat;
-    body_quat.from_euler(current_roll, current_pitch, current_yaw);
-    // 转换到世界坐标系（假设初始位置为原点）
-    Vector3f body_pos_global = body_quat * body_centre_local;
-    // 叠加主动重心偏移量（如果启用了重心控制）
-    body_pos_global += _current_com_offset;
-
-    return body_pos_global;
+    body_centre /= LEG_ALL;
+    return body_centre;
 }
 
-Vector3f AP_QuadRuped::get_leg_com_position(uint8_t leg_index)
+// 设置目标重心偏移
+void AP_QuadRuped::set_centre_offset(float x, float y, float z = 0)
 {
-    // 计算腿的重心在机体坐标系中的位置（重心近似位于腿的几何中心）
-    Vector3f leg_com_local;
-    Vector3f foot_pos_local = body_forward_kinematics(leg_index); // 足端位置（机体坐标系）
-    // 简化模型：腿重心 = 髋关节位置 + 足端位置除以2
-    leg_com_local = endpoint_leg_frame[leg_index] + (foot_pos_local - endpoint_leg_frame[leg_index]) * 0.5f;
-    // 获取机身姿态
-    Quaternion body_quat;
-    body_quat.from_euler(_ahrs->roll, _ahrs->pitch, _ahrs->yaw);
-    // 转换到世界坐标系
-    Vector3f leg_com_global = body_quat * leg_com_local;
-    // 叠加机身全局位置
-    leg_com_global += get_body_position();
-
-    return leg_com_global;
-}
-
-// 设置目标重心偏移 (世界坐标系)
-void AP_QuadRuped::set_com_offset(float x, float y, float z = 0)
-{
-    _active_com_offset = Vector3f(x, y, z);
-}
-
-void AP_QuadRuped::update_com_control()
-{
-    float dt = 1.0f / gait_hz;
-    // hal.console->printf("body_offset_target: x=%.3f, y=%.3f, z=%.3f\n", body_offset_target.x, body_offset_target.y, body_offset_target.z);
-    // PID控制平滑过渡
-    calculate_com_position();
-    _active_com_offset.x = _com_x_pid.update_all( _active_com_offset.x, com.x, dt);
-    _active_com_offset.y = _com_y_pid.update_all( _active_com_offset.y, com.y, dt);
-    hal.console->printf("current_com: x=%.3f, y=%.3f, z=%.3f\n", com.x, com.y, com.z);
-    hal.console->printf("_active_com_offset: x=%.3f, y=%.3f, z=%.3f\n", _active_com_offset.x, _active_com_offset.y, _active_com_offset.z);
-    // 限制偏移范围（防止过度倾斜）
-    _active_com_offset.x = constrain_float(_active_com_offset.x, -FRAME_LEN / 3, FRAME_LEN / 3);
-    _active_com_offset.y = constrain_float(_active_com_offset.y, -FRAME_WIDTH / 3, FRAME_WIDTH / 3);
+    centre_offset = Vector3f(x, y, z);
 }
 
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
@@ -356,7 +283,7 @@ Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
     // 添加重心偏移补偿
-    totaldist_xyz -= _active_com_offset;
+    totaldist_xyz -= centre_offset;
 
     totaldist_xyz.z += z_travel;
 
@@ -411,9 +338,6 @@ void AP_QuadRuped::main_inverse_kinematics(void)
     controller();
 
     // const float endpoint_leg_angle_dir[LEG_ALL] = { 1, 1, 1, 1 };
-
-    // 更新重心控制
-    update_com_control();
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
 
@@ -542,18 +466,18 @@ void AP_QuadRuped::balance_controller()
     }
 
     // 添加新的遥控通道处理
-    if (channel.com_offset_x_channel != -1) {
-        float val = constrain_value((float)rc().get_radio_in(channel.com_offset_x_channel - 1), (float)1000, (float)2000);
+    if (channel.centre_offset_x_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_x_channel - 1), (float)1000, (float)2000);
         if (val > 1525 || val < 1475) {                      // 死区检测
             float offset_x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
-            set_com_offset(offset_x, 0);
+            set_centre_offset(offset_x, 0);
         }
     }
-    if (channel.com_offset_y_channel != -1) {
-        float val = constrain_value((float)rc().get_radio_in(channel.com_offset_y_channel - 1), (float)1000, (float)2000);
+    if (channel.centre_offset_y_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_y_channel - 1), (float)1000, (float)2000);
         if (val > 1525 || val < 1475) {                      // 死区检测
             float offset_y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
-            set_com_offset(0, offset_y);
+            set_centre_offset(0, offset_y);
         }
     }
 }
