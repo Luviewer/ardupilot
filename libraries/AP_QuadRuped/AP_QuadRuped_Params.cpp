@@ -1,9 +1,9 @@
 #include "AP_QuadRuped_Params.h"
 
 const AP_Param::GroupInfo AP_QuadRuped_Params::var_info[] = {
-    AP_GROUPINFO("C_DIR", 1, AP_QuadRuped_Params, _COXA_DIR, 0),
-    AP_GROUPINFO("F_DIR", 2, AP_QuadRuped_Params, _FEMU_DIR, 0),
-    AP_GROUPINFO("T_DIR", 3, AP_QuadRuped_Params, _TIBI_DIR, 0),
+    AP_GROUPINFO("C_DIR", 1, AP_QuadRuped_Params, _COXA_DIR, 1),
+    AP_GROUPINFO("F_DIR", 2, AP_QuadRuped_Params, _FEMU_DIR, 1),
+    AP_GROUPINFO("T_DIR", 3, AP_QuadRuped_Params, _TIBI_DIR, 1),
 
     AP_GROUPINFO("C_OFS", 4, AP_QuadRuped_Params, _COXA_OFS, 0),
     AP_GROUPINFO("F_OFS", 5, AP_QuadRuped_Params, _FEMU_OFS, 0),

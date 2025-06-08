@@ -6,6 +6,10 @@
 
 extern const AP_HAL::HAL& hal;
 
+#define LEG_MOTOR_MAX_DEG       (120)
+#define LEG_MOTOR_MAX_PWM       (500)
+#define LEG_MOTOR_PWM_MIDDLE    (1500)
+
 #define COXA_LEN_DEFAULT        47.1f
 #define FEMUR_LEN_DEFAULT       133.0f
 #define TIBIA_LEN_DEFAULT       144.1f
@@ -371,15 +375,17 @@ bool AP_QuadRuped::servo_estimate(void) // 定时触发器，用于判断是否�
     return false;
 }
 
-void AP_QuadRuped::left_sleep_leg(void)
+void AP_QuadRuped::right_sleep_leg(void)
 {
-    uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
+    uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
 
-        pwm_coxa  = leg_param[leg_index]._COXA_DIR * 45 * 500 / 120 + 1500;
-        pwm_femur = leg_param[leg_index]._FEMU_DIR * -65 * 500 / 120 + 1500;
-        pwm_tibia = leg_param[leg_index]._TIBI_DIR * 30 * 500 / 120 + 1500;
+        pwm_coxa  = leg_param[leg_index]._COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index]._FEMU_DIR * -65 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index]._TIBI_DIR * 30 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 将计算出的PWM值存入输出命令数组
         servo_output_cmd[leg_index].x = pwm_coxa;
@@ -398,12 +404,14 @@ void AP_QuadRuped::reset_leg(void)
 
 void AP_QuadRuped::output_leg_angle(void)
 {
-    uint16_t pwm_coxa = 1500, pwm_femur = 1500, pwm_tibia = 1500;
+    uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        pwm_coxa  = leg_param[leg_index]._COXA_DIR * endpoint_leg_angle[leg_index].x * 500 / 120 + 1500;
-        pwm_femur = leg_param[leg_index]._FEMU_DIR * endpoint_leg_angle[leg_index].y * 500 / 120 + 1500;
-        pwm_tibia = leg_param[leg_index]._TIBI_DIR * endpoint_leg_angle[leg_index].z * 500 / 120 + 1500;
+        pwm_coxa  = leg_param[leg_index]._COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index]._FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index]._TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 存储PWM命令
         servo_output_cmd[leg_index].x = pwm_coxa;
@@ -465,21 +473,28 @@ void AP_QuadRuped::balance_controller()
         yaw_travel = 0;
     }
 
+    // 重心平移控制
+    Vector2f offset_xy;
     // 添加新的遥控通道处理
     if (channel.centre_offset_x_channel != -1) {
         float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_x_channel - 1), (float)1000, (float)2000);
-        if (val > 1525 || val < 1475) {                      // 死区检测
-            float offset_x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
-            set_centre_offset(offset_x, 0);
+        if (val > 1475 && val < 1525) { // 死区检测
+            val = 1500;
         }
+        offset_xy.x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+    } else {
+        offset_xy.x = 0;
     }
     if (channel.centre_offset_y_channel != -1) {
         float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_y_channel - 1), (float)1000, (float)2000);
-        if (val > 1525 || val < 1475) {                      // 死区检测
-            float offset_y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
-            set_centre_offset(0, offset_y);
-        }
+        if (val > 1475 && val < 1525) { // 死区检测
+            val = 1500;
+        } // 死区检测
+        offset_xy.y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+    } else {
+        offset_xy.y = 0;
     }
+    set_centre_offset(offset_xy.x, offset_xy.y);
 }
 
 void AP_QuadRuped::controller()

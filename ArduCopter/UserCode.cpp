@@ -33,7 +33,7 @@ void Copter::userhook_FastLoop()
             qrupd.main_inverse_kinematics();
             qrupd.output_leg_angle();
         } else {
-            qrupd.left_sleep_leg();
+            qrupd.right_sleep_leg();
         }
         qrupd.hw_set_servo_cmd();   // 发送舵机控制命令
     }

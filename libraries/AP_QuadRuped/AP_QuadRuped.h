@@ -195,7 +195,7 @@ public:
     bool servo_estimate();
 
     void reset_leg(void);
-    void left_sleep_leg(void);
+    void right_sleep_leg(void);
     void update_leg();
 
     void controller(void);
