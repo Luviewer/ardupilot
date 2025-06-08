@@ -42,21 +42,6 @@ protected:
     /* 抬腿的高度 */
     AP_Float leg_lift_height;
 
-    /* COXA的长度 */
-    AP_Float COXA_LEN;
-
-    /* FEMUR的长度 */
-    AP_Float FEMUR_LEN;
-
-    /* TIBIA的长度 */
-    AP_Float TIBIA_LEN;
-
-    /* 机身的X长度 */
-    AP_Float FRAME_LEN;
-
-    /* 机身的Y长度 */
-    AP_Float FRAME_WIDTH;
-
     /* 步态计算频率 */
     AP_Float gait_hz;
 
@@ -85,6 +70,8 @@ protected:
     /* 四足末端需要走的位置 */
     Vector3f gait_pos_xyz[LEG_ALL];
 
+    AP_QuadRuped_SYS_Params Sys_Param;
+
     AP_QuadRuped_Params leg_param[LEG_ALL];
 
     AP_QuadRuped_CHANNEL_Params channel;
@@ -101,8 +88,7 @@ protected:
     float max_yaw_rate; // 最大允许角速度（rad/s）
     bool  first_run = true;
 
-    Vector3f centre_offset;      // 主动控制的重心偏移量
-
+    Vector3f centre_offset; // 主动控制的重心偏移量
 
     uint32_t start_time;
 
@@ -121,7 +107,7 @@ protected:
             .srmax     = 0,
             .srtau     = 1.0 }
     };
-    
+
     AC_PID wave_yaw_pid {
         AC_PID::Defaults {
             .p         = 0.5f,
@@ -166,7 +152,7 @@ protected:
     Vector3ui servo_output_cmd[LEG_ALL];
 
     // 添加重心控制方法
-    Vector3f body_centre{ 0, 0, 0 };
+    Vector3f body_centre { 0, 0, 0 };
     void     set_centre_offset(float x, float y, float z);
     Vector3f get_body_position();
 

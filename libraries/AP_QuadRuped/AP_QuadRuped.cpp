@@ -10,41 +10,33 @@ extern const AP_HAL::HAL& hal;
 #define LEG_MOTOR_MAX_PWM       (500)
 #define LEG_MOTOR_PWM_MIDDLE    (1500)
 
-#define COXA_LEN_DEFAULT        47.1f
-#define FEMUR_LEN_DEFAULT       133.0f
-#define TIBIA_LEN_DEFAULT       144.1f
-#define FRAME_LEN_DEFAULT       185.0f
-#define FRAME_WIDTH_DEFAULT     185.0f
 #define LIFT_HEIGHT_DEFAULT     50.0f
 #define SPEED_HZ_DEFAULT        25.0f
 #define MAX_THROTTLE_DEFAULT    200.0f
 #define GAIT_STEP_TOTAL_DEFAULT 12
 
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
-    AP_GROUPINFO("_COXA", 1, AP_QuadRuped, COXA_LEN, COXA_LEN_DEFAULT),
-    AP_GROUPINFO("_FEMUR", 2, AP_QuadRuped, FEMUR_LEN, FEMUR_LEN_DEFAULT),
-    AP_GROUPINFO("_TIBIA", 3, AP_QuadRuped, TIBIA_LEN, TIBIA_LEN_DEFAULT),
-    AP_GROUPINFO("_FLEN", 4, AP_QuadRuped, FRAME_LEN, FRAME_LEN_DEFAULT),
-    AP_GROUPINFO("_FWID", 5, AP_QuadRuped, FRAME_WIDTH, FRAME_WIDTH_DEFAULT),
 
-    AP_GROUPINFO("_LIFT", 6, AP_QuadRuped, leg_lift_height, LIFT_HEIGHT_DEFAULT),
-    AP_GROUPINFO("_Hz", 7, AP_QuadRuped, gait_hz, SPEED_HZ_DEFAULT),
+    AP_GROUPINFO("_LIFT", 1, AP_QuadRuped, leg_lift_height, LIFT_HEIGHT_DEFAULT),
+    AP_GROUPINFO("_Hz", 2, AP_QuadRuped, gait_hz, SPEED_HZ_DEFAULT),
 
-    AP_GROUPINFO("_THR", 8, AP_QuadRuped, throttle_max, MAX_THROTTLE_DEFAULT),
-    AP_GROUPINFO("_STEP", 9, AP_QuadRuped, gait_step_total, GAIT_STEP_TOTAL_DEFAULT),
+    AP_GROUPINFO("_THR", 3, AP_QuadRuped, throttle_max, MAX_THROTTLE_DEFAULT),
+    AP_GROUPINFO("_STEP", 4, AP_QuadRuped, gait_step_total, GAIT_STEP_TOTAL_DEFAULT),
 
-    AP_SUBGROUPINFO(channel, "_CH_", 15, AP_QuadRuped, AP_QuadRuped_CHANNEL_Params),
+    AP_SUBGROUPINFO(Sys_Param, "_SYS", 5, AP_QuadRuped, AP_QuadRuped_SYS_Params),
 
-    AP_SUBGROUPINFO(leg_param[Leg_RF], "_RF_", 17, AP_QuadRuped, AP_QuadRuped_Params),
-    AP_SUBGROUPINFO(leg_param[Leg_RB], "_RB_", 18, AP_QuadRuped, AP_QuadRuped_Params),
-    AP_SUBGROUPINFO(leg_param[Leg_LB], "_LB_", 19, AP_QuadRuped, AP_QuadRuped_Params),
-    AP_SUBGROUPINFO(leg_param[Leg_LF], "_LF_", 20, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(channel, "_CH_", 6, AP_QuadRuped, AP_QuadRuped_CHANNEL_Params),
 
-    AP_SUBGROUPINFO(roll_pid, "_RLL_", 22, AP_QuadRuped, AC_PID),
-    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 23, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(leg_param[Leg_RF], "_RF_", 7, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(leg_param[Leg_RB], "_RB_", 8, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(leg_param[Leg_LB], "_LB_", 9, AP_QuadRuped, AP_QuadRuped_Params),
+    AP_SUBGROUPINFO(leg_param[Leg_LF], "_LF_", 10, AP_QuadRuped, AP_QuadRuped_Params),
 
-    AP_SUBGROUPINFO(diag_yaw_pid, "_DYAW_", 41, AP_QuadRuped, AC_PID),
-    AP_SUBGROUPINFO(wave_yaw_pid, "_WYAW_", 42, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(roll_pid, "_RLL_", 11, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(pitch_pid, "_PIT_", 12, AP_QuadRuped, AC_PID),
+
+    AP_SUBGROUPINFO(diag_yaw_pid, "_DYAW_", 13, AP_QuadRuped, AC_PID),
+    AP_SUBGROUPINFO(wave_yaw_pid, "_WYAW_", 14, AP_QuadRuped, AC_PID),
 
     AP_GROUPEND
 };
@@ -62,12 +54,12 @@ AP_QuadRuped::AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors)
 
     // leg_lift_height = 80; // leg lift height(in mm) while walking
 
-    // COXA_LEN  = 47.1; // distance (in mm) from coxa (aka hip) servo to femur servo
-    // FEMUR_LEN = 133;  // distance (in mm) from femur servo to tibia servo
-    // TIBIA_LEN = 144;  // distance (in mm) from tibia servo to foot
+    // Sys_Param.COXA_LEN  = 47.1; // distance (in mm) from coxa (aka hip) servo to femur servo
+    // Sys_Param.FEMUR_LEN = 133;  // distance (in mm) from femur servo to tibia servo
+    // Sys_Param.TIBIA_LEN = 144;  // distance (in mm) from tibia servo to foot
 
-    // FRAME_LEN   = 185; // frame length in mm
-    // FRAME_WIDTH = 185; // frame width in mm
+    // Sys_Param.FRAME_LEN   = 185; // frame length in mm
+    // Sys_Param.FRAME_WIDTH = 185; // frame width in mm
 }
 
 #define START_COXA_ANGLE 45
@@ -78,23 +70,23 @@ void AP_QuadRuped::init(void)
     // 每条腿按90度间隔分布 (Each leg is spaced 90 degrees apart)
     // 计算腿部末端执行器在机体坐标系中的位置 (Calculate end effector position in body frame)
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        // X坐标: (COXA_LEN + FEMUR_LEN) * sin(角度)
-        // Y坐标: (COXA_LEN + FEMUR_LEN) * cos(角度)
-        // Z坐标: TIBIA_LEN (胫骨长度决定初始高度)
-        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
-                                               cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (COXA_LEN + FEMUR_LEN),
-                                               TIBIA_LEN);
+        // X坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * sin(角度)
+        // Y坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * cos(角度)
+        // Z坐标: Sys_Param.TIBIA_LEN (胫骨长度决定初始高度)
+        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+                                               cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+                                               Sys_Param.TIBIA_LEN);
     }
 
     // 初始化腿部框架位置 (Initialize leg frame positions)
     // 计算每条腿的髋关节在机体坐标系中的位置 (Calculate hip joint position in body frame)
     // 使用与腿部位置相同的角度基准 (Using same angle reference as leg positions)
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        // X坐标: FRAME_LEN * sin(角度) - 决定前后位置
-        // Y坐标: FRAME_WIDTH * cos(角度) - 决定左右位置
+        // X坐标: Sys_Param.FRAME_LEN * sin(角度) - 决定前后位置
+        // Y坐标: Sys_Param.FRAME_WIDTH * cos(角度) - 决定左右位置
         // Z坐标: 0 (髋关节与机体在同一平面)
-        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_LEN * 0.5f,
-                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE - leg_index * 90)) * FRAME_WIDTH * 0.5f,
+        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_LEN * 0.5f,
+                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
                                                  0);
     }
 
@@ -282,7 +274,7 @@ void AP_QuadRuped::update_leg()
 Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
 {
     // gait_pos_xyz：步态生成的目标位置
-    // endpoint_leg_pos：腿部初始展开位置（代码中初始化为(COXA_LEN + FEMUR_LEN)*sin(45°), ...）
+    // endpoint_leg_pos：腿部初始展开位置（代码中初始化为(Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN)*sin(45°), ...）
     // endpoint_leg_frame：机体框架几何尺寸（机体的几何偏移）（如FRAME_LEN和FRAME_WIDTH）
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
@@ -314,16 +306,16 @@ Vector3f AP_QuadRuped::leg_inverse_kinematics(Vector3f posxyz)
 
     leg_deg.x = -degrees(atan2f(posxyz.x, posxyz.y));
 
-    float trueX = sqrtf(posxyz.x * posxyz.x + posxyz.y * posxyz.y) - COXA_LEN; // trueX: 从髋关节到末端在XY平面投影的直线距离减去大腿长度
-    float im    = sqrtf(trueX * trueX + posxyz.z * posxyz.z);                  // im: 从股关节到末端的直线距离(空间距离)
-    float q1    = atan2f(trueX, posxyz.z);                                     // q1: 临时角度变量1 - 股关节与末端连线与垂直方向的夹角
-    float d1    = FEMUR_LEN * FEMUR_LEN - TIBIA_LEN * TIBIA_LEN + im * im;     // q2: 临时角度变量2 - 余弦定理计算得到的角度
-    float d2    = 2 * FEMUR_LEN * im;                                          // d1, d2: 余弦定理计算中的中间变量
+    float trueX = sqrtf(posxyz.x * posxyz.x + posxyz.y * posxyz.y) - Sys_Param.COXA_LEN;                           // trueX: 从髋关节到末端在XY平面投影的直线距离减去大腿长度
+    float im    = sqrtf(trueX * trueX + posxyz.z * posxyz.z);                                                      // im: 从股关节到末端的直线距离(空间距离)
+    float q1    = atan2f(trueX, posxyz.z);                                                                         // q1: 临时角度变量1 - 股关节与末端连线与垂直方向的夹角
+    float d1    = Sys_Param.FEMUR_LEN * Sys_Param.FEMUR_LEN - Sys_Param.TIBIA_LEN * Sys_Param.TIBIA_LEN + im * im; // q2: 临时角度变量2 - 余弦定理计算得到的角度
+    float d2    = 2 * Sys_Param.FEMUR_LEN * im;                                                                    // d1, d2: 余弦定理计算中的中间变量
     float q2    = acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f));
     leg_deg.y   = -(degrees(q1 + q2) - 90);
 
-    d1        = FEMUR_LEN * FEMUR_LEN - im * im + TIBIA_LEN * TIBIA_LEN;
-    d2        = 2 * TIBIA_LEN * FEMUR_LEN;
+    d1        = Sys_Param.FEMUR_LEN * Sys_Param.FEMUR_LEN - im * im + Sys_Param.TIBIA_LEN * Sys_Param.TIBIA_LEN;
+    d2        = 2 * Sys_Param.TIBIA_LEN * Sys_Param.FEMUR_LEN;
     leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90);
 
     return leg_deg;
@@ -383,9 +375,9 @@ void AP_QuadRuped::right_sleep_leg(void)
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
 
-        pwm_coxa  = leg_param[leg_index]._COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
-        pwm_femur = leg_param[leg_index]._FEMU_DIR * -65 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
-        pwm_tibia = leg_param[leg_index]._TIBI_DIR * 30 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_coxa  = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index].FEMU_DIR * -65 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * 30 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 将计算出的PWM值存入输出命令数组
         servo_output_cmd[leg_index].x = pwm_coxa;
@@ -409,9 +401,9 @@ void AP_QuadRuped::output_leg_angle(void)
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE;
 
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        pwm_coxa  = leg_param[leg_index]._COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
-        pwm_femur = leg_param[leg_index]._FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
-        pwm_tibia = leg_param[leg_index]._TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_coxa  = leg_param[leg_index].COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index].FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 存储PWM命令
         servo_output_cmd[leg_index].x = pwm_coxa;
@@ -536,16 +528,16 @@ bool AP_QuadRuped::hw_set_servo_cmd()
 
     // 遍历所有腿部(LEG_ALL=4)
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param[leg_index]._COXA_OFS;
-        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param[leg_index]._FEMU_OFS;
-        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + leg_param[leg_index]._TIBI_OFS;
+        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param[leg_index].COXA_OFS;
+        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param[leg_index].FEMU_OFS;
+        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + leg_param[leg_index].TIBI_OFS;
 
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_coxa + leg_index * 3),
-                                     servo_output_cmd[leg_index].x + leg_param[leg_index]._COXA_OFS);
+                                     servo_output_cmd[leg_index].x + leg_param[leg_index].COXA_OFS);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_femu + leg_index * 3),
-                                     servo_output_cmd[leg_index].y + leg_param[leg_index]._FEMU_OFS);
+                                     servo_output_cmd[leg_index].y + leg_param[leg_index].FEMU_OFS);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_tibi + leg_index * 3),
-                                     servo_output_cmd[leg_index].z + leg_param[leg_index]._TIBI_OFS);
+                                     servo_output_cmd[leg_index].z + leg_param[leg_index].TIBI_OFS);
     }
 
     // 这段代码的主要功能是在所有可用的CAN总线接口上广播伺服控制命令(com_usl_servocmd消息)。
