@@ -11,9 +11,9 @@
 
 enum {
     Leg_RF = 0,
-    Leg_RB,
-    Leg_LB,
     Leg_LF,
+    Leg_LB,
+    Leg_RB,
 
     LEG_ALL,
 };
@@ -90,6 +90,8 @@ protected:
 
     Vector3f centre_offset; // 主动控制的重心偏移量
 
+    Vector2f offset_xy; // 重心平移控制
+
     uint32_t start_time;
 
     AP_AHRS_View*&         _ahrs;
@@ -147,14 +149,29 @@ protected:
             .srtau     = 1.0 }
     };
 
-    float aim_yaw;
+    float   aim_yaw;
+    float   wave_balance_factor = 0.4f; // 波浪步态补偿系数
+    uint8_t last_lifted_leg     = 0;    // 记录上一步抬起的腿
 
     Vector3ui servo_output_cmd[LEG_ALL];
 
     // 添加重心控制方法
     Vector3f body_centre { 0, 0, 0 };
     void     set_centre_offset(float x, float y, float z);
-    Vector3f get_body_position();
+    Vector2f wave_balance_offset; // 波浪步态专用平衡补偿
+    Vector2f support_triangle_center;
+    Vector3f support_center { 0, 0, 0 };
+    uint8_t  support_count = 0;
+    void     update_centre_offset(uint8_t lifting_leg);
+    bool     is_transitioning = false;
+    float    transition_progress;
+
+    // 线性插值辅助函数
+    Vector3f lerp(const Vector3f& a, const Vector3f& b, float t) const
+    {
+        t = constrain_value(t, 0.0f, 1.0f);
+        return a + (b - a) * t;
+    }
 
 public:
     AP_QuadRuped(AP_AHRS_View*& ahrs, AP_MotorsMulticopter*& motors);

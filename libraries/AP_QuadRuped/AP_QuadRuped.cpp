@@ -73,8 +73,8 @@ void AP_QuadRuped::init(void)
         // X坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * sin(角度)
         // Y坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * cos(角度)
         // Z坐标: Sys_Param.TIBIA_LEN (胫骨长度决定初始高度)
-        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
-                                               cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE + leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+                                               cosf(radians(START_COXA_ANGLE + leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
                                                Sys_Param.TIBIA_LEN);
     }
 
@@ -85,8 +85,8 @@ void AP_QuadRuped::init(void)
         // X坐标: Sys_Param.FRAME_LEN * sin(角度) - 决定前后位置
         // Y坐标: Sys_Param.FRAME_WIDTH * cos(角度) - 决定左右位置
         // Z坐标: 0 (髋关节与机体在同一平面)
-        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_LEN * 0.5f,
-                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
+        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE + leg_index * 90)) * Sys_Param.FRAME_LEN * 0.5f,
+                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE + leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
                                                  0);
     }
 
@@ -100,11 +100,6 @@ void AP_QuadRuped::init(void)
 
 void AP_QuadRuped::gait_select(void)
 {
-    // gait_step_total       = 6;
-    // gait_lifted_steps     = 2;
-    // gait_down_steps       = 1;
-    // gait_half_lift_height = 1;
-    // gait_travel_divisor   = 4;
     if (gait_type == GAIT_DIAGONAL) {
         gait_step_leg_start[Leg_RF] = 1;
         gait_step_leg_start[Leg_RB] = gait_step_total / 2 + 1;
@@ -115,13 +110,15 @@ void AP_QuadRuped::gait_select(void)
         gait_lift_divisor   = 2;
     } else if (gait_type == GAIT_WAVE) {
         // 波浪步态设置 - 四条腿依次移动
-        gait_step_leg_start[Leg_RF] = 2 * gait_step_total / 3 + 1;
-        gait_step_leg_start[Leg_LF] = 1;
-        gait_step_leg_start[Leg_LB] = gait_step_total;
-        gait_step_leg_start[Leg_RB] = gait_step_total / 3 + 1;
+        // 波浪步态设置 - 四条腿依次移动
+        gait_step_leg_start[Leg_RF] = 0;                       // 右前腿
+        gait_step_leg_start[Leg_LF] = gait_step_total / 4;     // 左前腿
+        gait_step_leg_start[Leg_LB] = gait_step_total / 2;     // 左后腿
+        gait_step_leg_start[Leg_RB] = 3 * gait_step_total / 4; // 右后腿
 
-        gait_travel_divisor = gait_step_total / 3;
-        gait_lift_divisor   = 3;
+        // 调整步态参数
+        gait_travel_divisor = gait_step_total / 4;
+        gait_lift_divisor   = 4;
     }
 }
 
@@ -139,15 +136,6 @@ void AP_QuadRuped::calc_gait_sequence(void)
     } else {
         reset_leg();
     }
-}
-
-Vector3f AP_QuadRuped::get_body_position()
-{
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
-        body_centre += endpoint_leg_frame[leg_index];
-    }
-    body_centre /= LEG_ALL;
-    return body_centre;
 }
 
 // 设置目标重心偏移
@@ -172,15 +160,13 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
     }
 
     if (gait_type == GAIT_DIAGONAL) {
-        if (delta_step <= (gait_step_total / 2)) {               // 抬起移动阶段
-            delta = M_2PI * delta_step / gait_step_total * 2.0f; // 将当前步态相位映射到0-2π范围
-            // leg_xy_target = Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI * 2.0f - Vector2f(throttle_travel, 0);
+        if (delta_step <= (gait_step_total / 2)) {                                                       // 抬起移动阶段
+            delta            = M_2PI * delta_step / gait_step_total * 2.0f;                              // 将当前步态相位映射到0-2π范围
             leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 最终将范围平移为[-throttle_travel → +throttle_travel]，将轨迹中心从throttle_travel移动到坐标系原点（0点）
             leg_xy_target[1] = 0;
             leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * 1.0f; // 形成山峰形状
         } else {                                                               // 支撑返回阶段
-            delta = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;
-            // leg_xy_target = -Vector2f(throttle_travel, 0) * (delta - sinf(delta)) / M_2PI * 2.0f + Vector2f(throttle_travel, 0);
+            delta            = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;
             leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel; //[+throttle_travel → -throttle_travel]，核心作用是通过坐标平移实现运动方向反转和相位同步
             leg_xy_target[1] = 0;
             leg_z_target     = 0;
@@ -188,22 +174,21 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
     }
 
     else if (gait_type == GAIT_WAVE) {
-        // 波浪步态轨迹生成
-        if (delta_step <= (gait_step_total / 4)) {
-            // 使用更平滑的三段式轨迹
-            float phase      = (float)delta_step / (gait_step_total / 4);
-            leg_xy_target[0] = throttle_travel * (phase - sinf(phase * M_2PI) / M_2PI) * 2.0f; // 钟型曲线，由于1-cosf(delta)的导数特性，运动开始和结束时的速度为0    M_2PI * 4.0f：适配波浪步态的1/4周期时间窗口
+        if (delta_step <= gait_step_total / 4) {
+            // 抬腿 + 前移阶段
+            delta            = M_2PI * delta_step / gait_step_total * 4.0f;                              // 将当前步态相位映射到0-2π范围
+            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 光滑前移
             leg_xy_target[1] = 0;
-            leg_z_target     = -leg_lift_height * (1.0f - cosf(phase * M_PI)) * 1.8f; // 抬升之后放下
-        } else {
-            float phase      = (float)(delta_step - gait_step_total * 3 / 4) / (gait_step_total / 4);
-            leg_xy_target[0] = -throttle_travel * (1.0f + (phase - sinf(phase * M_2PI) / M_2PI) * 2.0f);
+            leg_z_target     = -leg_lift_height * (delta - cosf(delta)) / 1.0f; // 平滑抬腿（从0升到最大）
+        } else if (delta_step <= gait_step_total * 3 / 4) {
+            // 向后移、落腿阶段
+            delta            = M_2PI * (delta_step - gait_step_total / 4) / (3 * gait_step_total / 4); // 归一化到 [0, 1]
+            leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel;              // 平滑后移
             leg_xy_target[1] = 0;
-            leg_z_target     = -leg_lift_height * (1.0f - cosf((1.0f - phase) * M_PI)) * 0.5f;
-            ;
+            leg_z_target     = 0; // 平滑落地（从最大降到0）
         }
+        gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target); // x：横向移动（如左右踏步）    y：前后移动（如前进/后退）
     }
-    gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target); // x：横向移动（如左右踏步）    y：前后移动（如前进/后退）
 }
 
 void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
@@ -231,19 +216,21 @@ void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
 
     else if (gait_type == GAIT_WAVE) {
         // 更平滑的偏航控制曲线
-        float progress = (float)delta_step / gait_step_total;
 
-        if (progress < 0.25f) {
-            // 抬腿阶段: 逐渐增加偏航
-            float phase           = progress * 4.0f;
-            gait_rot_z[leg_index] = yaw_travel * (1.0f - cosf(phase * M_PI)) / 4.0f;
-        } else if (progress < 0.75f) {
-            // 支撑阶段: 保持偏航
-            gait_rot_z[leg_index] = yaw_travel / 2.0f;
+        if (delta_step <= (gait_step_total / 4)) {
+            // 抬腿阶段(重心已提前转移)
+            float phase               = (float)delta_step / (gait_step_total / 4);
+            gait_pos_xyz[leg_index].x = throttle_travel * (phase - sinf(phase * M_2PI) / M_2PI) * 2.0f;
+            gait_pos_xyz[leg_index].z = -leg_lift_height * (1.0f - cosf(phase * M_PI)) * 1.8f;
+        } else if (delta_step <= (gait_step_total * 3 / 4)) {
+            // 移动阶段
+            float phase               = (float)(delta_step - gait_step_total / 4) / (gait_step_total / 2);
+            gait_pos_xyz[leg_index].x = throttle_travel * (1.0f - phase);
         } else {
-            // 放下阶段: 逐渐减少偏航
-            float phase           = (progress - 0.75f) * 4.0f;
-            gait_rot_z[leg_index] = yaw_travel * (1.0f + cosf(phase * M_PI)) / 4.0f;
+            // 放下阶段
+            float phase               = (float)(delta_step - gait_step_total * 3 / 4) / (gait_step_total / 4);
+            gait_pos_xyz[leg_index].x = -throttle_travel * phase;
+            gait_pos_xyz[leg_index].z = -leg_lift_height * (1.0f - cosf((1.0f - phase) * M_PI)) * 0.5f;
         }
 
         // 根据腿的位置调整偏航量
@@ -264,11 +251,41 @@ void AP_QuadRuped::update_leg()
 {
     gait_step_now++;
     if (gait_step_now > gait_step_total) gait_step_now = 0;
-    // float dir = 1;
+
     for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
+        int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
+        if (delta_step < 0) delta_step += gait_step_total;
+        // update_centre_offset(moving_leg);
+        // set_centre_offset(offset_xy.x, offset_xy.y);
         trajectory_generation(moving_leg);
         yaw_trajectory_generation(moving_leg);
     }
+}
+
+void AP_QuadRuped::update_centre_offset(uint8_t leg_index)
+{
+    if (gait_type != GAIT_WAVE) {
+        return; // 仅对波浪步态应用
+    }
+    switch (leg_index) {
+        case Leg_RF: // 右前腿
+            offset_xy.x += -60;
+            offset_xy.y += -60;
+            break;
+        case Leg_LB: // 左后腿
+            offset_xy.x += 60;
+            offset_xy.y += 60;
+            break;
+        case Leg_LF: // 左前腿
+            offset_xy.x += -60;
+            offset_xy.y += 60;
+            break;
+        case Leg_RB: // 右后腿
+            offset_xy.x += 60;
+            offset_xy.y += -60;
+            break;
+    }
+    hal.console->printf("offset.x=%f\n,offset.y=%f\n", offset_xy.x, offset_xy.y);
 }
 
 Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
@@ -327,9 +344,9 @@ void AP_QuadRuped::main_inverse_kinematics(void)
 
     const Vector3f endpoint_leg_angle_offset[LEG_ALL] = {
         { 45, 0, 0 },
-        { -45, 0, 0 },
-        { -135, 0, 0 },
-        { -225, 0, 0 }
+        { 135, 0, 0 },
+        { 225, 0, 0 },
+        { 315, 0, 0 }
     }; // {髋关节角度， 股关节角度， 胫关节角度}   只有髋关节需要补偿
     controller();
 
@@ -465,8 +482,6 @@ void AP_QuadRuped::balance_controller()
         yaw_travel = 0;
     }
 
-    // 重心平移控制
-    Vector2f offset_xy;
     // 添加新的遥控通道处理
     if (channel.centre_offset_x_channel != -1) {
         float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_x_channel - 1), (float)1000, (float)2000);
@@ -486,7 +501,6 @@ void AP_QuadRuped::balance_controller()
     } else {
         offset_xy.y = 0;
     }
-    set_centre_offset(offset_xy.x, offset_xy.y);
 }
 
 void AP_QuadRuped::controller()
