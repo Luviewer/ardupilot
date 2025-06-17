@@ -73,8 +73,8 @@ void AP_QuadRuped::init(void)
         // X坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * sin(角度)
         // Y坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * cos(角度)
         // Z坐标: Sys_Param.TIBIA_LEN (胫骨长度决定初始高度)
-        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE + leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
-                                               cosf(radians(START_COXA_ANGLE + leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+                                               cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
                                                Sys_Param.TIBIA_LEN);
     }
 
@@ -85,8 +85,8 @@ void AP_QuadRuped::init(void)
         // X坐标: Sys_Param.FRAME_LEN * sin(角度) - 决定前后位置
         // Y坐标: Sys_Param.FRAME_WIDTH * cos(角度) - 决定左右位置
         // Z坐标: 0 (髋关节与机体在同一平面)
-        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE + leg_index * 90)) * Sys_Param.FRAME_LEN * 0.5f,
-                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE + leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
+        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_LEN * 0.5f,
+                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
                                                  0);
     }
 
@@ -344,9 +344,9 @@ void AP_QuadRuped::main_inverse_kinematics(void)
 
     const Vector3f endpoint_leg_angle_offset[LEG_ALL] = {
         { 45, 0, 0 },
-        { 135, 0, 0 },
-        { 225, 0, 0 },
-        { 315, 0, 0 }
+        { -45, 0, 0 },
+        { -135, 0, 0 },
+        { -225, 0, 0 }
     }; // {髋关节角度， 股关节角度， 胫关节角度}   只有髋关节需要补偿
     controller();
 

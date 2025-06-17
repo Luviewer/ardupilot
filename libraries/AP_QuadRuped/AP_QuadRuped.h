@@ -11,9 +11,9 @@
 
 enum {
     Leg_RF = 0,
-    Leg_LF,
-    Leg_LB,
     Leg_RB,
+    Leg_LB,
+    Leg_LF,
 
     LEG_ALL,
 };
