@@ -163,6 +163,7 @@ protected:
     Vector3f support_center { 0, 0, 0 };
     uint8_t  support_count = 0;
     void     update_centre_offset(uint8_t lifting_leg);
+    void     set_standby();
     bool     is_transitioning = false;
     float    transition_progress;
 

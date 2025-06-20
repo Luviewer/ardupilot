@@ -174,21 +174,62 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
     }
 
     else if (gait_type == GAIT_WAVE) {
-        if (delta_step <= gait_step_total / 4) {
-            // 抬腿 + 前移阶段
-            delta            = M_2PI * delta_step / gait_step_total * 4.0f;                              // 将当前步态相位映射到0-2π范围
-            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 光滑前移
-            leg_xy_target[1] = 0;
-            leg_z_target     = -leg_lift_height * (delta - cosf(delta)) / 1.0f; // 平滑抬腿（从0升到最大）
-        } else if (delta_step <= gait_step_total * 3 / 4) {
-            // 向后移、落腿阶段
-            delta            = M_2PI * (delta_step - gait_step_total / 4) / (3 * gait_step_total / 4); // 归一化到 [0, 1]
-            leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel;              // 平滑后移
-            leg_xy_target[1] = 0;
-            leg_z_target     = 0; // 平滑落地（从最大降到0）
+        switch (leg_index) {
+            case Leg_RF:
+                if (delta_step < gait_step_total / 2) {
+                    set_centre_offset(0, -40);
+                } else if (delta_step >= gait_step_total / 2) {
+                    delta            = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;      // 将当前步态相位映射到0-2π范围
+                    leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 光滑前移
+                    leg_xy_target[1] = 0;
+                    leg_z_target     = -leg_lift_height * (1.0 - cosf(delta)) / 1.0f; // 平滑抬腿（从0升到最大）
+                }
+                if (fabsf(throttle_travel) < 10.0f) {
+                    set_standby();
+                }
+                break;
+            case Leg_LF:
+                if (delta_step < gait_step_total / 2) {
+                    set_centre_offset(0, 40);
+                } else if (delta_step >= gait_step_total / 2) {
+                    delta            = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;      // 将当前步态相位映射到0-2π范围
+                    leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 光滑前移
+                    leg_xy_target[1] = 0;
+                    leg_z_target     = -leg_lift_height * (1.0 - cosf(delta)) / 1.0f; // 平滑抬腿（从0升到最大）
+                }
+                if (fabsf(throttle_travel) < 10.0f) {
+                    set_standby();
+                }
+                break;
+            case Leg_LB:
+                if (delta_step < gait_step_total / 2) {
+                    set_centre_offset(40, 0);
+                } else if (delta_step >= gait_step_total / 2) {
+                    delta            = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;      // 将当前步态相位映射到0-2π范围
+                    leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 光滑前移
+                    leg_xy_target[1] = 0;
+                    leg_z_target     = -leg_lift_height * (1.0 - cosf(delta)) / 1.0f; // 平滑抬腿（从0升到最大）
+                }
+                if (fabsf(throttle_travel) < 10.0f) {
+                    set_standby();
+                }
+                break;
+            case Leg_RB:
+                if (delta_step < gait_step_total / 2) {
+                    set_centre_offset(0, -40);
+                } else if (delta_step >= gait_step_total / 2) {
+                    delta            = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;      // 将当前步态相位映射到0-2π范围
+                    leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel; // 光滑前移
+                    leg_xy_target[1] = 0;
+                    leg_z_target     = -leg_lift_height * (1.0 - cosf(delta)) / 1.0f; // 平滑抬腿（从0升到最大）
+                }
+                if (fabsf(throttle_travel) < 10.0f) {
+                    set_standby();
+                }
+                break;
         }
-        gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target); // x：横向移动（如左右踏步）    y：前后移动（如前进/后退）
     }
+    gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target); // x：横向移动（如左右踏步）    y：前后移动（如前进/后退）
 }
 
 void AP_QuadRuped::yaw_trajectory_generation(uint8_t leg_index)
@@ -251,41 +292,30 @@ void AP_QuadRuped::update_leg()
 {
     gait_step_now++;
     if (gait_step_now > gait_step_total) gait_step_now = 0;
-
-    for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
-        int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
-        if (delta_step < 0) delta_step += gait_step_total;
-        // update_centre_offset(moving_leg);
-        // set_centre_offset(offset_xy.x, offset_xy.y);
-        trajectory_generation(moving_leg);
-        yaw_trajectory_generation(moving_leg);
+    if (gait_type == GAIT_DIAGONAL) {
+        for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
+            int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
+            if (delta_step < 0) delta_step += gait_step_total;
+            // update_centre_offset(moving_leg);
+            trajectory_generation(moving_leg);
+            yaw_trajectory_generation(moving_leg);
+        }
+    } else if (gait_type == GAIT_WAVE) {
+        for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
+            int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
+            if (delta_step < 0) delta_step += gait_step_total;
+            trajectory_generation(moving_leg);
+            yaw_trajectory_generation(moving_leg);
+        }
     }
 }
-
-void AP_QuadRuped::update_centre_offset(uint8_t leg_index)
+void AP_QuadRuped::set_standby()
 {
-    if (gait_type != GAIT_WAVE) {
-        return; // 仅对波浪步态应用
+    for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
+        gait_pos_xyz[moving_leg] = { 0, 0, 0 }; // 重置位置坐标为原点
+        gait_rot_z[moving_leg]   = 0;           // 重置旋转角度为0
     }
-    switch (leg_index) {
-        case Leg_RF: // 右前腿
-            offset_xy.x += -60;
-            offset_xy.y += -60;
-            break;
-        case Leg_LB: // 左后腿
-            offset_xy.x += 60;
-            offset_xy.y += 60;
-            break;
-        case Leg_LF: // 左前腿
-            offset_xy.x += -60;
-            offset_xy.y += 60;
-            break;
-        case Leg_RB: // 右后腿
-            offset_xy.x += 60;
-            offset_xy.y += -60;
-            break;
-    }
-    hal.console->printf("offset.x=%f\n,offset.y=%f\n", offset_xy.x, offset_xy.y);
+    set_centre_offset(0, 0);
 }
 
 Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
@@ -510,7 +540,6 @@ void AP_QuadRuped::controller()
     if (channel.throttle_channel != -1) {
         temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_channel - 1), (float)1000, (float)2000);
         if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
-
         throttle_travel = (temp_rc - 1500) / 500.0f * throttle_max;
     } else {
         throttle_travel = 0;
