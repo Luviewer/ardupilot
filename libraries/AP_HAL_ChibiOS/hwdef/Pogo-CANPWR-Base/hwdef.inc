@@ -47,27 +47,9 @@ PA13 JTMS-SWDIO SWD
 PA14 JTCK-SWCLK SWD
 
 
-# blue LED0 marked as ACT
-PB4 LED OUTPUT HIGH
-define HAL_LED_ON 0
-
 define HAL_USE_ADC TRUE
 define STM32_ADC_USE_ADC1 TRUE
 define AP_PERIPH_BATTERY_ENABLED 1
-PA0 BATT_VOLTAGE_SENS ADC1 SCALE(1)
-PA1 BATT_CURRENT_SENS ADC1 SCALE(1)
-
-# Set the Default Battery Monitor Type to be Analog I/V
-define HAL_BATT_MONITOR_DEFAULT 4
-
-define HAL_BATT_VOLT_PIN 5
-define HAL_BATT_VOLT_SCALE 18.0
-
-define HAL_BATT_CURR_PIN 6
-define HAL_BATT_CURR_SCALE 125
-
-# ACS772-400U Zero-Current Offset
-define AP_BATT_CURR_AMP_OFFSET_DEFAULT 0.409
 
 # make the UARTn numbers in parameters match the silkscreen
 SERIAL_ORDER
@@ -92,4 +74,3 @@ define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
 # to uncompress the bootloader at runtime
 env ROMFS_UNCOMPRESSED True
 
-define CAN_APP_NODE_NAME "pogo.canpwr-max"

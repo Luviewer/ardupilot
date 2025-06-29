@@ -1,0 +1,6 @@
+include ../Pogo-CANPWR-Base/hwdef-bl.inc
+
+define CAN_APP_NODE_NAME "pogo.canpwr-4in1"
+
+PB4 LED_BOOTLOADER OUTPUT LOW  # blue
+define HAL_LED_ON 0
