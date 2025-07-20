@@ -54,6 +54,8 @@ protected:
     /* 油门最大值 */
     AP_Float throttle_max;
 
+    AP_Float S;
+
     /* 四足腿末端位置 */
     Vector3f endpoint_leg_pos[LEG_ALL];
 
@@ -156,7 +158,11 @@ protected:
     Vector3ui servo_output_cmd[LEG_ALL];
 
     // 添加重心控制方法
+    Vector3f centre_offset_current = Vector3f(0, 0, 0); // 当前平滑偏移值
+    Vector3f centre_offset_target  = Vector3f(0, 0, 0); // 目标偏移值
+    float    body_offset_x         = 0;
     Vector3f body_centre { 0, 0, 0 };
+    Vector3f foot_lock_pos[LEG_ALL];
     void     set_centre_offset(float x, float y, float z);
     Vector2f wave_balance_offset; // 波浪步态专用平衡补偿
     Vector2f support_triangle_center;
@@ -187,6 +193,7 @@ public:
     void main_inverse_kinematics();
 
     void balance_controller();
+    void update_centre_offset_wave(uint8_t leg_index);
 
     Vector3f body_forward_kinematics(uint8_t leg_index);
     Vector3f leg_inverse_kinematics(Vector3f posxyz);
