@@ -3,7 +3,7 @@
 #include <AP_Gripper/AP_Gripper.h>
 #include <AP_InertialSensor/AP_InertialSensor_rate_config.h>
 
-#include <AP_QuadRuped/AP_QuadRuped.h>
+#include <AP_QuadRuped/AP_QuadRuped_Base.h>
 /*
    This program is free software: you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -721,7 +721,8 @@ const AP_Param::Info Copter::var_info[] = {
     GOBJECT(custom_control, "CC", AC_CustomControl),
 #endif
 
-    GOBJECT(qrupd, "QRUPD", AP_QuadRuped),
+    // GOBJECT(qrupd, "QRUPD", AP_QuadRuped),
+    GOBJECTVARPTR(qrupd, "QRD_", &copter.qrupd_var_info),
 
     // @Group:
     // @Path: Parameters.cpp
@@ -1164,6 +1165,7 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at
     // https://github.com/skybrush-io/ardupilot
+    AP_GROUPINFO("QRPUD_CLASS", 63, ParametersG2, qrupd_class, 0),
 
     AP_GROUPEND
 };
