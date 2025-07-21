@@ -121,7 +121,6 @@ void AP_QuadRuped::gait_select(void)
         gait_step_leg_start[Leg_LF] = gait_step_total / 4;     // 左前腿
 
         // 调整步态参数
-        gait_travel_divisor = gait_step_total / 2;
         gait_lift_divisor   = 8;
     }
 }
@@ -181,8 +180,7 @@ void AP_QuadRuped::trajectory_generation(uint8_t leg_index)
         delta               = M_2PI * delta_step / lift_steps;
         if (delta_step < lift_steps) {
             // 抬腿阶段
-
-            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel;
+            leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI;
             leg_xy_target[1] = 0;
             leg_z_target     = -leg_lift_height * (1.0f - cosf(delta));
         } else {
@@ -198,17 +196,17 @@ void AP_QuadRuped::update_centre_offset_wave(uint8_t leg_index)
 {
     switch (leg_index) {
         case Leg_RF:
-            set_centre_offset(0, -S);
+            set_centre_offset(2*throttle_travel, -S);
             break;
         case Leg_LF:
-            set_centre_offset(0, -S);
+            set_centre_offset(throttle_travel, -S);
             hal.console->printf("Leg_LF=%d", Leg_LF);
             break;
         case Leg_LB:
-            set_centre_offset(0, S);
+            set_centre_offset(throttle_travel, S);
             break;
         case Leg_RB:
-            set_centre_offset(0, S);
+            set_centre_offset(throttle_travel, S);
             hal.console->printf("Leg_RB=%d", Leg_RB);
             break;
     }

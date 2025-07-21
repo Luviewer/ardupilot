@@ -31,11 +31,8 @@ protected:
     uint8_t gait_type;
 
     uint8_t gait_step_leg_start[LEG_ALL];
-    uint8_t gait_lifted_steps;
-    uint8_t gait_down_steps;
-    uint8_t gait_lift_divisor;
-    uint8_t gait_half_lift_height;
-    uint8_t gait_travel_divisor;
+    uint8_t gait_lift_divisor;      //划分抬腿阶段所占的比例    
+    uint8_t gait_travel_divisor;    //对角步态划分抬腿阶段所占的比例
 
     float gait_rot_z[LEG_ALL];
 
