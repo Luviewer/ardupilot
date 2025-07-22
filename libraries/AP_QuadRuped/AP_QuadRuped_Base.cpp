@@ -68,6 +68,8 @@ void AP_QuadRuped_Base::init(void)
                                                  sqrtf(2) * cosf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
                                                  0);
     }
+
+    gait_init(); // 初始化四足机器人逆运动学控制器
 }
 
 void AP_QuadRuped_Base::calc_gait_sequence()
