@@ -15,3 +15,4 @@ void AP_QuadRuped_WAVE::gait_init()
     gait_travel_divisor = gait_step_total / 2;
     gait_lift_divisor   = 8;
 }
+

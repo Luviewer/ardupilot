@@ -85,4 +85,6 @@ void AP_QuadRuped_Diag::update()
     controller();
 
     main_inverse_kinematics();
+
+    output_leg_angle();
 }

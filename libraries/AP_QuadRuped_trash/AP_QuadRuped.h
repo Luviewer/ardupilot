@@ -107,8 +107,8 @@ protected:
     uint8_t gait_type;
 
     uint8_t gait_step_leg_start[LEG_ALL];
-    uint8_t gait_lift_divisor;      //划分抬腿阶段所占的比例    
-    uint8_t gait_travel_divisor;    //对角步态划分抬腿阶段所占的比例
+    uint8_t gait_lift_divisor;   // 划分抬腿阶段所占的比例
+    uint8_t gait_travel_divisor; // 对角步态划分抬腿阶段所占的比例
 
     float gait_rot_z[LEG_ALL];
 
@@ -144,7 +144,7 @@ protected:
 
     /* 四足末端需要走的位置 */
     Vector3f gait_pos_xyz[LEG_ALL];
-    float gait_rot_z[LEG_ALL];
+    float    gait_rot_z[LEG_ALL];
 
     AP_QuadRuped_SYS_Params Sys_Param;
 
