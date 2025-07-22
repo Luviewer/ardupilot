@@ -13,7 +13,6 @@ void Copter::userhook_init() // 如果启用了用户初始化钩子
     // this will be called once at start-up
     // 初始化代码（仅在启动时调用一次）
     qrupd->init();
-    qrupd->gait_init(); // 初始化四足机器人逆运动学控制器
 }
 #endif
 
