@@ -12,6 +12,7 @@ void Copter::userhook_init() // 如果启用了用户初始化钩子
     // put your initialisation code here
     // this will be called once at start-up
     // 初始化代码（仅在启动时调用一次）
+    qrupd->init();
     qrupd->gait_init(); // 初始化四足机器人逆运动学控制器
 }
 #endif
@@ -30,8 +31,7 @@ void Copter::userhook_FastLoop()
 
         // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）
         if (hal.rcin->read(CH_6) > 1500) {
-            qrupd->main_inverse_kinematics();
-            qrupd->output_leg_angle();
+            qrupd->update();
         } else {
             qrupd->right_sleep_leg();
         }
