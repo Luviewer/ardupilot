@@ -61,6 +61,8 @@ public:
 
     virtual void update() { };
 
+    void init();
+
     void output_leg_angle();
 
     bool hw_set_servo_cmd();
@@ -71,10 +73,7 @@ protected:
     bool move_requested;
 
     uint8_t gait_step_leg_start[LEG_ALL];
-    uint8_t gait_lifted_steps;
-    uint8_t gait_down_steps;
     uint8_t gait_lift_divisor;
-    uint8_t gait_half_lift_height;
     uint8_t gait_travel_divisor;
 
     Vector3ui servo_output_cmd[LEG_ALL];
