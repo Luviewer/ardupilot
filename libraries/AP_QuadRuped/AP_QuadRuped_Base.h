@@ -53,6 +53,8 @@ public:
     virtual Vector3f body_forward_kinematics(uint8_t leg_index);
     virtual Vector3f leg_inverse_kinematics(Vector3f posxyz);
 
+    virtual void set_centre_offset(float x, float y, float z);
+
     virtual void reset_leg();
     virtual void right_sleep_leg();
     virtual void update_leg() { };

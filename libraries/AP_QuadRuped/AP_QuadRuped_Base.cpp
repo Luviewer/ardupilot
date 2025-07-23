@@ -13,7 +13,7 @@ extern const AP_HAL::HAL& hal;
 #define LIFT_HEIGHT_DEFAULT     50.0f
 #define SPEED_HZ_DEFAULT        25.0f
 #define MAX_THROTTLE_DEFAULT    200.0f
-#define GAIT_STEP_TOTAL_DEFAULT 12
+#define GAIT_STEP_TOTAL_DEFAULT 24
 
 #define START_COXA_ANGLE        45
 
@@ -189,6 +189,11 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
     Vector3f totaldist_xyz_rot = quat * totaldist_xyz;
 
     return (totaldist_xyz_rot - endpoint_leg_frame[leg_index]);
+}
+
+void AP_QuadRuped_Base::set_centre_offset(float x, float y, float z = 0)
+{
+    centre_offset = Vector3f(x, y, z);
 }
 
 void AP_QuadRuped_Base::controller()

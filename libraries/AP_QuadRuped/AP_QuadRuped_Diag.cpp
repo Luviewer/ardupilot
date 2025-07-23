@@ -73,8 +73,7 @@ void AP_QuadRuped_Diag::update_leg()
         int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
 
         if (delta_step < 0) delta_step += gait_step_total;
-        // update_centre_offset(moving_leg);
-
+        
         trajectory_generation(moving_leg);
         yaw_trajectory_generation(moving_leg);
     }
