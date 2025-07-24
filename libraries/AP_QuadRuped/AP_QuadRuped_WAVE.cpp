@@ -35,16 +35,16 @@ void AP_QuadRuped_WAVE::trajectory_generation(uint8_t leg_index)
     if (delta_step < centre_offset_steps) {
         switch (leg_index) {
             case Leg_RF:
-                set_centre_offset(0, -50, 0);
+                set_centre_offset(0.0f, -50.0f);
                 break;
             case Leg_LF:
-                set_centre_offset(0, 50, 0);
+                set_centre_offset(0.0f, 50.0f);
                 break;
             case Leg_LB:
-                set_centre_offset(throttle_travel, 50, 0);
+                set_centre_offset(throttle_travel, 50.0f);
                 break;
             case Leg_RB:
-                set_centre_offset(throttle_travel, -50, 0);
+                set_centre_offset(throttle_travel, -50.0f);
                 break;
         }
     } else if (delta_step < (centre_offset_steps + lift_steps)) {
@@ -86,7 +86,7 @@ void AP_QuadRuped_WAVE::yaw_trajectory_generation(uint8_t leg_index)
     }
 }
 
-void AP_QuadRuped_WAVE::set_centre_offset(float x, float y, float z = 0)
+void AP_QuadRuped_WAVE::set_centre_offset(float x, float y, float z)
 {
     centre_offset = Vector3f(x, y, z);
 }
