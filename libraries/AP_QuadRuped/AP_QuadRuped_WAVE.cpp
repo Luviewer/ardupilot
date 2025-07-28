@@ -13,6 +13,7 @@ void AP_QuadRuped_WAVE::gait_init()
 
     // 调整步态参数
     gait_travel_divisor = gait_step_total / 2;
+    gait_lift_divisor   = 2;
 }
 
 void AP_QuadRuped_WAVE::trajectory_generation(uint8_t leg_index)
@@ -63,6 +64,26 @@ void AP_QuadRuped_WAVE::trajectory_generation(uint8_t leg_index)
 
 void AP_QuadRuped_WAVE::yaw_trajectory_generation(uint8_t leg_index)
 {
+    int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+    if (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
+    // float progress = (float)delta_step / gait_step_total;
+    switch (delta_step) {
+        case 0:
+        case 1:
+            gait_rot_z[leg_index] = 0;
+            break;
+
+        case 2:
+        case 3:
+            gait_rot_z[leg_index] = yaw_travel / gait_lift_divisor;
+            break;
+
+        default:
+            gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / (gait_step_total - 4));
+            break;
+    }
 }
 
 void AP_QuadRuped_WAVE::set_centre_offset(float x, float y, float z = 0)

@@ -51,15 +51,17 @@ void AP_QuadRuped_Diag::yaw_trajectory_generation(uint8_t leg_index)
     // float progress = (float)delta_step / gait_step_total;
     switch (delta_step) {
         case 0:
+        case 1:
             gait_rot_z[leg_index] = 0;
             break;
 
-        case 1:
+        case 2:
+        case 3:
             gait_rot_z[leg_index] = yaw_travel / gait_lift_divisor;
             break;
 
         default:
-            gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / gait_travel_divisor);
+            gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / (gait_step_total - 4));
             break;
     }
 }
@@ -73,7 +75,7 @@ void AP_QuadRuped_Diag::update_leg()
         int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
 
         if (delta_step < 0) delta_step += gait_step_total;
-        
+
         trajectory_generation(moving_leg);
         yaw_trajectory_generation(moving_leg);
     }
