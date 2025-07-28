@@ -182,7 +182,7 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
     body_rot_xyz_deg.x = -radians(roll_travel);  // 横滚角（绕X轴）
     body_rot_xyz_deg.y = -radians(pitch_travel); // 俯仰角（绕Y轴）
     // hal.console->printf("pitch_travel_1=%f\n", pitch_travel);
-    body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]); // 偏航角（绕Z轴）
+    body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]); // 偏航角（绕Z轴）   gait_rot_z[leg_index] 表示机器人在某一条腿的步态相位中，绕机身 Z 轴（垂直轴）的期望偏航角度补偿，最终影响该腿末端轨迹的旋转偏移。
 
     quat.from_euler(body_rot_xyz_deg);
 
@@ -215,16 +215,13 @@ void AP_QuadRuped_Base::controller()
         z_travel = -50;
     }
 
-    // 添加步态切换控制
-    // if (channel.gait_channel != -1) {
-    //     float   gait_switch   = constrain_value((float)rc().RC_Channels::get_radio_in(channel.gait_channel - 1), (float)1000, (float)2000);
-    //     uint8_t new_gait_type = (gait_switch > 1500) ? GAIT_WAVE : GAIT_DIAGONAL;
-
-    //     if (new_gait_type != gait_type) {
-    //         gait_type = new_gait_type;
-    //         gait_select(); // 步态变化时重新初始化步态参数
-    //     }
-    // }
+    if (channel.yaw_channel != -1) {
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.yaw_channel - 1), (float)1000, (float)2000);
+        if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
+        yaw_travel = (temp_rc - 1500) / 500.0f * 60;
+    } else {
+        throttle_travel = 0;
+    }
 }
 
 void AP_QuadRuped_Base::output_leg_angle(void)
