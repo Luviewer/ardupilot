@@ -43,6 +43,16 @@ const AP_Param::GroupInfo AP_QuadRuped_Base::var_info[] = {
     AP_GROUPEND
 };
 
+AP_QuadRuped_Base::AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors)
+        : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
+        , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
+    {
+        move_requested = false;
+        max_yaw_rate   = radians(30.0f); // 限制最大30°/s
+
+        AP_Param::setup_object_defaults(this, var_info);
+    }
+
 void AP_QuadRuped_Base::init(void)
 {
     // 初始化腿部起始位置 (Initialize leg starting positions)
@@ -214,13 +224,80 @@ void AP_QuadRuped_Base::controller()
     } else {
         z_travel = -50;
     }
+}
+
+void AP_QuadRuped_Base::balance_controller()
+{
+    float temp_rc;
+    float target_roll  = 0;
+    float target_pitch = 0;
+
+    float current_yaw   = _ahrs.yaw;
+    float current_pitch = _ahrs.pitch;
+    float current_roll  = _ahrs.roll;
+
+    hal.console->printf("roll=%f", current_yaw);
+    hal.console->printf("pitch=%f", current_pitch);
+    hal.console->printf("yaw=%f", current_roll);
+
+    if (channel.roll_channel != -1) {
+        temp_rc          = constrain_value((float)rc().RC_Channels::get_radio_in(channel.roll_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_roll      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                          // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float roll_error = wrap_180(current_roll - target_roll);                                                                       // 计算偏航角误差（将弧度值规范到[-π, π]区间）
+        // // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
+        roll_travel = roll_pid.update_all(0, roll_error, 1.0f / gait_hz);
+    } else {
+        roll_travel = 0;
+    }
+
+    if (channel.pitch_channel != -1) {
+        temp_rc           = constrain_value((float)rc().RC_Channels::get_radio_in(channel.pitch_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_pitch      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                           // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float pitch_error = wrap_180(current_pitch - target_pitch);                                                                      // 计算偏航角误差（将弧度值规范到[-π, π]区间）
+        // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
+        pitch_travel = pitch_pid.update_all(0, pitch_error, 1.0f / gait_hz);
+        // hal.console->printf("pitch_error=%f,pitch_travel=%f\n", pitch_error, pitch_travel);
+    } else {
+        pitch_travel = 0;
+    }
 
     if (channel.yaw_channel != -1) {
         temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.yaw_channel - 1), (float)1000, (float)2000);
         if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
-        yaw_travel = (temp_rc - 1500) / 500.0f * 60;
+
+        // 将遥控器输入转换为目标角速度（-max_yaw_rate到+max_yaw_rate）
+        float delta_yaw = (temp_rc - 1500) / 500.0f * 1.0f;
+        // 计算角度误差
+        target_yaw += delta_yaw;
+        float yaw_error = wrap_180(current_yaw - target_yaw);
+
+        if (fabsf(yaw_error) < radians(1.0f)) yaw_error = 0.0f;
+
+        // 使用PID控制器计算角速度增量
+        yaw_travel = yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
+
     } else {
-        throttle_travel = 0;
+        yaw_travel = 0;
+    }
+
+    // 添加新的遥控通道处理
+    if (channel.centre_offset_x_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_x_channel - 1), (float)1000, (float)2000);
+        if (val > 1475 && val < 1525) { // 死区检测
+            val = 1500;
+        }
+        offset_xy.x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+    } else {
+        offset_xy.x = 0;
+    }
+    if (channel.centre_offset_y_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_y_channel - 1), (float)1000, (float)2000);
+        if (val > 1475 && val < 1525) { // 死区检测
+            val = 1500;
+        } // 死区检测
+        offset_xy.y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+    } else {
+        offset_xy.y = 0;
     }
 }
 

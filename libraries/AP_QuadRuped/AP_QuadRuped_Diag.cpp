@@ -14,6 +14,7 @@ void AP_QuadRuped_Diag::gait_init()
 }
 
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
+// 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
 void AP_QuadRuped_Diag::trajectory_generation(uint8_t leg_index)
 {
     float    delta;
@@ -38,7 +39,6 @@ void AP_QuadRuped_Diag::trajectory_generation(uint8_t leg_index)
         leg_xy_target[1] = 0;
         leg_z_target     = 0;
     }
-
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target); // x：横向移动（如左右踏步）    y：前后移动（如前进/后退）
 }
 
@@ -84,6 +84,8 @@ void AP_QuadRuped_Diag::update_leg()
 void AP_QuadRuped_Diag::update()
 {
     controller();
+
+    balance_controller();
 
     main_inverse_kinematics();
 

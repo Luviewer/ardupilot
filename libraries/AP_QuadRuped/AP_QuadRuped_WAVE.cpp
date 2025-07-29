@@ -110,6 +110,8 @@ void AP_QuadRuped_WAVE::update()
 {
     controller();
 
+    balance_controller();
+
     main_inverse_kinematics();
 
     output_leg_angle();
