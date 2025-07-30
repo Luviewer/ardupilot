@@ -44,14 +44,14 @@ const AP_Param::GroupInfo AP_QuadRuped_Base::var_info[] = {
 };
 
 AP_QuadRuped_Base::AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors)
-        : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
-        , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
-    {
-        move_requested = false;
-        max_yaw_rate   = radians(30.0f); // 限制最大30°/s
+    : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
+    , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
+{
+    move_requested = false;
+    max_yaw_rate   = radians(30.0f); // 限制最大30°/s
 
-        AP_Param::setup_object_defaults(this, var_info);
-    }
+    AP_Param::setup_object_defaults(this, var_info);
+}
 
 void AP_QuadRuped_Base::init(void)
 {
@@ -212,7 +212,10 @@ void AP_QuadRuped_Base::controller()
 
     if (channel.throttle_channel != -1) {
         temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_channel - 1), (float)1000, (float)2000);
-        if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+            set_centre_offset(0.0, 0.0, 0.0);
+        }
         throttle_travel = (temp_rc - 1500) / 500.0f * throttle_max;
     } else {
         throttle_travel = 0;
@@ -235,10 +238,6 @@ void AP_QuadRuped_Base::balance_controller()
     float current_yaw   = _ahrs.yaw;
     float current_pitch = _ahrs.pitch;
     float current_roll  = _ahrs.roll;
-
-    hal.console->printf("roll=%f", current_yaw);
-    hal.console->printf("pitch=%f", current_pitch);
-    hal.console->printf("yaw=%f", current_roll);
 
     if (channel.roll_channel != -1) {
         temp_rc          = constrain_value((float)rc().RC_Channels::get_radio_in(channel.roll_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
@@ -263,8 +262,9 @@ void AP_QuadRuped_Base::balance_controller()
 
     if (channel.yaw_channel != -1) {
         temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.yaw_channel - 1), (float)1000, (float)2000);
-        if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
-
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+        }
         // 将遥控器输入转换为目标角速度（-max_yaw_rate到+max_yaw_rate）
         float delta_yaw = (temp_rc - 1500) / 500.0f * 1.0f;
         // 计算角度误差

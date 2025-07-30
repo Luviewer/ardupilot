@@ -24,6 +24,6 @@ public:
     void yaw_trajectory_generation(uint8_t leg_index) override;
 
     void set_centre_offset(float x, float y, float z = 0) override;
-
+    
     void update() override;
 };
