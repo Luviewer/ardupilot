@@ -20,15 +20,8 @@ enum {
 
 class AP_QuadRuped_Base {
 public:
-    AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors)
-        : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
-        , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
-    {
-        move_requested = false;
-        max_yaw_rate   = radians(30.0f); // 限制最大30°/s
+    AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors);
 
-        AP_Param::setup_object_defaults(this, var_info);
-    }
     // Empty destructor to suppress compiler warning
     virtual ~AP_QuadRuped_Base() { }
 
@@ -53,11 +46,14 @@ public:
     virtual Vector3f body_forward_kinematics(uint8_t leg_index);
     virtual Vector3f leg_inverse_kinematics(Vector3f posxyz);
 
+    virtual void set_centre_offset(float x, float y, float z);
+
     virtual void reset_leg();
     virtual void right_sleep_leg();
     virtual void update_leg() { };
 
     virtual void controller();
+    virtual void balance_controller();
 
     virtual void update() { };
 
@@ -130,4 +126,43 @@ protected:
     AP_QuadRuped_Params leg_param[LEG_ALL];
 
     AP_QuadRuped_CHANNEL_Params channel;
+
+    AC_PID roll_pid {
+        AC_PID::Defaults {
+            .p         = 1.0f,
+            .i         = 0.02f,
+            .d         = 0.05f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+
+    AC_PID pitch_pid {
+        AC_PID::Defaults {
+            .p         = 1.0f,
+            .i         = 0.02f,
+            .d         = 0.1f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+
+    AC_PID yaw_pid {
+        AC_PID::Defaults {
+            .p         = 0.5f,
+            .i         = 0.01f,
+            .d         = 0.05f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
 };

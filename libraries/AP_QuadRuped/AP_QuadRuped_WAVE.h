@@ -16,6 +16,14 @@ public:
         : AP_QuadRuped_Base(ahrs, motors)
     {
     }
-    
+    virtual ~AP_QuadRuped_WAVE() { }
+
     void gait_init() override;
+    void update_leg() override;
+    void trajectory_generation(uint8_t leg_index) override;
+    void yaw_trajectory_generation(uint8_t leg_index) override;
+
+    void set_centre_offset(float x, float y, float z = 0) override;
+    
+    void update() override;
 };

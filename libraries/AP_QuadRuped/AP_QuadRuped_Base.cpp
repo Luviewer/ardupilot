@@ -13,7 +13,7 @@ extern const AP_HAL::HAL& hal;
 #define LIFT_HEIGHT_DEFAULT     50.0f
 #define SPEED_HZ_DEFAULT        25.0f
 #define MAX_THROTTLE_DEFAULT    200.0f
-#define GAIT_STEP_TOTAL_DEFAULT 12
+#define GAIT_STEP_TOTAL_DEFAULT 24
 
 #define START_COXA_ANGLE        45
 
@@ -42,6 +42,16 @@ const AP_Param::GroupInfo AP_QuadRuped_Base::var_info[] = {
 
     AP_GROUPEND
 };
+
+AP_QuadRuped_Base::AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors)
+    : _ahrs(ahrs)     //_ahrs(ahrs)：将传入的 ahrs 指针赋给类的私有成员 _ahrs（姿态传感器接口）
+    , _motors(motors) //_motors(motors)：将传入的 motors 指针赋给类的私有成员 _motors（电机控制接口）
+{
+    move_requested = false;
+    max_yaw_rate   = radians(30.0f); // 限制最大30°/s
+
+    AP_Param::setup_object_defaults(this, var_info);
+}
 
 void AP_QuadRuped_Base::init(void)
 {
@@ -182,7 +192,7 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
     body_rot_xyz_deg.x = -radians(roll_travel);  // 横滚角（绕X轴）
     body_rot_xyz_deg.y = -radians(pitch_travel); // 俯仰角（绕Y轴）
     // hal.console->printf("pitch_travel_1=%f\n", pitch_travel);
-    body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]); // 偏航角（绕Z轴）
+    body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]); // 偏航角（绕Z轴）   gait_rot_z[leg_index] 表示机器人在某一条腿的步态相位中，绕机身 Z 轴（垂直轴）的期望偏航角度补偿，最终影响该腿末端轨迹的旋转偏移。
 
     quat.from_euler(body_rot_xyz_deg);
 
@@ -191,13 +201,21 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
     return (totaldist_xyz_rot - endpoint_leg_frame[leg_index]);
 }
 
+void AP_QuadRuped_Base::set_centre_offset(float x, float y, float z = 0)
+{
+    centre_offset = Vector3f(x, y, z);
+}
+
 void AP_QuadRuped_Base::controller()
 {
     float temp_rc;
 
     if (channel.throttle_channel != -1) {
         temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_channel - 1), (float)1000, (float)2000);
-        if (temp_rc < 1550 && temp_rc > 1450) temp_rc = 1500;
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+            set_centre_offset(0.0, 0.0, 0.0);
+        }
         throttle_travel = (temp_rc - 1500) / 500.0f * throttle_max;
     } else {
         throttle_travel = 0;
@@ -209,17 +227,78 @@ void AP_QuadRuped_Base::controller()
     } else {
         z_travel = -50;
     }
+}
 
-    // 添加步态切换控制
-    // if (channel.gait_channel != -1) {
-    //     float   gait_switch   = constrain_value((float)rc().RC_Channels::get_radio_in(channel.gait_channel - 1), (float)1000, (float)2000);
-    //     uint8_t new_gait_type = (gait_switch > 1500) ? GAIT_WAVE : GAIT_DIAGONAL;
+void AP_QuadRuped_Base::balance_controller()
+{
+    float temp_rc;
+    float target_roll  = 0;
+    float target_pitch = 0;
 
-    //     if (new_gait_type != gait_type) {
-    //         gait_type = new_gait_type;
-    //         gait_select(); // 步态变化时重新初始化步态参数
-    //     }
-    // }
+    float current_yaw   = _ahrs.yaw;
+    float current_pitch = _ahrs.pitch;
+    float current_roll  = _ahrs.roll;
+
+    if (channel.roll_channel != -1) {
+        temp_rc          = constrain_value((float)rc().RC_Channels::get_radio_in(channel.roll_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_roll      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                          // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float roll_error = wrap_180(current_roll - target_roll);                                                                       // 计算偏航角误差（将弧度值规范到[-π, π]区间）
+        // // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
+        roll_travel = roll_pid.update_all(0, roll_error, 1.0f / gait_hz);
+    } else {
+        roll_travel = 0;
+    }
+
+    if (channel.pitch_channel != -1) {
+        temp_rc           = constrain_value((float)rc().RC_Channels::get_radio_in(channel.pitch_channel - 1), (float)1000, (float)2000); // 通道索引通常从 0 开始，这里设置的 yaw_channel从 1 开始编号
+        target_pitch      = (temp_rc - 1500) / 500.0f * 15.0f;                                                                           // 将遥控器输入转换为目标偏航角（-180°到+180°）
+        float pitch_error = wrap_180(current_pitch - target_pitch);                                                                      // 计算偏航角误差（将弧度值规范到[-π, π]区间）
+        // hal.console->printf("yaw_error=%f,target_yaw=%f,current_yaw=%f\n",yaw_error,target_yaw,current_yaw)
+        pitch_travel = pitch_pid.update_all(0, pitch_error, 1.0f / gait_hz);
+        // hal.console->printf("pitch_error=%f,pitch_travel=%f\n", pitch_error, pitch_travel);
+    } else {
+        pitch_travel = 0;
+    }
+
+    if (channel.yaw_channel != -1) {
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.yaw_channel - 1), (float)1000, (float)2000);
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+        }
+        // 将遥控器输入转换为目标角速度（-max_yaw_rate到+max_yaw_rate）
+        float delta_yaw = (temp_rc - 1500) / 500.0f * 1.0f;
+        // 计算角度误差
+        target_yaw += delta_yaw;
+        float yaw_error = wrap_180(current_yaw - target_yaw);
+
+        if (fabsf(yaw_error) < radians(1.0f)) yaw_error = 0.0f;
+
+        // 使用PID控制器计算角速度增量
+        yaw_travel = yaw_pid.update_all(0, yaw_error, 1.0f / gait_hz);
+
+    } else {
+        yaw_travel = 0;
+    }
+
+    // 添加新的遥控通道处理
+    if (channel.centre_offset_x_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_x_channel - 1), (float)1000, (float)2000);
+        if (val > 1475 && val < 1525) { // 死区检测
+            val = 1500;
+        }
+        offset_xy.x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+    } else {
+        offset_xy.x = 0;
+    }
+    if (channel.centre_offset_y_channel != -1) {
+        float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_y_channel - 1), (float)1000, (float)2000);
+        if (val > 1475 && val < 1525) { // 死区检测
+            val = 1500;
+        } // 死区检测
+        offset_xy.y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+    } else {
+        offset_xy.y = 0;
+    }
 }
 
 void AP_QuadRuped_Base::output_leg_angle(void)
