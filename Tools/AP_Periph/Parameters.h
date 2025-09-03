@@ -99,6 +99,8 @@ public:
         k_param_esc_extended_telem_rate,
         k_param_imu_sample_rate,
         k_param_imu,
+        k_param_servo_td_h,
+        k_param_servo_td_r,
     };
 
     AP_Int16 format_version;
@@ -235,6 +237,9 @@ public:
 #else
     static constexpr uint8_t can_fdmode = 0;
 #endif
+
+    AP_Float servo_td_h;
+    AP_Float servo_td_r;
 
     AP_Int32 options;
 

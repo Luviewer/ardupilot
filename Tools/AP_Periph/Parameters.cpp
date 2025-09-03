@@ -737,6 +737,9 @@ const AP_Param::Info AP_Periph_FW::var_info[] = {
     GOBJECT(imu, "INS", AP_InertialSensor),
 #endif
 
+    GSCALAR(servo_td_h, "S_TD_h", 0.1),
+    GSCALAR(servo_td_r, "S_TD_r", 10),
+
     AP_VAREND
 };
 

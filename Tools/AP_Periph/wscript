@@ -85,6 +85,7 @@ def build(bld):
                      'AP_Relay',
                      'AP_MultiHeap',
                      'AP_Hiwonder',
+                     'AC_TD',
                      ]
 
     bld.ap_stlib(

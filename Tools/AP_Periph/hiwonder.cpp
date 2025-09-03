@@ -32,12 +32,18 @@ void AP_Periph_FW::handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTrans
         return;
     }
 
-    const uint32_t target_time = 100;
+    static const uint32_t target_time = 10;
+
+    static float temp[3];
 
     for (uint8_t index = 0; index < AP_Hiwonder::SERVO_Total; index++) {
-        hiwonder[index].set_position(1, pkt.cmd.data[0 + index * 3] - 1000, target_time);
-        hiwonder[index].set_position(2, pkt.cmd.data[1 + index * 3] - 1000, target_time);
-        hiwonder[index].set_position(3, pkt.cmd.data[2 + index * 3] - 1000, target_time);
+        temp[0] = servo_td[0 + index * 3].update((float)pkt.cmd.data[0 + index * 3]);
+        temp[1] = servo_td[1 + index * 3].update((float)pkt.cmd.data[1 + index * 3]);
+        temp[2] = servo_td[2 + index * 3].update((float)pkt.cmd.data[2 + index * 3]);
+
+        hiwonder[index].set_position(1, (uint16_t)temp[0] - 1000, target_time);
+        hiwonder[index].set_position(2, (uint16_t)temp[1] - 1000, target_time);
+        hiwonder[index].set_position(3, (uint16_t)temp[2] - 1000, target_time);
     }
 }
 

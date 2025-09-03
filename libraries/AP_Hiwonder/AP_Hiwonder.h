@@ -71,11 +71,13 @@ public:
     AP_Hiwonder(int8_t _num)
         : serial_num(_num)
     {
-        _port = NULL;
-        read_status.state = READ_IDLE;
-        read_status.servo_id = 0;
+        _port                  = NULL;
+        read_status.state      = READ_IDLE;
+        read_status.servo_id   = 0;
         read_status.start_time = 0;
-        is_sending = false;
+        is_sending             = false;
+
+        // AP_Param::setup_object_defaults(this, var_info);
     }
 
     enum {
@@ -103,11 +105,13 @@ public:
     bool is_read_complete() const;
     void reset_read_state();
 
+    // static const struct AP_Param::GroupInfo var_info[];
+
 private:
     int8_t serial_num;
 
     AP_HAL::UARTDriver* _port;
-    
+
     // 读取状态管理
     enum ReadState {
         READ_IDLE,
@@ -115,13 +119,13 @@ private:
         READ_COMPLETE,
         READ_FAILED
     };
-    
+
     struct ReadStatus {
         ReadState state;
-        uint8_t servo_id;
-        uint32_t start_time;
+        uint8_t   servo_id;
+        uint32_t  start_time;
     } read_status;
-    
+
     // 发送状态管理
     bool is_sending;
 };

@@ -132,6 +132,7 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'AP_MultiHeap',
     'AP_QuadRuped',
     'AP_Hiwonder',
+    'AC_TD',
 ]
 
 def get_legacy_defines(sketch_name, bld):

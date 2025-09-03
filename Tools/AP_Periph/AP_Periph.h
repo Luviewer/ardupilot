@@ -48,6 +48,7 @@
 #include <AP_AHRS/AP_AHRS.h>
 #ifdef HAL_USE_Hiwonder_Servo
 #include <AP_Hiwonder/AP_Hiwonder.h>
+#include <AC_TD/AC_TD.h>
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_RELAY
@@ -258,6 +259,7 @@ public:
     void handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTransfer* transfer);
     // void test_read_servo_positions();
 
+    AC_TD servo_td[12];
     AP_Hiwonder hiwonder[AP_Hiwonder::SERVO_Total] = { 1, 2, 3, 4 };
 #endif
 

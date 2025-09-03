@@ -3,11 +3,19 @@
 #include <AP_Math/AP_Math.h>
 #include <AP_SerialManager/AP_SerialManager.h>
 
-extern const AP_HAL::HAL& hal;
 
 #define AP_SERIALMANAGER_Hiwonder_BAUD       115200
 #define AP_SERIALMANAGER_Hiwonder_BUFSIZE_RX 256
 #define AP_SERIALMANAGER_Hiwonder_BUFSIZE_TX 256
+
+extern const AP_HAL::HAL& hal;
+
+// const AP_Param::GroupInfo AP_Hiwonder::var_info[] = {
+//     AP_GROUPINFO("td_r", 1, servo_td_r, 10),
+//     AP_GROUPINFO("td_h", 2, servo_td_h, 0.1),
+
+//     AP_GROUPEND
+// };
 
 uint8_t AP_Hiwonder::serial_servo_checksum(const uint8_t buf[])
 {
@@ -44,7 +52,7 @@ void AP_Hiwonder::set_position(uint8_t servo_id, uint16_t position, uint16_t dur
     frame.servo_id = servo_id;
     frame.command = SERIAL_SERVO_MOVE_TIME_WRITE;
     
-    position = constrain_int32(position, 100, 900);
+    position = constrain_uint16(position, 200, 800);
     frame.args[0] = LOWBYTE(position);
     frame.args[1] = HIGHBYTE(position);
     frame.args[2] = LOWBYTE(duration);

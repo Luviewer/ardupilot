@@ -316,6 +316,10 @@ void AP_Periph_FW::init()
 #ifdef HAL_USE_Hiwonder_Servo
     uint16_t init_pos = 500;
     for (uint8_t i = 0; i < AP_Hiwonder::SERVO_Total; i++) {
+        servo_td[0 + i * 3].init(g.servo_td_h, g.servo_td_r);
+        servo_td[1 + i * 3].init(g.servo_td_h, g.servo_td_r);
+        servo_td[2 + i * 3].init(g.servo_td_h, g.servo_td_r);
+
         hiwonder[i].init();
         hiwonder[i].set_position(1, init_pos, 0);
         hiwonder[i].set_position(2, init_pos, 0);
