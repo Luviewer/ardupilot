@@ -53,6 +53,7 @@ AP_QuadRuped_Base::AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors)
     AP_Param::setup_object_defaults(this, var_info);
 }
 
+
 void AP_QuadRuped_Base::init(void)
 {
     // 初始化腿部起始位置 (Initialize leg starting positions)
@@ -264,6 +265,8 @@ void AP_QuadRuped_Base::balance_controller()
         temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.yaw_channel - 1), (float)1000, (float)2000);
         if (temp_rc < 1550 && temp_rc > 1450) {
             temp_rc = 1500;
+            // 遥控器信号归零时，重置目标偏航角为当前偏航角
+            target_yaw = current_yaw;
         }
         // 将遥控器输入转换为目标角速度（-max_yaw_rate到+max_yaw_rate）
         float delta_yaw = (temp_rc - 1500) / 500.0f * 1.0f;

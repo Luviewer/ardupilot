@@ -26,4 +26,11 @@ public:
     void set_centre_offset(float x, float y, float z = 0) override;
     
     void update() override;
+
+private:
+    // 步态阶段处理辅助方法
+    void handle_centre_offset_phase(uint8_t leg_index);
+    void handle_lift_phase(int16_t delta_step, uint16_t centre_offset_steps, 
+                         uint16_t lift_steps, Vector2f& leg_xy_target, float& leg_z_target);
+    void handle_support_phase(Vector2f& leg_xy_target, float& leg_z_target);
 };
