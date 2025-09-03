@@ -256,7 +256,9 @@ public:
     uint32_t hiwonder_last_send_ms;
     void send_hiwonder_pos();
     void handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTransfer* transfer);
+    // void test_read_servo_positions();
 
+    AP_Hiwonder hiwonder[AP_Hiwonder::SERVO_Total] = { 1, 2, 3, 4 };
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_BATTERY
@@ -308,12 +310,6 @@ public:
     AP_Airspeed airspeed;
 #endif
 
-#ifdef HAL_USE_Hiwonder_Servo
-    AP_Hiwonder_RF hiwonder_RF;
-    AP_Hiwonder_RB hiwonder_RB;
-    AP_Hiwonder_LF hiwonder_LF;
-    AP_Hiwonder_LB hiwonder_LB;
-#endif
 
 #ifdef HAL_PERIPH_ENABLE_RANGEFINDER
     RangeFinder rangefinder;

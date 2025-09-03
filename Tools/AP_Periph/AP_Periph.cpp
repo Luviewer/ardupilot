@@ -96,7 +96,7 @@ void AP_Periph_FW::init()
 #if !HAL_GCS_ENABLED
     hal.serial(0)->begin(AP_SERIALMANAGER_CONSOLE_BAUD, 32, 32);
 #endif
-    hal.serial(3)->begin(115200, 128, 256);
+    // hal.serial(3)->begin(115200, 128, 256);
 
     load_parameters();
 
@@ -315,27 +315,12 @@ void AP_Periph_FW::init()
 
 #ifdef HAL_USE_Hiwonder_Servo
     uint16_t init_pos = 500;
-
-    hiwonder_RF.init();
-    hiwonder_LF.init();
-    hiwonder_RB.init();
-    hiwonder_LB.init();
-
-    hiwonder_RF.set_position(1, init_pos, 0);
-    hiwonder_RF.set_position(2, init_pos, 0);
-    hiwonder_RF.set_position(3, init_pos, 0);
-
-    hiwonder_RB.set_position(1, init_pos, 0);
-    hiwonder_RB.set_position(2, init_pos, 0);
-    hiwonder_RB.set_position(3, init_pos, 0);
-
-    hiwonder_LB.set_position(1, init_pos, 0);
-    hiwonder_LB.set_position(2, init_pos, 0);
-    hiwonder_LB.set_position(3, init_pos, 0);
-
-    hiwonder_LF.set_position(1, init_pos, 0);
-    hiwonder_LF.set_position(2, init_pos, 0);
-    hiwonder_LF.set_position(3, init_pos, 0);
+    for (uint8_t i = 0; i < AP_Hiwonder::SERVO_Total; i++) {
+        hiwonder[i].init();
+        hiwonder[i].set_position(1, init_pos, 0);
+        hiwonder[i].set_position(2, init_pos, 0);
+        hiwonder[i].set_position(3, init_pos, 0);
+    }
 #endif
 }
 
@@ -445,6 +430,8 @@ void AP_Periph_FW::update()
         if (!no_iface_finished_dna) {
             palToggleLine(HAL_GPIO_PIN_LED);
         }
+
+        // test_read_servo_positions();
 #endif
 #if 0
 #ifdef HAL_PERIPH_ENABLE_GPS
@@ -574,33 +561,7 @@ void AP_Periph_FW::update()
 #ifdef HAL_PERIPH_ENABLE_ADSB
     adsb_update();
 #endif
-    // static uint32_t last_test_ms=0;
-    // static int16_t pos_cnt=0;
-    // uint32_t now_test = AP_HAL::millis();
 
-    // if (now_test - last_test_ms > 20) {
-    //     last_test_ms = AP_HAL::millis();
-    //     hiwonder_RF.set_position(1, pos_cnt+500, 0);
-    //     hiwonder_RF.set_position(2, pos_cnt+500, 0);
-    //     hiwonder_RF.set_position(3, pos_cnt+500, 0);
-
-    //     hiwonder_RB.set_position(1, pos_cnt+500, 0);
-    //     hiwonder_RB.set_position(2, pos_cnt+500, 0);
-    //     hiwonder_RB.set_position(3, pos_cnt+500, 0);
-
-    //     hiwonder_LB.set_position(1, pos_cnt+500, 0);
-    //     hiwonder_LB.set_position(2, pos_cnt+500, 0);
-    //     hiwonder_LB.set_position(3, pos_cnt+500, 0);
-
-    //     hiwonder_LF.set_position(1, pos_cnt+500, 0);
-    //     hiwonder_LF.set_position(2, pos_cnt+500, 0);
-    //     hiwonder_LF.set_position(3, pos_cnt+500, 0);
-
-    //     pos_cnt+=5;
-
-    //     if(pos_cnt>150)
-    //         pos_cnt = -150;
-    // }
 }
 
 #ifdef HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT

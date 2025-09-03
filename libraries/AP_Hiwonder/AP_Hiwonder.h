@@ -8,13 +8,7 @@
 #define SERIAL_SERVO_MOVE_TIME_WRITE 1
 #define SERVO_ANGLE_OFFSET_ADJUST    17
 #define SERVO_ANGLE_OFFSET_WRITE     18
-
-enum {
-    SERVO_1 = 1,
-    SERVO_2 = 2,
-    SERVO_3 = 3,
-    SERVO_4 = 4,
-};
+#define SERVO_POS_READ               20
 
 #pragma pack(1)
 typedef struct
@@ -56,9 +50,8 @@ typedef struct
     uint8_t servo_id;
     uint8_t length;
     uint8_t command;
-    uint8_t args[2];
     uint8_t crc;
-} Hiwonder_SERVO_POS_READ_TypeDef;
+} Hiwonder_SERVO_POS_READ_CMD_TypeDef;
 
 typedef struct
 {
@@ -67,103 +60,68 @@ typedef struct
     uint8_t servo_id;
     uint8_t length;
     uint8_t command;
+    uint8_t args[2];
     uint8_t crc;
-} Hiwonder_SERVO_POS_READ_CMD_TypeDef;
+} Hiwonder_SERVO_POS_READ_Response_TypeDef;
 
 #pragma pack()
 
 class AP_Hiwonder {
 public:
-    AP_Hiwonder() { _port = NULL; }
+    AP_Hiwonder(int8_t _num)
+        : serial_num(_num)
+    {
+        _port = NULL;
+        read_status.state = READ_IDLE;
+        read_status.servo_id = 0;
+        read_status.start_time = 0;
+        is_sending = false;
+    }
 
-    virtual void init(void) { };
-    void         set_position(uint32_t servo_id, int position, uint32_t duration);
-    void         adjust_offset(uint32_t servo_id, int8_t adjust);
-    void         write_offset(uint32_t servo_id);
-    uint8_t      serial_servo_checksum(const uint8_t buf[]);
+    enum {
+        SERVO_RF = 0,
+        SERVO_RB = 1,
+        SERVO_LB = 2,
+        SERVO_LF = 3,
+        SERVO_Total,
+    };
+
+    void init(void);
+
+    void set_position(uint8_t servo_id, uint16_t position, uint16_t duration);
+
+    void    adjust_offset(uint32_t servo_id, int8_t adjust);
+    void    write_offset(uint32_t servo_id);
+    uint8_t serial_servo_checksum(const uint8_t buf[]);
+
+    // 检查串口是否准备好
+    bool is_ready_for_send() const;
+
+    // 舵机角度读取方法（非阻塞）
+    bool start_position_read(uint8_t servo_id);
+    bool update_position_read(uint16_t& position);
+    bool is_read_complete() const;
+    void reset_read_state();
+
+private:
+    int8_t serial_num;
 
     AP_HAL::UARTDriver* _port;
-};
-
-class AP_Hiwonder_LF : public AP_Hiwonder {
-public:
-    AP_Hiwonder_LF()
-    {
-        if (_singleton != nullptr) {
-            return;
-        }
-        _singleton = this;
-    }
-
-    void init(void) override;
-
-    // get singleton instance
-    static AP_Hiwonder_LF* get_singleton() { return _singleton; }
-
-private:
-    static AP_Hiwonder_LF* _singleton;
-};
-
-class AP_Hiwonder_LB : public AP_Hiwonder {
-public:
-    AP_Hiwonder_LB()
-    {
-        if (_singleton != nullptr) {
-            return;
-        }
-        _singleton = this;
-    }
-
-    void init(void) override;
-
-    // get singleton instance
-    static AP_Hiwonder_LB* get_singleton() { return _singleton; }
-
-private:
-    static AP_Hiwonder_LB* _singleton;
-};
-
-class AP_Hiwonder_RB : public AP_Hiwonder {
-public:
-    AP_Hiwonder_RB()
-    {
-        if (_singleton != nullptr) {
-            return;
-        }
-        _singleton = this;
-    }
-    void init(void) override;
-
-    // get singleton instance
-    static AP_Hiwonder_RB* get_singleton() { return _singleton; }
-
-private:
-    static AP_Hiwonder_RB* _singleton;
-};
-
-class AP_Hiwonder_RF : public AP_Hiwonder {
-public:
-    AP_Hiwonder_RF()
-    {
-        if (_singleton != nullptr) {
-            return;
-        }
-        _singleton = this;
-    }
-
-    void init(void) override;
-
-    // get singleton instance
-    static AP_Hiwonder_RF* get_singleton() { return _singleton; }
-
-private:
-    static AP_Hiwonder_RF* _singleton;
-};
-
-namespace AP {
-AP_Hiwonder_RF& hiwonder_RF();
-AP_Hiwonder_RB& hiwonder_RB();
-AP_Hiwonder_LB& hiwonder_LB();
-AP_Hiwonder_LF& hiwonder_LF();
-
+    
+    // 读取状态管理
+    enum ReadState {
+        READ_IDLE,
+        READ_WAITING,
+        READ_COMPLETE,
+        READ_FAILED
+    };
+    
+    struct ReadStatus {
+        ReadState state;
+        uint8_t servo_id;
+        uint32_t start_time;
+    } read_status;
+    
+    // 发送状态管理
+    bool is_sending;
 };
