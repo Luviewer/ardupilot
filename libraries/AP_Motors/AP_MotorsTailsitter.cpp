@@ -18,15 +18,15 @@
  *
  */
 
+#include "AP_MotorsTailsitter.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_Math/AP_Math.h>
-#include "AP_MotorsTailsitter.h"
 #include <GCS_MAVLink/GCS.h>
 #include <SRV_Channel/SRV_Channel.h>
 
 extern const AP_HAL::HAL& hal;
 
-#define SERVO_OUTPUT_RANGE  9000
+#define SERVO_OUTPUT_RANGE 9000
 
 // init
 void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type frame_type)
@@ -54,14 +54,12 @@ void AP_MotorsTailsitter::init(motor_frame_class frame_class, motor_frame_type f
     set_initialised_ok(frame_class == MOTOR_FRAME_TAILSITTER);
 }
 
-
 /// Constructor
-AP_MotorsTailsitter::AP_MotorsTailsitter(uint16_t speed_hz) :
-    AP_MotorsMulticopter(speed_hz)
+AP_MotorsTailsitter::AP_MotorsTailsitter(uint16_t speed_hz)
+    : AP_MotorsMulticopter(speed_hz)
 {
     set_update_rate(speed_hz);
 }
-
 
 // set update rate to motors - a value in hertz
 void AP_MotorsTailsitter::set_update_rate(uint16_t speed_hz)
@@ -81,9 +79,9 @@ void AP_MotorsTailsitter::output_to_motors()
 
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN:
-            _actuator[0] = 0.0f;
-            _actuator[1] = 0.0f;
-            _actuator[2] = 0.0f;
+            _actuator[0]           = 0.0f;
+            _actuator[1]           = 0.0f;
+            _actuator[2]           = 0.0f;
             _external_min_throttle = 0.0;
             break;
         case SpoolState::GROUND_IDLE:
@@ -101,15 +99,24 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
-    SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
-    SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
+    // 必须在通道6大于1800同时小于GROUND_IDLE状态才可以禁用飞机执行器
+    if (hal.rcin->read(CH_6) > 1800 && _spool_state <= SpoolState::GROUND_IDLE) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 0);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 0);
 
-    // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
-    SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2]*100);
+        SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
+        SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
 
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left*SERVO_OUTPUT_RANGE);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right*SERVO_OUTPUT_RANGE);
+    } else {
+        SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
+        SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
 
+        // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
+        SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2] * 100);
+
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE);
+    }
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors (1 means being used)
@@ -117,7 +124,7 @@ void AP_MotorsTailsitter::output_to_motors()
 uint32_t AP_MotorsTailsitter::get_motor_mask()
 {
     uint32_t motor_mask = 0;
-    uint8_t chan;
+    uint8_t  chan;
     if (SRV_Channels::find_channel(SRV_Channel::k_throttleLeft, chan)) {
         motor_mask |= 1U << chan;
     }
@@ -134,20 +141,20 @@ uint32_t AP_MotorsTailsitter::get_motor_mask()
 // calculate outputs to the motors
 void AP_MotorsTailsitter::output_armed_stabilizing()
 {
-    float   roll_thrust;                // roll thrust input value, +/- 1.0
-    float   pitch_thrust;               // pitch thrust input value, +/- 1.0
-    float   yaw_thrust;                 // yaw thrust input value, +/- 1.0
-    float   throttle_thrust;            // throttle thrust input value, 0.0 - 1.0
-    float   thrust_max;                 // highest motor value
-    float   thrust_min;                 // lowest motor value
-    float   thr_adj = 0.0f;             // the difference between the pilot's desired throttle and throttle_thrust_best_rpy
+    float roll_thrust;     // roll thrust input value, +/- 1.0
+    float pitch_thrust;    // pitch thrust input value, +/- 1.0
+    float yaw_thrust;      // yaw thrust input value, +/- 1.0
+    float throttle_thrust; // throttle thrust input value, 0.0 - 1.0
+    float thrust_max;      // highest motor value
+    float thrust_min;      // lowest motor value
+    float thr_adj = 0.0f;  // the difference between the pilot's desired throttle and throttle_thrust_best_rpy
 
     // apply voltage and air pressure compensation
-    const float compensation_gain = thr_lin.get_compensation_gain();
-    roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
-    pitch_thrust = _pitch_in + _pitch_in_ff;
-    yaw_thrust = _yaw_in + _yaw_in_ff;
-    throttle_thrust = get_throttle() * compensation_gain;
+    const float compensation_gain  = thr_lin.get_compensation_gain();
+    roll_thrust                    = (_roll_in + _roll_in_ff) * compensation_gain;
+    pitch_thrust                   = _pitch_in + _pitch_in_ff;
+    yaw_thrust                     = _yaw_in + _yaw_in_ff;
+    throttle_thrust                = get_throttle() * compensation_gain;
     const float max_boost_throttle = _throttle_avg_max * compensation_gain;
 
     // never boost above max, derived from throttle mix params
@@ -156,29 +163,29 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
 
     // sanity check throttle is above min and below current limited throttle
     if (throttle_thrust <= min_throttle_out) {
-        throttle_thrust = min_throttle_out;
+        throttle_thrust      = min_throttle_out;
         limit.throttle_lower = true;
     }
     if (throttle_thrust >= max_throttle_out) {
-        throttle_thrust = max_throttle_out;
+        throttle_thrust      = max_throttle_out;
         limit.throttle_upper = true;
     }
 
     if (roll_thrust >= 1.0) {
         // cannot split motor outputs by more than 1
         roll_thrust = 1;
-        limit.roll = true;
+        limit.roll  = true;
     }
 
     // calculate left and right throttle outputs
     _thrust_left  = throttle_thrust + roll_thrust * 0.5f;
     _thrust_right = throttle_thrust - roll_thrust * 0.5f;
 
-    thrust_max = MAX(_thrust_right,_thrust_left);
-    thrust_min = MIN(_thrust_right,_thrust_left);
+    thrust_max = MAX(_thrust_right, _thrust_left);
+    thrust_min = MIN(_thrust_right, _thrust_left);
     if (thrust_max > 1.0f) {
         // if max thrust is more than one reduce average throttle
-        thr_adj = 1.0f - thrust_max;
+        thr_adj              = 1.0f - thrust_max;
         limit.throttle_upper = true;
     } else if (thrust_min < 0.0) {
         // if min thrust is less than 0 increase average throttle
@@ -196,7 +203,7 @@ void AP_MotorsTailsitter::output_armed_stabilizing()
     }
 
     // Add adjustment to reduce average throttle
-    _thrust_left  = constrain_float(_thrust_left  + thr_adj, 0.0f, 1.0f);
+    _thrust_left  = constrain_float(_thrust_left + thr_adj, 0.0f, 1.0f);
     _thrust_right = constrain_float(_thrust_right + thr_adj, 0.0f, 1.0f);
 
     _throttle = throttle_thrust;

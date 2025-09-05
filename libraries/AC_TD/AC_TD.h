@@ -17,7 +17,7 @@ public:
     // static const struct AP_Param::GroupInfo var_info[];
 
     float update(float in);
-    void  init(float _h, float _r);
+    void  init(float _h, float _r, float _v1);
 
 private:
     float fhan(float x1, float x2);

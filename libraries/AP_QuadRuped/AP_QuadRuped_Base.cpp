@@ -53,7 +53,6 @@ AP_QuadRuped_Base::AP_QuadRuped_Base(AP_AHRS_View& ahrs, AP_Motors& motors)
     AP_Param::setup_object_defaults(this, var_info);
 }
 
-
 void AP_QuadRuped_Base::init(void)
 {
     // 初始化腿部起始位置 (Initialize leg starting positions)
@@ -118,6 +117,64 @@ void AP_QuadRuped_Base::right_sleep_leg()
         pwm_coxa  = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
         pwm_femur = leg_param[leg_index].FEMU_DIR * -65 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
         pwm_tibia = leg_param[leg_index].TIBI_DIR * 30 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+
+        // 将计算出的PWM值存入输出命令数组
+        servo_output_cmd[leg_index].x = pwm_coxa;
+        servo_output_cmd[leg_index].y = pwm_femur;
+        servo_output_cmd[leg_index].z = pwm_tibia;
+    }
+}
+
+void AP_QuadRuped_Base::x_sleep_leg()
+{
+    uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE;
+
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        pwm_coxa  = leg_param[leg_index].COXA_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index].FEMU_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+
+        // 将计算出的PWM值存入输出命令数组
+        servo_output_cmd[leg_index].x = pwm_coxa;
+        servo_output_cmd[leg_index].y = pwm_femur;
+        servo_output_cmd[leg_index].z = pwm_tibia;
+    }
+}
+
+void AP_QuadRuped_Base::x_up_sleep_leg()
+{
+    uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE;
+
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        pwm_coxa  = leg_param[leg_index].COXA_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index].FEMU_DIR * -75 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * 60 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+
+        // 将计算出的PWM值存入输出命令数组
+        servo_output_cmd[leg_index].x = pwm_coxa;
+        servo_output_cmd[leg_index].y = pwm_femur;
+        servo_output_cmd[leg_index].z = pwm_tibia;
+    }
+}
+
+void AP_QuadRuped_Base::hengxiang_up_sleep_leg()
+{
+    uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE;
+    uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE;
+
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        if (leg_index == Leg_RB || leg_index == Leg_LF)
+            pwm_coxa = leg_param[leg_index].COXA_DIR * -45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        else
+            pwm_coxa = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+
+        pwm_femur = leg_param[leg_index].FEMU_DIR * -75 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * 60 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 将计算出的PWM值存入输出命令数组
         servo_output_cmd[leg_index].x = pwm_coxa;

@@ -51,6 +51,9 @@ public:
     virtual void reset_leg();
     virtual void right_sleep_leg();
     virtual void update_leg() { };
+    virtual void x_sleep_leg();
+    virtual void x_up_sleep_leg();
+    virtual void hengxiang_up_sleep_leg();
 
     virtual void controller();
     virtual void balance_controller();
@@ -65,8 +68,14 @@ public:
 
     float getFreq() { return gait_hz; }
 
+    // void arm() { armed = true; }
+    // void disarm() { armed = false; }
+    // bool armed() { return armed; }
+
 protected:
     bool move_requested;
+
+    // bool armed;
 
     uint8_t gait_step_leg_start[LEG_ALL];
     uint8_t gait_lift_divisor;

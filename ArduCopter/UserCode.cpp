@@ -1,4 +1,5 @@
 #include "Copter.h"
+#include <AP_RangeFinder/AP_RangeFinder_Backend.h>
 
 // 在编程和嵌入式系统中，钩子（Hook） 是一种机制，允许开发者在系统默认流程中插入自定义代码，从而扩展或修改原有功能。
 // 钩子在 ArduPilot 中的作用
@@ -20,6 +21,7 @@ void Copter::userhook_init() // 如果启用了用户初始化钩子
 void Copter::userhook_FastLoop()
 {
     // put your 100Hz code here   // 100Hz 代码（每 10ms 执行一次）
+    const AP_RangeFinder_Backend* sensor = rangefinder.get_backend(0);
 
     static uint32_t lasttime         = 0; // 记录上一次执行时间（用于频率控制）
     static uint32_t balance_lasttime = 0; // 平衡控制器的上一次执行时间
@@ -28,11 +30,20 @@ void Copter::userhook_FastLoop()
     if ((AP_HAL::millis() - lasttime) > (1000 / qrupd->getFreq())) {
         lasttime = AP_HAL::millis(); // 更新最后执行时间
 
-        // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）
-        if (hal.rcin->read(CH_6) > 1500) {
+        // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
+        if (hal.rcin->read(CH_6) > 1800 && !motors->armed()) {
             qrupd->update();
         } else {
-            qrupd->right_sleep_leg();
+            // 检测测距cm
+            uint16_t sonar_cm = sensor->distance_cm();
+            if (sonar_cm > 30) {
+                if (hal.rcin->read(CH_6) > 1300)
+                    qrupd->x_up_sleep_leg();
+                else
+                    qrupd->hengxiang_up_sleep_leg();
+            } else {
+                qrupd->x_sleep_leg();
+            }
         }
         qrupd->hw_set_servo_cmd(); // 发送舵机控制命令
     }

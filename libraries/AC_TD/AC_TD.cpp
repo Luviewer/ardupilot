@@ -49,8 +49,9 @@ float AC_TD::update(float in)
     return v1;
 }
 
-void AC_TD::init(float _h, float _r)
+void AC_TD::init(float _h, float _r, float _v1)
 {
-    h = _h;
-    r = _r;
+    h  = _h;
+    r  = _r;
+    v1 = _v1;
 }
