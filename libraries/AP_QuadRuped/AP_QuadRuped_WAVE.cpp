@@ -69,18 +69,34 @@ void AP_QuadRuped_WAVE::yaw_trajectory_generation(uint8_t leg_index)
 // 处理中心偏移阶段
 void AP_QuadRuped_WAVE::handle_centre_offset_phase(uint8_t leg_index)
 {
+    // 计算当前腿相对于其起始步态的相位偏移
+    int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+    
+    // 处理负相位偏移，确保在[0, gait_step_total)范围内
+    if (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
+    
+    const uint16_t centre_offset_steps = gait_step_total / 12;
+    
+    // 计算平滑插值比例 (0.0 到 1.0)
+    float t = (float)delta_step / centre_offset_steps;
+    
+    // 使用平滑的缓动函数 (ease-in-out cubic)
+    float smooth_t = t < 0.5f ? 4.0f * t * t * t : 1.0f - powf(-2.0f * t + 2.0f, 3.0f) / 2.0f;
+    
     switch (leg_index) {
         case Leg_RF:
-            set_centre_offset(0.0f, -50.0f);
+            set_centre_offset(0.0f, -50.0f * smooth_t);
             break;
         case Leg_LF:
-            set_centre_offset(0.0f, 50.0f);
+            set_centre_offset(0.0f, 50.0f * smooth_t);
             break;
         case Leg_LB:
-            set_centre_offset(throttle_travel, 50.0f);
+            set_centre_offset(throttle_travel * smooth_t, 50.0f * smooth_t);
             break;
         case Leg_RB:
-            set_centre_offset(throttle_travel, -50.0f);
+            set_centre_offset(throttle_travel * smooth_t, -50.0f * smooth_t);
             break;
     }
 }

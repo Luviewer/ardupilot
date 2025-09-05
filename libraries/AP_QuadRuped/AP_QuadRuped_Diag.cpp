@@ -35,7 +35,7 @@ void AP_QuadRuped_Diag::trajectory_generation(uint8_t leg_index)
         leg_z_target     = -leg_lift_height * (1.0f - cosf(delta)) * 1.0f; // 形成山峰形状
     } else {                                                               // 支撑返回阶段
         delta            = M_2PI * (delta_step - gait_step_total / 2) / gait_step_total * 2.0f;
-        leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel; //[+throttle_travel → -throttle_travel]，核心作用是通过坐标平移实现运动方向反转和相位同步
+        leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel; //[+throttle_travel → -throttle_travel]，核心作用是通过坐标平移实现运动方向反转和相位同步
         leg_xy_target[1] = 0;
         leg_z_target     = 0;
     }
@@ -49,20 +49,17 @@ void AP_QuadRuped_Diag::yaw_trajectory_generation(uint8_t leg_index)
         delta_step += gait_step_total;
     }
     // float progress = (float)delta_step / gait_step_total;
-    switch (delta_step) {
-        case 0:
-        case 1:
-            gait_rot_z[leg_index] = 0;
-            break;
 
-        case 2:
-        case 3:
-            gait_rot_z[leg_index] = yaw_travel / gait_lift_divisor;
-            break;
+    if (delta_step < gait_step_total / 12) {
+        gait_rot_z[leg_index] = 0;
+    }
 
-        default:
-            gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / (gait_step_total - 4));
-            break;
+    if (delta_step < gait_step_total / 6) {
+        gait_rot_z[leg_index] = yaw_travel / gait_lift_divisor;
+    }
+
+    else {
+        gait_rot_z[leg_index] = gait_rot_z[leg_index] - (yaw_travel / (gait_step_total - 4));
     }
 }
 

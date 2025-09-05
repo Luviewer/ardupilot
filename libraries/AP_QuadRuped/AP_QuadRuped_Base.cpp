@@ -346,18 +346,18 @@ void AP_QuadRuped_Base::balance_controller()
         if (val > 1475 && val < 1525) { // 死区检测
             val = 1500;
         }
-        offset_xy.x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+        centre_offset.x = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
     } else {
-        offset_xy.x = 0;
+        centre_offset.x = 0;
     }
     if (channel.centre_offset_y_channel != -1) {
         float val = constrain_value((float)rc().get_radio_in(channel.centre_offset_y_channel - 1), (float)1000, (float)2000);
         if (val > 1475 && val < 1525) { // 死区检测
             val = 1500;
         } // 死区检测
-        offset_xy.y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
+        centre_offset.y = (val - 1500) / 500.0f * 100.0f; // ±100mm范围
     } else {
-        offset_xy.y = 0;
+        centre_offset.y = 0;
     }
 }
 
