@@ -295,6 +295,7 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
     // 添加重心偏移补偿
     // 减去 centre_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
     totaldist_xyz -= centre_offset;
+    totaldist_xyz -= centre_offset_move;
 
     // 添加Z轴高度偏移（机体升降）
     totaldist_xyz.z += z_travel;

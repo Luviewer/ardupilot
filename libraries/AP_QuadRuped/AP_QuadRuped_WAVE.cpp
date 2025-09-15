@@ -30,6 +30,7 @@ void AP_QuadRuped_WAVE::trajectory_generation(uint8_t leg_index)
 
     const uint16_t centre_offset_steps = gait_step_total / 12;
     const uint16_t lift_steps          = gait_step_total / 12;
+    const uint16_t support_steps       = gait_step_total - centre_offset_steps - lift_steps;
 
     if (delta_step < centre_offset_steps) {
         // 中心偏移阶段
@@ -40,7 +41,9 @@ void AP_QuadRuped_WAVE::trajectory_generation(uint8_t leg_index)
                          leg_xy_target, leg_z_target);
     } else {
         // 支撑阶段 - 保持稳定姿态
-        handle_support_phase(leg_xy_target, leg_z_target);
+        const uint16_t step_in_support = delta_step - (centre_offset_steps + lift_steps);
+        const float support_s = (float)step_in_support / (float)support_steps;
+        handle_support_phase(support_s, leg_xy_target, leg_z_target);
     }
     // 设置最终腿部位置
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
@@ -88,16 +91,16 @@ void AP_QuadRuped_WAVE::handle_centre_offset_phase(uint8_t leg_index)
     
     switch (leg_index) {
         case Leg_RF:
-            set_centre_offset(0.0f, -50.0f * smooth_t);
+            set_centre_offset(0.0f, -45.0f * smooth_t);
             break;
         case Leg_LF:
-            set_centre_offset(0.0f, 50.0f * smooth_t);
+            set_centre_offset(0.0f, 45.0f * smooth_t);
             break;
         case Leg_LB:
-            set_centre_offset(throttle_travel * smooth_t, 50.0f * smooth_t);
+            set_centre_offset(30.0f, 45.0f * smooth_t);
             break;
         case Leg_RB:
-            set_centre_offset(throttle_travel * smooth_t, -50.0f * smooth_t);
+            set_centre_offset(30.0f, -45.0f * smooth_t);
             break;
     }
 }
@@ -109,20 +112,23 @@ void AP_QuadRuped_WAVE::handle_lift_phase(int16_t delta_step, uint16_t centre_of
     float delta = M_2PI * (delta_step - centre_offset_steps) / lift_steps;
     leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI;
     leg_xy_target[1] = 0;
-    leg_z_target     = -leg_lift_height * (1.0f - cosf(delta));
+    leg_z_target     = -3*leg_lift_height * (1.0f - cosf(delta));
 }
 
 // 处理支撑阶段
-void AP_QuadRuped_WAVE::handle_support_phase(Vector2f& leg_xy_target, float& leg_z_target)
+void AP_QuadRuped_WAVE::handle_support_phase(float support_s, Vector2f& leg_xy_target, float& leg_z_target)
 {
-    leg_xy_target[0] = throttle_travel;
-    leg_xy_target[1] = 0;
-    leg_z_target     = 0;
+    // 三次缓动：起止速度为0
+    const float s = 3.0f*support_s*support_s - 2.0f*support_s*support_s*support_s;
+    leg_xy_target.x = throttle_travel * (1.0f - s);  // 从前端回拖到 0
+    leg_xy_target.y = 0.0f;
+    leg_z_target    = 0.0f;                          // 地面接触
 }
+
 
 void AP_QuadRuped_WAVE::set_centre_offset(float x, float y, float z)
 {
-    centre_offset = Vector3f(x, y, z);
+    centre_offset_move = Vector3f(x, y, z);
 }
 
 void AP_QuadRuped_WAVE::update_leg()

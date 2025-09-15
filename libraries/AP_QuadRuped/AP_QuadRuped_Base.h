@@ -138,6 +138,7 @@ protected:
 
     // 重心控制
     Vector3f centre_offset; // 主动控制的重心偏移量（X、Y、Z）
+    Vector3f centre_offset_move; // 主动控制的重心偏移量（X、Y、Z）
     Vector2f offset_xy;     // 重心平移控制（X、Y平面）
 
     // 油门参数
