@@ -20,13 +20,14 @@ void AP_QuadRuped_Diag::gait_init()
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
 // 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
 // 末段时间缩放函数：C2 连续，末端 v=a=0
-inline float slow_phi(float s, float s0) {
+inline float slow_phi(float s, float s0)
+{
     if (s <= s0) return s;
-    float sigma = (s - s0) / (1.0f - s0);      // 0..1
-    float w =  sigma
-             + 4.0f*powf(sigma,3.0f)
-             - 7.0f*powf(sigma,4.0f)
-             + 3.0f*powf(sigma,5.0f);          // w(0)=0,w'(0)=1; w(1)=1,w'(1)=0
+    float sigma = (s - s0) / (1.0f - s0); // 0..1
+    float w     = sigma
+        + 4.0f * powf(sigma, 3.0f)
+        - 7.0f * powf(sigma, 4.0f)
+        + 3.0f * powf(sigma, 5.0f); // w(0)=0,w'(0)=1; w(1)=1,w'(1)=0
     return s0 + (1.0f - s0) * w;
 }
 
@@ -35,26 +36,32 @@ void AP_QuadRuped_Diag::trajectory_generation(uint8_t leg_index)
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
     if (delta_step < 0) delta_step += gait_step_total;
 
-    float p = (float)delta_step / (float)gait_step_total; // 0..1
+    const float p = (float)delta_step / (float)gait_step_total; // 0..1
+
+    // 期望的平面行程向量（前后X, 左右Y）
+    const Vector2f throttle_travel(throttle_x_travel, throttle_y_travel);
+
     Vector2f leg_xy_target;
     float    leg_z_target = 0.0f;
 
-    if (p < 0.5f) {                     // 摆动相
-        float phase = p * 2.0f;         // 0..1
-        float phase_slow = slow_phi(phase, 0.80f); // 末段 15% 减速（可调 0.8~0.9）
-        float delta = M_2PI * phase_slow;
+    if (p < 0.5f) {                                      // 摆动相
+        const float phase      = p * 2.0f;               // 0..1
+        const float phase_slow = slow_phi(phase, 0.80f); // 末段减速
+        const float delta      = M_2PI * phase_slow;
 
-        // 原有几何不变：摆线X + 余弦Z
-        leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f - throttle_travel;
-        leg_xy_target[1] = 0.0f;
-        leg_z_target     = -leg_lift_height * (1.0f - cosf(delta));
-    } else {                            // 支撑相照旧
-        float phase = (p - 0.5f) * 2.0f; // 0..1
-        float delta = M_2PI * phase;
-        leg_xy_target[0] = -throttle_travel * (delta - sinf(delta)) / M_2PI * 2.0f + throttle_travel;
-        leg_xy_target[1] = 0.0f;
-        leg_z_target     = 0.0f;
+        // 2D 摆线：对 v 的两个分量都按同一标量函数变换
+        const float S = (delta - sinf(delta)) / M_2PI * 2.0f;  // 0..2
+        leg_xy_target = throttle_travel * S - throttle_travel; // 原公式在 X 上的 1D 推广到 2D
+        leg_z_target  = -leg_lift_height * (1.0f - cosf(delta));
+    } else { // 支撑相
+        const float phase = (p - 0.5f) * 2.0f;
+        const float delta = M_2PI * phase;
+
+        const float S = (delta - sinf(delta)) / M_2PI * 2.0f;
+        leg_xy_target = -throttle_travel * S + throttle_travel; // 同样推广到 2D
+        leg_z_target  = 0.0f;
     }
+
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
 }
 
@@ -74,8 +81,8 @@ void AP_QuadRuped_Diag::yaw_trajectory_generation(uint8_t leg_index)
         gait_rot_z[leg_index] = peak;
     } else { // 剩余5/6时间段：线性衰减到0
         // 线性从 peak 衰减到 0，区间长度 = 5/6
-        const float t         = (p - (1.0f / 6.0f)) / (5.0f / 6.0f);    // t ∈ [0,1)
-        gait_rot_z[leg_index] = peak * (1.0f - t);                      // 直接给定，不依赖上一帧
+        const float t         = (p - (1.0f / 6.0f)) / (5.0f / 6.0f); // t ∈ [0,1)
+        gait_rot_z[leg_index] = peak * (1.0f - t);                   // 直接给定，不依赖上一帧
     }
 }
 

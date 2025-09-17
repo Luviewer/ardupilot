@@ -104,7 +104,7 @@ protected:
     Vector3ui servo_output_cmd[LEG_ALL]; // 存储每条腿三个关节的PWM值
 
     // 运动参数
-    AP_Float leg_lift_height; // 抬腿高度（mm）- 腿抬起的高度
+    float leg_lift_height; // 抬腿高度（mm）- 腿抬起的高度
     AP_Float gait_hz;         // 步态频率（Hz）- 步态更新频率
     AP_Int16 gait_step_total; // 步态总步数 - 一个完整步态周期的步数
     uint16_t gait_step_now;   // 当前步态计数 - 当前步态周期中的步数
@@ -126,7 +126,8 @@ protected:
 
     // 运动控制变量
     float target_yaw;      // 目标偏航角
-    float throttle_travel; // 油门行程 - 前进/后退距离
+    float throttle_x_travel; // 油门行程 - 前进/后退距离
+    float throttle_y_travel; // 油门行程 - 左/右距离
     float z_travel;        // Z轴行程 - 机体升降高度
     float yaw_travel;      // 偏航行程 - 旋转补偿量
     float roll_travel;     // 横滚行程 - 横滚平衡补偿
@@ -142,7 +143,8 @@ protected:
     Vector2f offset_xy;     // 重心平移控制（X、Y平面）
 
     // 油门参数
-    AP_Float throttle_max; // 油门最大值 - 最大前进/后退距离
+    AP_Float throttle_x_max; // 油门最大值 - 最大前进/后退距离
+    AP_Float throttle_y_max;
 
     // 系统和腿的参数
     AP_QuadRuped_SYS_Params     Sys_Param;          // 系统参数（机身尺寸、腿长等）

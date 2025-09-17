@@ -14,7 +14,8 @@ extern const AP_HAL::HAL& hal;
 // 默认参数定义
 #define LIFT_HEIGHT_DEFAULT     50.0f  // 默认抬腿高度（mm）
 #define SPEED_HZ_DEFAULT        25.0f  // 默认步态频率（Hz）
-#define MAX_THROTTLE_DEFAULT    200.0f // 默认最大油门行程（mm）
+#define MAX_THROTTLE_X_DEFAULT  200.0f // 默认最大油门行程（mm）
+#define MAX_THROTTLE_Y_DEFAULT  200.0f // 默认最大油门行程（mm）
 #define GAIT_STEP_TOTAL_DEFAULT 24     // 默认步态总步数
 
 #define START_COXA_ANGLE        45 // 起始髋关节角度（度）
@@ -23,24 +24,24 @@ extern const AP_HAL::HAL& hal;
 const AP_Param::GroupInfo AP_QuadRuped_Base::var_info[] = {
 
     // 基本运动参数
-    AP_GROUPINFO("LIFT", 1, AP_QuadRuped_Base, leg_lift_height, LIFT_HEIGHT_DEFAULT), // 抬腿高度
-    AP_GROUPINFO("Hz", 2, AP_QuadRuped_Base, gait_hz, SPEED_HZ_DEFAULT),              // 步态频率
+    AP_GROUPINFO("Hz", 2, AP_QuadRuped_Base, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
 
     // 行程参数
-    AP_GROUPINFO("THR", 3, AP_QuadRuped_Base, throttle_max, MAX_THROTTLE_DEFAULT),        // 最大油门行程
-    AP_GROUPINFO("STEP", 4, AP_QuadRuped_Base, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
+    AP_GROUPINFO("THR_X", 3, AP_QuadRuped_Base, throttle_x_max, MAX_THROTTLE_X_DEFAULT),  // 最大x方向油门行程
+    AP_GROUPINFO("THR_Y", 4, AP_QuadRuped_Base, throttle_y_max, MAX_THROTTLE_Y_DEFAULT),  // 最大y方向油门行程
+    AP_GROUPINFO("STEP", 5, AP_QuadRuped_Base, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
 
     // 系统参数组
-    AP_SUBGROUPINFO(Sys_Param, "SYS", 5, AP_QuadRuped_Base, AP_QuadRuped_SYS_Params), // 系统参数
+    AP_SUBGROUPINFO(Sys_Param, "SYS", 6, AP_QuadRuped_Base, AP_QuadRuped_SYS_Params), // 系统参数
 
     // 遥控通道参数组
-    AP_SUBGROUPINFO(channel, "CH_", 6, AP_QuadRuped_Base, AP_QuadRuped_CHANNEL_Params), // 通道配置
+    AP_SUBGROUPINFO(channel, "CH_", 7, AP_QuadRuped_Base, AP_QuadRuped_CHANNEL_Params), // 通道配置
 
     // 四条腿的参数组
-    AP_SUBGROUPINFO(leg_param[Leg_RF], "RF_", 7, AP_QuadRuped_Base, AP_QuadRuped_Params),  // 右前腿参数
-    AP_SUBGROUPINFO(leg_param[Leg_RB], "RB_", 8, AP_QuadRuped_Base, AP_QuadRuped_Params),  // 右后腿参数
-    AP_SUBGROUPINFO(leg_param[Leg_LB], "LB_", 9, AP_QuadRuped_Base, AP_QuadRuped_Params),  // 左后腿参数
-    AP_SUBGROUPINFO(leg_param[Leg_LF], "LF_", 10, AP_QuadRuped_Base, AP_QuadRuped_Params), // 左前腿参数
+    AP_SUBGROUPINFO(leg_param[Leg_RF], "RF_", 8, AP_QuadRuped_Base, AP_QuadRuped_Params),  // 右前腿参数
+    AP_SUBGROUPINFO(leg_param[Leg_RB], "RB_", 9, AP_QuadRuped_Base, AP_QuadRuped_Params),  // 右后腿参数
+    AP_SUBGROUPINFO(leg_param[Leg_LB], "LB_", 10, AP_QuadRuped_Base, AP_QuadRuped_Params), // 左后腿参数
+    AP_SUBGROUPINFO(leg_param[Leg_LF], "LF_", 11, AP_QuadRuped_Base, AP_QuadRuped_Params), // 左前腿参数
 
     // PID控制器参数（已注释）
     // AP_SUBGROUPINFO(roll_pid, "_RLL_", 11, AP_QuadRuped_Base, AC_PID),                // 横滚PID
@@ -101,7 +102,7 @@ void AP_QuadRuped_Base::calc_gait_sequence()
     const float travel_dz = 5; // 移动死区阈值，防止微小抖动
 
     // 判断是否有移动请求（前进/后退或旋转）
-    if ((fabsf(throttle_travel) > travel_dz) || (fabsf(yaw_travel) > travel_dz / 2))
+    if ((fabsf(throttle_x_travel) > travel_dz) || (fabsf(throttle_y_travel) > travel_dz) || (fabsf(yaw_travel) > travel_dz / 2))
         move_requested = true; // 需要移动
     else
         move_requested = false; // 保持静止
@@ -331,18 +332,32 @@ void AP_QuadRuped_Base::controller()
     float temp_rc; // 临时存储遥控器值
 
     // 处理油门通道（前进/后退）
-    if (channel.throttle_channel != -1) {
+    if (channel.throttle_x_channel != -1) {
         // 读取遥控器输入并约束在[1000, 2000]范围内
-        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_channel - 1), (float)1000, (float)2000);
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_x_channel - 1), (float)1000, (float)2000);
         // 死区处理：当摇杆在中间位置附近时，认为无输入
         if (temp_rc < 1550 && temp_rc > 1450) {
             temp_rc = 1500;
             set_centre_offset(0.0, 0.0, 0.0); // 重置重心偏移
         }
         // 将遥控器输入转换为前进/后退行程
-        throttle_travel = (temp_rc - 1500) / 500.0f * throttle_max;
+        throttle_x_travel = (temp_rc - 1500) / 500.0f * throttle_x_max;
     } else {
-        throttle_travel = 0; // 无通道配置时保持静止
+        throttle_x_travel = 0; // 无通道配置时保持静止
+    }
+
+    // 处理横移通道（向右为正，向左为负）
+    if (channel.throttle_y_channel != -1) {
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_y_channel - 1), 1000.0f, 2000.0f);
+        // 死区：1450~1550
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+        }
+        // 将遥控器输入转换为横移行程（mm）
+        // 建议与 throttle_travel 一样的线性映射
+        throttle_y_travel = (temp_rc - 1500) / 500.0f * throttle_y_max;
+    } else {
+        throttle_y_travel = 0.0f;
     }
 
     // 处理高度通道（机体升降）
@@ -353,6 +368,15 @@ void AP_QuadRuped_Base::controller()
         z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
     } else {
         z_travel = -50; // 默认高度
+    }
+
+    if (channel.lift_channel != -1) {
+        // 读取遥控器输入
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.lift_channel - 1), (float)1000, (float)2000);
+        // 转换为高度偏移：范围-50mm到+70mm
+        leg_lift_height = (temp_rc - 1500) / 10.0f + 25;
+    } else {
+        leg_lift_height = 25; // 默认高度
     }
 }
 

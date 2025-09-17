@@ -110,7 +110,7 @@ void AP_QuadRuped_WAVE::handle_lift_phase(int16_t delta_step, uint16_t centre_of
                                          uint16_t lift_steps, Vector2f& leg_xy_target, float& leg_z_target)
 {
     float delta = M_2PI * (delta_step - centre_offset_steps) / lift_steps;
-    leg_xy_target[0] = throttle_travel * (delta - sinf(delta)) / M_2PI;
+    leg_xy_target[0] = throttle_x_travel * (delta - sinf(delta)) / M_2PI;
     leg_xy_target[1] = 0;
     leg_z_target     = -3*leg_lift_height * (1.0f - cosf(delta));
 }
@@ -120,7 +120,7 @@ void AP_QuadRuped_WAVE::handle_support_phase(float support_s, Vector2f& leg_xy_t
 {
     // 三次缓动：起止速度为0
     const float s = 3.0f*support_s*support_s - 2.0f*support_s*support_s*support_s;
-    leg_xy_target.x = throttle_travel * (1.0f - s);  // 从前端回拖到 0
+    leg_xy_target.x = throttle_x_travel * (1.0f - s);  // 从前端回拖到 0
     leg_xy_target.y = 0.0f;
     leg_z_target    = 0.0f;                          // 地面接触
 }

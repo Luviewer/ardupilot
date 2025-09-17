@@ -25,8 +25,10 @@ public:
 
     AP_QuadRuped_CHANNEL_Params(void);
 
-    AP_Int8 throttle_channel;
+    AP_Int8 throttle_x_channel;
+    AP_Int8 throttle_y_channel;
     AP_Int8 height_channel;
+    AP_Int8 lift_channel;
     AP_Int8 roll_channel;
     AP_Int8 pitch_channel;
     AP_Int8 yaw_channel;
