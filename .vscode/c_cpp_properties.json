@@ -11,7 +11,19 @@
             "cppStandard": "gnu++17",
             "intelliSenseMode": "linux-gcc-x64",
             "configurationProvider": "ms-vscode.makefile-tools",
-            "compileCommands": "${workspaceFolder}/build/CUAV-X7/compile_commands.json"
+            "compileCommands": "${workspaceFolder}/build/fmuv3/compile_commands.json"
+        },
+        {
+            "name": "ArduPilot",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/opt/gcc-arm-none-eabi-10-2020-q4-major/bin/arm-none-eabi-gcc",
+            "cStandard": "c11",
+            "cppStandard": "gnu++11",
+            "intelliSenseMode": "gcc-arm",
+            "compileCommands": "${workspaceFolder}/build/Pixhawk6C-bdshot/compile_commands.json"
         }
     ],
     "version": 4

@@ -33,17 +33,16 @@ void Copter::userhook_FastLoop()
         // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
         if (hal.rcin->read(CH_6) > 1800 && !motors->armed()) {
             qrupd->update();
-        } else {
+        } else if (hal.rcin->read(CH_6) > 1400 && hal.rcin->read(CH_6) < 1600) {
             // 检测测距cm
             uint16_t sonar_cm = sensor->distance_cm();
             if (sonar_cm > 30) {
-                if (hal.rcin->read(CH_6) > 1300)
-                    qrupd->x_up_sleep_leg();
-                else
-                    qrupd->hengxiang_up_sleep_leg();
+                qrupd->x_up_sleep_leg();
             } else {
                 qrupd->x_sleep_leg();
             }
+        } else if (hal.rcin->read(CH_6) > 900 && hal.rcin->read(CH_6) < 1200) {
+            qrupd->hengxiang_up_sleep_leg();
         }
         qrupd->hw_set_servo_cmd(); // 发送舵机控制命令
     }

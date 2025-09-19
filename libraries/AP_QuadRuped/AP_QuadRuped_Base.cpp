@@ -201,6 +201,8 @@ void AP_QuadRuped_Base::hengxiang_up_sleep_leg()
     uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE; // 股关节PWM值
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
 
+    float angle_value = (float)(hal.rcin->read(CH_7) - 1500) / 500.0f * 90.0f;
+
     // 遍历所有腿，设置横向抬升姿态
     for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
         // 根据腿的位置设置不同的髋关节角度
@@ -210,8 +212,8 @@ void AP_QuadRuped_Base::hengxiang_up_sleep_leg()
             pwm_coxa = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 股关节和胫关节统一设置
-        pwm_femur = leg_param[leg_index].FEMU_DIR * -75 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE; // 向上弯曲
-        pwm_tibia = leg_param[leg_index].TIBI_DIR * 60 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;  // 形成支撑
+        pwm_femur = leg_param[leg_index].FEMU_DIR * angle_value * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE; // 形成支撑
 
         // 将计算出的PWM值存入输出命令数组
         servo_output_cmd[leg_index].x = pwm_coxa;  // 髋关节PWM
