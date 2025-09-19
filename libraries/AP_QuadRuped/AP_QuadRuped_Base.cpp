@@ -283,11 +283,13 @@ Vector3f AP_QuadRuped_Base::leg_inverse_kinematics(Vector3f posxyz)
     d2        = 2 * Sys_Param.TIBIA_LEN * Sys_Param.FEMUR_LEN;
     leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90); // 计算胫关节角度
 
-    float a;
-    float b;
-    float alpha=degrees(atan2f(b,a));
-    leg_deg.y -= alpha;
-    leg_deg.z -= 90-alpha;
+    ////////////////////////////////
+    const float a = 55.82;
+    const float b = 48.58;
+
+    float alpha = degrees(atan2f(b, a));
+    leg_deg.y += alpha;
+    leg_deg.z -= 90 - alpha;
     return leg_deg; // 返回{髋关节, 股关节, 胫关节}角度
 }
 
@@ -367,15 +369,15 @@ void AP_QuadRuped_Base::controller()
         throttle_y_travel = 0.0f;
     }
 
-    // 处理高度通道（机体升降）
-    if (channel.height_channel != -1) {
-        // 读取遥控器输入
-        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.height_channel - 1), (float)1000, (float)2000);
-        // 转换为高度偏移：范围-50mm到+70mm
-        z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
-    } else {
-        z_travel = -50; // 默认高度
-    }
+    // // 处理高度通道（机体升降）
+    // if (channel.height_channel != -1) {
+    //     // 读取遥控器输入
+    //     temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.height_channel - 1), (float)1000, (float)2000);
+    //     // 转换为高度偏移：范围-50mm到+70mm
+    //     z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
+    // } else {
+    // }
+    z_travel = (float)channel.height_channel; // 默认高度
 
     if (channel.lift_channel != -1) {
         // 读取遥控器输入
@@ -385,6 +387,8 @@ void AP_QuadRuped_Base::controller()
     } else {
         leg_lift_height = 25; // 默认高度
     }
+
+    leg_lift_height = (float)channel.lift_channel; // 默认高度
 }
 
 // 平衡控制器 - 处理姿态控制和重心偏移
