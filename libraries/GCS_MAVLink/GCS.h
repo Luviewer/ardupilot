@@ -1140,6 +1140,9 @@ private:
     bool send_available_modes();
     bool send_available_mode_monitor();
 
+public:
+    // 添加自定义命令处理函数
+    MAV_RESULT handle_custom_command(const mavlink_command_int_t &packet);
 };
 
 /// @class GCS

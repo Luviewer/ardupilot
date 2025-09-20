@@ -5626,6 +5626,11 @@ MAV_RESULT GCS_MAVLINK::handle_command_int_packet(const mavlink_command_int_t &p
     case MAV_CMD_REQUEST_MESSAGE:
         return handle_command_request_message(packet);
 
+    // 添加你的自定义命令处理
+    case MAV_CMD_USER_1:
+    case 31000:
+    case 31001:
+        return handle_custom_command(packet);
     }
 
     return MAV_RESULT_UNSUPPORTED;
@@ -7266,5 +7271,34 @@ void GCS_MAVLINK::handle_radio_rc_channels(const mavlink_message_t &msg)
     AP::RC().handle_radio_rc_channels(&packet);
 }
 #endif // AP_RCPROTOCOL_MAVLINK_RADIO_ENABLED
+
+// 在文件末尾，handle_command_int_packet函数之后添加
+MAV_RESULT GCS_MAVLINK::handle_custom_command(const mavlink_command_int_t &packet)
+{
+    switch (packet.command) {
+    case MAV_CMD_USER_1:
+        // 处理紧急模式命令
+        gcs().send_text(MAV_SEVERITY_INFO, "Custom: Emergency mode received");
+        // 这里添加你的处理逻辑
+        return MAV_RESULT_ACCEPTED;
+
+    case 31000:
+        // 处理自定义命令1
+        gcs().send_text(MAV_SEVERITY_INFO, "Custom CMD 31000 received");
+        gcs().send_text(MAV_SEVERITY_INFO, "Params: %f, %f, %f, %f",
+                        packet.param1, packet.param2,
+                        packet.param3, packet.param4);
+        return MAV_RESULT_ACCEPTED;
+
+    case 31001:
+        // 处理自定义命令2
+        gcs().send_text(MAV_SEVERITY_INFO, "Custom CMD 31001 received");
+        return MAV_RESULT_ACCEPTED;
+
+    default:
+        return MAV_RESULT_UNSUPPORTED;
+    }
+}
+
 
 #endif  // HAL_GCS_ENABLED
