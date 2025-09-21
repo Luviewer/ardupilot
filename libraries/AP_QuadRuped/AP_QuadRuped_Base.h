@@ -10,6 +10,16 @@
 #include <AP_Param/AP_Param.h>              // 参数系统
 #include <stdio.h>
 
+#ifdef ENABLE_LEG_ALPHA_COMP
+  // Allow overriding from the build system, otherwise use defaults:
+  #ifndef LEG_ALPHA_A
+    #define LEG_ALPHA_A 55.80f
+  #endif
+  #ifndef LEG_ALPHA_B
+    #define LEG_ALPHA_B 50.00f
+  #endif
+#endif
+
 // 腿部索引枚举
 enum {
     Leg_RF = 0, // 右前腿 (Right Front)
@@ -32,7 +42,8 @@ public:
     // 步态类型枚举
     enum GaitType {
         GAIT_DIAGONAL = 0, // 对角步态（trot步态）
-        GAIT_WAVE     = 1  // 波浪步态（crawl步态）
+        GAIT_WAVE     = 1, // 波浪步态（crawl步态）
+        GAIT_CRAB     = 2
     };
 
     // 姿态航向参考系统引用 - 获取机器人姿态信息
@@ -76,9 +87,9 @@ public:
     virtual void update() { };
 
     // 初始化和输出函数
-    void init();             // 系统初始化
-    void output_leg_angle(); // 输出腿部关节角度
-    bool hw_set_servo_cmd(); // 硬件伺服命令设置
+    virtual void init();             // 系统初始化
+    void         output_leg_angle(); // 输出腿部关节角度
+    bool         hw_set_servo_cmd(); // 硬件伺服命令设置
 
     // 辅助函数
     float getFreq() { return gait_hz; } // 获取步态频率
@@ -104,7 +115,7 @@ protected:
     Vector3ui servo_output_cmd[LEG_ALL]; // 存储每条腿三个关节的PWM值
 
     // 运动参数
-    float leg_lift_height; // 抬腿高度（mm）- 腿抬起的高度
+    float    leg_lift_height; // 抬腿高度（mm）- 腿抬起的高度
     AP_Float gait_hz;         // 步态频率（Hz）- 步态更新频率
     AP_Int16 gait_step_total; // 步态总步数 - 一个完整步态周期的步数
     uint16_t gait_step_now;   // 当前步态计数 - 当前步态周期中的步数
@@ -125,22 +136,22 @@ protected:
     float gait_rot_z[LEG_ALL]; // 每条腿的Z轴旋转补偿（用于转向）
 
     // 运动控制变量
-    float target_yaw;      // 目标偏航角
+    float target_yaw;        // 目标偏航角
     float throttle_x_travel; // 油门行程 - 前进/后退距离
     float throttle_y_travel; // 油门行程 - 左/右距离
-    float z_travel;        // Z轴行程 - 机体升降高度
-    float yaw_travel;      // 偏航行程 - 旋转补偿量
-    float roll_travel;     // 横滚行程 - 横滚平衡补偿
-    float pitch_travel;    // 俯仰行程 - 俯仰平衡补偿
+    float z_travel;          // Z轴行程 - 机体升降高度
+    float yaw_travel;        // 偏航行程 - 旋转补偿量
+    float roll_travel;       // 横滚行程 - 横滚平衡补偿
+    float pitch_travel;      // 俯仰行程 - 俯仰平衡补偿
 
     // 限制和状态
     float max_yaw_rate;     // 最大允许偏航角速度（rad/s）
     bool  first_run = true; // 首次运行标志
 
     // 重心控制
-    Vector3f centre_offset; // 主动控制的重心偏移量（X、Y、Z）
+    Vector3f centre_offset;      // 主动控制的重心偏移量（X、Y、Z）
     Vector3f centre_offset_move; // 主动控制的重心偏移量（X、Y、Z）
-    Vector2f offset_xy;     // 重心平移控制（X、Y平面）
+    Vector2f offset_xy;          // 重心平移控制（X、Y平面）
 
     // 油门参数
     AP_Float throttle_x_max; // 油门最大值 - 最大前进/后退距离

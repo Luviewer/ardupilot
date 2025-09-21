@@ -19,7 +19,6 @@ extern const AP_HAL::HAL& hal;
 #define GAIT_STEP_TOTAL_DEFAULT 24     // 默认步态总步数
 
 #define START_COXA_ANGLE        45 // 起始髋关节角度（度）
-
 // 参数定义表 - 用于参数系统配置
 const AP_Param::GroupInfo AP_QuadRuped_Base::var_info[] = {
 
@@ -283,13 +282,13 @@ Vector3f AP_QuadRuped_Base::leg_inverse_kinematics(Vector3f posxyz)
     d2        = 2 * Sys_Param.TIBIA_LEN * Sys_Param.FEMUR_LEN;
     leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90); // 计算胫关节角度
 
-    ////////////////////////////////
-    const float a = 55.82;
-    const float b = 48.58;
-
-    float alpha = degrees(atan2f(b, a));
-    leg_deg.y += alpha;
-    leg_deg.z -= 90 - alpha;
+    #ifdef ENABLE_LEG_ALPHA_COMP
+    {
+        const float alpha = degrees(atan2f(LEG_ALPHA_B, LEG_ALPHA_A));
+        leg_deg.y -= alpha;
+        leg_deg.z += 90.0f - alpha;
+    }
+#endif
     return leg_deg; // 返回{髋关节, 股关节, 胫关节}角度
 }
 
