@@ -221,6 +221,34 @@ void AP_QuadRuped_Base::hengxiang_up_sleep_leg()
     }
 }
 
+// 纵向抬升睡眠姿态 - 将机器人调整为纵向展开且抬高的姿态
+void AP_QuadRuped_Base::zongxiang_up_sleep_leg()
+{
+    uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE; // 髋关节PWM值
+    uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE; // 股关节PWM值
+    uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
+
+    float angle_value = (float)(hal.rcin->read(CH_7) - 1500) / 500.0f * 90.0f;
+
+    // 遍历所有腿，设置横向抬升姿态
+    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+        // 根据腿的位置设置不同的髋关节角度
+        if (leg_index == Leg_RB || leg_index == Leg_LF) // 右后腿和左前腿
+            pwm_coxa = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        else // 右前腿和左后腿
+            pwm_coxa = leg_param[leg_index].COXA_DIR * -45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+
+        // 股关节和胫关节统一设置
+        pwm_femur = leg_param[leg_index].FEMU_DIR * angle_value * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE; // 形成支撑
+
+        // 将计算出的PWM值存入输出命令数组
+        servo_output_cmd[leg_index].x = pwm_coxa;  // 髋关节PWM
+        servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
+        servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
+    }
+}
+
 // 主逆运动学计算 - 计算所有腿的关节角度
 void AP_QuadRuped_Base::main_inverse_kinematics(void)
 {
@@ -481,6 +509,40 @@ void AP_QuadRuped_Base::balance_controller()
     } else {
         centre_offset.y = 0;
     }
+}
+
+void AP_QuadRuped_Base::update_all()
+{
+    // 获取激光雷达接口
+    const AP_RangeFinder_Backend* sensor = rangefinder.get_backend(0);
+
+    const static uint16_t max_sonar_cm = 30;
+
+    // 遥控器通道大于1700并且没有飞行解锁, 进入陆地模态, 否则都为飞行模态
+    if (hal.rcin->read(CH_6) > 1750 && !_motors.armed()) {
+        if (walk_mode == 1) {
+            hengxiang_type();
+        } else {
+            update();
+        }
+    } else if (hal.rcin->read(CH_6) > 1400 && hal.rcin->read(CH_6) < 1600) {
+        if (sensor == nullptr) {
+            x_sleep_leg();
+            continue;
+        }
+        // 检测测距cm
+        uint16_t sonar_cm = sensor->distance_cm();
+        if (sonar_cm > max_sonar_cm) {
+            x_up_sleep_leg();
+        } else {
+            x_sleep_leg();
+        }
+    } else if (hal.rcin->read(CH_6) > 900 && hal.rcin->read(CH_6) < 1200) {
+        zongxiang_up_sleep_leg();
+    }
+
+    // 发送舵机控制命令
+    hw_set_servo_cmd();
 }
 
 // 输出腿部关节角度 - 将计算出的关节角度转换为PWM信号

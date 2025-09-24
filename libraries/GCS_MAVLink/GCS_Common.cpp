@@ -7277,22 +7277,16 @@ MAV_RESULT GCS_MAVLINK::handle_custom_command(const mavlink_command_int_t &packe
 {
     switch (packet.command) {
     case MAV_CMD_USER_1:
-        // 处理紧急模式命令
-        gcs().send_text(MAV_SEVERITY_INFO, "Custom: Emergency mode received");
-        // 这里添加你的处理逻辑
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Custom: | Type ");
         return MAV_RESULT_ACCEPTED;
 
     case 31000:
-        // 处理自定义命令1
-        gcs().send_text(MAV_SEVERITY_INFO, "Custom CMD 31000 received");
-        gcs().send_text(MAV_SEVERITY_INFO, "Params: %f, %f, %f, %f",
-                        packet.param1, packet.param2,
-                        packet.param3, packet.param4);
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Custom: —— Type ");
         return MAV_RESULT_ACCEPTED;
 
     case 31001:
         // 处理自定义命令2
-        gcs().send_text(MAV_SEVERITY_INFO, "Custom CMD 31001 received");
+        gcs().send_text(MAV_SEVERITY_NOTICE, "Custom: X Type ");
         return MAV_RESULT_ACCEPTED;
 
     default:

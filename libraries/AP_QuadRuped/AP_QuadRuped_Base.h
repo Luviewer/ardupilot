@@ -40,18 +40,6 @@ public:
     // 空析构函数 - 防止编译器警告
     virtual ~AP_QuadRuped_Base() { }
 
-    // 步态类型枚举
-    enum GaitType {
-        GAIT_DIAGONAL = 0, // 对角步态（trot步态）
-        GAIT_WAVE     = 1, // 波浪步态（crawl步态）
-        GAIT_CRAB     = 2
-    };
-
-    // 姿态航向参考系统引用 - 获取机器人姿态信息
-    AP_AHRS_View& _ahrs;
-
-    // 电机控制接口引用 - 控制舵机输出
-    AP_Motors& _motors;
 
     // 参数表定义 - 用于配置系统参数
     static const struct AP_Param::GroupInfo var_info[];
@@ -79,6 +67,7 @@ public:
     virtual void x_sleep_leg();            // X形睡眠姿态
     virtual void x_up_sleep_leg();         // X形抬升睡眠姿态
     virtual void hengxiang_up_sleep_leg(); // 横向抬升睡眠姿态
+    virtual void zongxiang_up_sleep_leg(); // 纵向抬升睡眠姿态
 
     // 控制器函数
     virtual void controller();         // 主控制器 - 处理遥控器输入
@@ -86,6 +75,9 @@ public:
 
     // 更新函数（由子类实现具体行为）
     virtual void update() { };
+
+    // 总更新函数
+    void update_all();
 
     // 初始化和输出函数
     virtual void init();             // 系统初始化
@@ -100,9 +92,13 @@ public:
     // void disarm() { armed = false; }   // 上锁
     // bool armed() { return armed; }     // 获取解锁状态
 
+    void hengxiang_type();
+
 protected:
     // 运动控制标志
     bool move_requested; // 移动请求标志 - true表示需要移动，false表示保持静止
+    uint8_t claw_mode;
+    uint8_t walk_mode;
 
     // 解锁状态（已注释）
     // bool armed; // 解锁状态
