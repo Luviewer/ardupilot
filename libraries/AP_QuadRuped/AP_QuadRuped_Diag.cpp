@@ -21,9 +21,6 @@ const AP_Param::GroupInfo AP_QuadRuped_Diag::var_info[] = {
 // 构造函数
 AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_AHRS_View& ahrs, AP_Motors& motors)
     : AP_QuadRuped_Backend(frontend, ahrs, motors)
-    , _diag_phase(0)
-    , _gait_cycle_time(0.0f)
-    , _last_update_time(0)
 {
     // 设置参数默认值
     AP_Param::setup_object_defaults(this, var_info);
@@ -57,10 +54,10 @@ void AP_QuadRuped_Diag::gait_init()
 {
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
-    gait_step_leg_start[AP_QuadRuped::Leg_RF] = 0;                   // 右前腿从第0步开始
-    gait_step_leg_start[AP_QuadRuped::Leg_RB] = gait_step_total / 2; // 右后腿从中间步开始
-    gait_step_leg_start[AP_QuadRuped::Leg_LB] = 0;                   // 左后腿从第0步开始
-    gait_step_leg_start[AP_QuadRuped::Leg_LF] = gait_step_total / 2; // 左前腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                   // 右前腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total / 2; // 右后腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = 0;                   // 左后腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2; // 左前腿从中间步开始
 
     // 设置步态参数
     gait_travel_divisor = gait_step_total / 2; // 行程除数
@@ -131,7 +128,7 @@ void AP_QuadRuped_Diag::update_leg()
     if (gait_step_now >= gait_step_total) gait_step_now = 0; // 循环计数
 
     // 遍历所有腿，生成轨迹
-    for (uint8_t moving_leg = 0; moving_leg < AP_QuadRuped::LEG_ALL; moving_leg++) {
+    for (uint8_t moving_leg = 0; moving_leg < AP_QUADRUPED_LEG_ALL; moving_leg++) {
         int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
 
         if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
@@ -153,12 +150,12 @@ void AP_QuadRuped_Diag::update()
     lasttime = AP_HAL::millis();
 
     // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
-    if (hal.rcin->read(CH_6) > 1800 && !motors->armed()) {
+    if (hal.rcin->read(CH_6) > 1800 && !_motors.armed()) {
         // 执行主控制器
         main_radio_controller();
 
         // 执行平衡控制器
-        balance_controller();
+        // balance_controller();
 
         // 执行逆运动学解算
         main_inverse_kinematics();
@@ -169,4 +166,23 @@ void AP_QuadRuped_Diag::update()
         // 发送数据
         send_servo_cmd();
     }
+}
+
+// 平衡控制器 - 简单的平衡控制实现
+void AP_QuadRuped_Diag::balance_controller()
+{
+    // 简单的平衡控制实现
+    // 这里可以根据IMU数据调整重心偏移以保持平衡
+
+    // 获取当前姿态数据
+    const Vector3f& gyro  = _ahrs.get_gyro();
+    const Vector3f& accel = _ahrs.get_accel_ef();
+
+    // 计算需要的重心补偿（示例实现）
+    // 这里可以根据实际的平衡控制算法进行调整
+    centre_offset.x = constrain_float(gyro.y * 0.1f, -10.0f, 10.0f); // 基于横滚角速度补偿
+    centre_offset.y = constrain_float(gyro.x * 0.1f, -10.0f, 10.0f); // 基于俯仰角速度补偿
+
+    // 重心高度补偿（基于Z轴加速度）
+    centre_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
 }

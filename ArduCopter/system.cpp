@@ -181,7 +181,7 @@ void Copter::init_ardupilot()
     custom_control.init();
 #endif
 
-    qrupd.init();
+    qrupd.init(*ahrs_view, *motors, rangefinder);
 
     // set landed flags
     set_land_complete(true);

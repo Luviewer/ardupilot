@@ -1,11 +1,12 @@
 #include "AP_QuadRuped_Backend.h"
 #include "AP_QuadRuped.h"
+#include "AP_QuadRuped_Defines.h"
 
 // 重置腿部位置 - 将所有腿恢复到初始状态
 void AP_QuadRuped_Backend::reset_leg()
 {
     // 遍历所有腿，重置其位置和旋转
-    for (uint8_t moving_leg = 0; moving_leg < AP_QuadRuped::LEG_ALL; moving_leg++) {
+    for (uint8_t moving_leg = 0; moving_leg < AP_QUADRUPED_LEG_ALL; moving_leg++) {
         gait_pos_xyz[moving_leg] = { 0, 0, 0 }; // 重置位置坐标为原点（相对于初始位置）
         gait_rot_z[moving_leg]   = 0;           // 重置旋转角度为0（无旋转）
     }
@@ -33,7 +34,7 @@ void AP_QuadRuped_Backend::calc_gait_sequence()
 // 腿部逆运动学计算
 Vector3f AP_QuadRuped_Backend::leg_inverse_kinematics(Vector3f posxyz)
 {
-    AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
+    const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
 
     // 存储计算出的关节角度（度）
     Vector3f leg_deg = { 0, 0, 0 };
@@ -113,7 +114,7 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
     Vector3f ansxyz = { 0, 0, 0 }; // 临时变量，存储腿部末端位置
 
     // 腿部角度偏移补偿 - 由于机械安装误差，每条腿需要不同的角度补偿
-    const Vector3f endpoint_leg_angle_offset[AP_QuadRuped::LEG_ALL] = {
+    const Vector3f endpoint_leg_angle_offset[AP_QUADRUPED_LEG_ALL] = {
         { 45, 0, 0 },   // 右前腿：髋关节补偿45度
         { -45, 0, 0 },  // 右后腿：髋关节补偿-45度
         { -135, 0, 0 }, // 左后腿：髋关节补偿-135度
@@ -121,7 +122,7 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
     }; // 格式：{髋关节角度，股关节角度，胫关节角度} - 只有髋关节需要补偿
 
     // 遍历所有腿，计算逆运动学
-    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
         // 1. 计算腿部末端在机体坐标系中的位置
         ansxyz = body_forward_kinematics(leg_index);
         // 2. 计算逆运动学得到关节角度，并加上补偿值
@@ -136,7 +137,7 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
     calc_gait_sequence();
 
     // 保存当前关节角度到上一时刻变量
-    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
         endpoint_leg_angle_last[leg_index] = endpoint_leg_angle[leg_index];
     }
 }
@@ -144,7 +145,7 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
 // 主控制器 - 处理遥控器输入并转换为运动指令
 void AP_QuadRuped_Backend::main_radio_controller()
 {
-    AP_QuadRuped_CHANNEL_Params& channel = _frontend.get_channel_params();
+    const AP_QuadRuped_CHANNEL_Params& channel = _frontend.get_channel_params();
 
     // 处理油门通道（前进/后退）
     if (channel.throttle_x_channel != -1) {
@@ -177,12 +178,15 @@ void AP_QuadRuped_Backend::output_leg_angle(void)
     uint16_t pwm_tibia; // 胫关节PWM值
 
     // 遍历所有腿，计算每个关节的PWM值
-    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
+        // 获取腿部参数
+        const AP_QuadRuped_Params& leg_param = _frontend.get_leg_params(leg_index);
+
         // 将角度转换为PWM值
         // 公式：PWM = 方向系数 × 角度 × PWM范围/角度范围 + 中间值
-        pwm_coxa  = leg_param[leg_index].COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
-        pwm_femur = leg_param[leg_index].FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
-        pwm_tibia = leg_param[leg_index].TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_coxa  = leg_param.COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param.FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param.TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
 
         // 存储PWM命令到输出数组
         servo_output_cmd[leg_index].x = pwm_coxa;  // 髋关节PWM
@@ -198,19 +202,22 @@ bool AP_QuadRuped_Backend::send_servo_cmd()
     msg.cmd.len = 12;        // 设置消息长度(4条腿×3个关节 = 12个数据)
 
     // 遍历所有腿部，准备发送数据
-    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
+        // 获取腿部参数
+        const AP_QuadRuped_Params& leg_param = _frontend.get_leg_params(leg_index);
+
         // 填充CAN消息数据（添加偏移补偿）
-        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param[leg_index].COXA_OFS; // 髋关节
-        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param[leg_index].FEMU_OFS; // 股关节
-        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + leg_param[leg_index].TIBI_OFS; // 胫关节
+        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param.COXA_OFS; // 髋关节
+        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param.FEMU_OFS; // 股关节
+        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + leg_param.TIBI_OFS; // 胫关节
 
         // 同时设置PWM输出通道（直接输出模式）
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_coxa + leg_index * 3),
-                                     servo_output_cmd[leg_index].x + leg_param[leg_index].COXA_OFS);
+                                     servo_output_cmd[leg_index].x + leg_param.COXA_OFS);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_femu + leg_index * 3),
-                                     servo_output_cmd[leg_index].y + leg_param[leg_index].FEMU_OFS);
+                                     servo_output_cmd[leg_index].y + leg_param.FEMU_OFS);
         SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_tibi + leg_index * 3),
-                                     servo_output_cmd[leg_index].z + leg_param[leg_index].TIBI_OFS);
+                                     servo_output_cmd[leg_index].z + leg_param.TIBI_OFS);
     }
 
     // 在所有可用的CAN总线接口上广播伺服控制命令

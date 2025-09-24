@@ -5,9 +5,9 @@
 #include <AP_Math/AP_Math.h>      // 数学库
 #include <AP_Motors/AP_Motors.h>  // 电机控制
 #include <AP_Param/AP_Param.h>    // 参数系统
-#include <AP_QuadRuped_Backend.h> // 后端接口
-#include <AP_QuadRuped_Config.h>
-#include <AP_QuadRuped_Params.h>           // 参数定义
+#include "AP_QuadRuped_Backend.h" // 后端接口
+#include "AP_QuadRuped_Config.h"
+#include "AP_QuadRuped_Params.h"           // 参数定义
 #include <AP_RangeFinder/AP_RangeFinder.h> // 测距传感器
 #include <stdio.h>
 
@@ -25,8 +25,11 @@ class AP_QuadRuped_Crab;
 
 class AP_QuadRuped {
 public:
-    // 构造函数 - 初始化姿态传感器和电机控制接口
-    AP_QuadRuped(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rangefinder);
+    // 默认构造函数
+    AP_QuadRuped();
+
+    // 初始化函数 - 设置姿态传感器和电机控制接口
+    bool init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rangefinder);
 
     // 析构函数
     ~AP_QuadRuped();
@@ -34,26 +37,9 @@ public:
     // 参数表定义 - 用于配置系统参数
     static const struct AP_Param::GroupInfo var_info[];
 
-    // 步态类型枚举
-    enum GaitType {
-        GAIT_DIAGONAL = 0, // 对角步态（trot步态）
-        GAIT_WAVE     = 1, // 波浪步态（crawl步态）
-        GAIT_CRAB     = 2, // 工字步态
-        GAIT_COUNT,        // 步态总数
-    };
-
-    // 腿部索引枚举
-    enum {
-        Leg_RF = 0, // 右前腿 (Right Front)
-        Leg_RB,     // 右后腿 (Right Back)
-        Leg_LB,     // 左后腿 (Left Back)
-        Leg_LF,     // 左前腿 (Left Front)
-        LEG_ALL,    // 腿的总数（4条腿）
-    };
-
     // 主要功能函数
-    bool init();   // 初始化系统
-    void update(); // 主更新循环
+    bool init_system();   // 初始化系统
+    void update();        // 主更新循环
 
     // 步态控制
     void     set_gait_type(GaitType type);
@@ -76,19 +62,19 @@ public:
     const AP_QuadRuped_CHANNEL_Params& get_channel_params() const { return _channel_params; }
 
     // 硬件接口访问
-    AP_AHRS_View& get_ahrs() { return _ahrs; }
-    AP_Motors&    get_motors() { return _motors; }
-    RangeFinder&  get_rangefinder() { return _rangefinder; }
+    AP_AHRS_View& get_ahrs() { return *_ahrs; }
+    AP_Motors&    get_motors() { return *_motors; }
+    RangeFinder&  get_rangefinder() { return *_rangefinder; }
 
 private:
     // 硬件接口
-    AP_AHRS_View& _ahrs;        // 姿态航向参考系统
-    AP_Motors&    _motors;      // 电机控制接口
-    RangeFinder&  _rangefinder; // 测距雷达接口
+    AP_AHRS_View* _ahrs;        // 姿态航向参考系统
+    AP_Motors*    _motors;      // 电机控制接口
+    RangeFinder*  _rangefinder; // 测距雷达接口
 
     // 后端管理
     AP_QuadRuped_Backend* _backend;                   // 当前活跃的后端
-    AP_QuadRuped_Backend* _gait_backends[GAIT_COUNT]; // 所有的步态后端
+    AP_QuadRuped_Backend* _gait_backends[AP_QUADRUPED_GAIT_COUNT]; // 所有的步态后端
 
     // 主要参数
     AP_Int8 _gait_type; // 当前步态类型
@@ -102,10 +88,11 @@ private:
 
     // 参数组
     AP_QuadRuped_SYS_Params     _sys_params;          // 系统参数
-    AP_QuadRuped_Params         _leg_params[LEG_ALL]; // 腿部参数
+    AP_QuadRuped_Params         _leg_params[AP_QUADRUPED_LEG_ALL]; // 腿部参数
     AP_QuadRuped_CHANNEL_Params _channel_params;      // 通道参数
 
     // 内部辅助函数
     void create_backends();
+    void destroy_backends();
     void read_radio_input();
 };

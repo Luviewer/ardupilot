@@ -41,4 +41,5 @@ private:
     uint32_t lasttime;
 
     float slow_phi(float s, float s0);
+    void  balance_controller();
 };

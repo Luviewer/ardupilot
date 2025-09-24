@@ -2,6 +2,7 @@
 
 #include "AP_DroneCAN/AP_DroneCAN.h"
 #include "AP_QuadRuped_Params.h"
+#include "AP_QuadRuped_Defines.h"
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
 #include <AP_HAL/AP_HAL_Boards.h>
@@ -48,7 +49,6 @@ public:
     virtual void yaw_trajectory_generation(uint8_t leg_index) { }
     virtual void set_centre_offset(float x, float y, float z) { }
     virtual void update_leg() { }
-    virtual void calc_gait_sequence();
 
     // 通用工具函数
     virtual void     reset_leg();
@@ -69,6 +69,9 @@ public:
     void hengxiang_up_sleep_leg();
     void zongxiang_up_sleep_leg();
 
+    // 角度转换函数
+    uint16_t radians_to_pwm(float angle_rad);
+
 protected:
     // 前端控制器引用
     AP_QuadRuped& _frontend;
@@ -81,30 +84,30 @@ protected:
     bool move_requested;
 
     // 步态参数
-    uint8_t gait_step_leg_start[AP_QuadRuped::LEG_ALL]; // 每条腿的步态起始步数
+    uint8_t gait_step_leg_start[AP_QUADRUPED_LEG_ALL]; // 每条腿的步态起始步数
     uint8_t gait_lift_divisor;                          // 抬腿除数 - 控制抬腿速度
     uint8_t gait_travel_divisor;                        // 行程除数 - 控制前进速度
 
     // 伺服输出命令
-    Vector3ui servo_output_cmd[AP_QuadRuped::LEG_ALL]; // 存储每条腿三个关节的PWM值
+    Vector3ui servo_output_cmd[AP_QUADRUPED_LEG_ALL]; // 存储每条腿三个关节的PWM值
 
     // 运动参数
     uint16_t gait_step_now; // 当前步态计数 - 当前步态周期中的步数
 
     // 腿部位置和角度
-    Vector3f endpoint_leg_pos[AP_QuadRuped::LEG_ALL];        // 腿部末端初始位置（相对于髋关节）
-    Vector3f endpoint_leg_frame[AP_QuadRuped::LEG_ALL];      // 腿部在机体框架上的安装位置
-    Vector3f endpoint_leg_angle[AP_QuadRuped::LEG_ALL];      // 腿部关节角度（度）
-    Vector3f endpoint_leg_angle_last[AP_QuadRuped::LEG_ALL]; // 腿部上一时刻的关节角度
+    Vector3f endpoint_leg_pos[AP_QUADRUPED_LEG_ALL];        // 腿部末端初始位置（相对于髋关节）
+    Vector3f endpoint_leg_frame[AP_QUADRUPED_LEG_ALL];      // 腿部在机体框架上的安装位置
+    Vector3f endpoint_leg_angle[AP_QUADRUPED_LEG_ALL];      // 腿部关节角度（度）
+    Vector3f endpoint_leg_angle_last[AP_QUADRUPED_LEG_ALL]; // 腿部上一时刻的关节角度
 
     // 步态目标位置
-    Vector3f gait_pos_xyz[AP_QuadRuped::LEG_ALL]; // 步态生成的目标位置（相对于初始位置的偏移）
+    Vector3f gait_pos_xyz[AP_QUADRUPED_LEG_ALL]; // 步态生成的目标位置（相对于初始位置的偏移）
 
     // 机体姿态
     Vector3f body_rot_xyz_deg; // 机体旋转角度（横滚、俯仰、偏航）
 
     // 腿部旋转补偿
-    float gait_rot_z[AP_QuadRuped::LEG_ALL]; // 每条腿的Z轴旋转补偿（用于转向）
+    float gait_rot_z[AP_QUADRUPED_LEG_ALL]; // 每条腿的Z轴旋转补偿（用于转向）
 
     // 限制和状态
     float max_yaw_rate;     // 最大允许偏航角速度（rad/s）
