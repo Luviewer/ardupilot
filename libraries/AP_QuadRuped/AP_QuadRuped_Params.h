@@ -24,15 +24,19 @@ public:
 
     AP_QuadRuped_CHANNEL_Params(void);
 
-    AP_Int8  throttle_x_channel;
-    AP_Int8  throttle_y_channel;
-    AP_Int16 height_channel;
-    AP_Int16 lift_channel;
-    AP_Int8  roll_channel;
-    AP_Int8  pitch_channel;
-    AP_Int8  yaw_channel;
-    AP_Int8  centre_offset_x_channel;
-    AP_Int8  centre_offset_y_channel;
+    AP_Int8 throttle_x_channel;
+    AP_Int8 throttle_y_channel;
+    AP_Int8 roll_channel;
+    AP_Int8 pitch_channel;
+    AP_Int8 yaw_channel;
+    AP_Int8 centre_offset_x_channel;
+    AP_Int8 centre_offset_y_channel;
+
+    AP_Float throttle_x_max;
+    AP_Float throttle_y_max;
+
+    AP_Float body_height;
+    AP_Float left_lift;
 };
 
 class AP_QuadRuped_SYS_Params {

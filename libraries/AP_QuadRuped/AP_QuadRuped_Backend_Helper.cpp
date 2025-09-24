@@ -9,7 +9,7 @@ void AP_QuadRuped_Backend::right_sleep_leg()
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
 
     // 遍历所有腿，计算睡眠姿态的关节角度
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
         // 计算各关节的PWM值
         // 髋关节：45度
         pwm_coxa = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
@@ -33,7 +33,7 @@ void AP_QuadRuped_Backend::x_sleep_leg()
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
 
     // 遍历所有腿，设置X形姿态
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
         // 所有关节角度设为0度（中间位置）
         pwm_coxa  = leg_param[leg_index].COXA_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
         pwm_femur = leg_param[leg_index].FEMU_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
@@ -54,7 +54,7 @@ void AP_QuadRuped_Backend::x_up_sleep_leg()
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
 
     // 遍历所有腿，设置X形抬升姿态
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
         // 计算各关节的PWM值
         // 髋关节：0度（保持中间位置）
         pwm_coxa = leg_param[leg_index].COXA_DIR * 0 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
@@ -80,9 +80,9 @@ void AP_QuadRuped_Backend::hengxiang_up_sleep_leg()
     float angle_value = (float)(hal.rcin->read(CH_7) - 1500) / 500.0f * 90.0f;
 
     // 遍历所有腿，设置横向抬升姿态
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
         // 根据腿的位置设置不同的髋关节角度
-        if (leg_index == Leg_RB || leg_index == Leg_LF) // 右后腿和左前腿
+        if (leg_index == AP_QuadRuped::Leg_RB || leg_index == AP_QuadRuped::Leg_LF) // 右后腿和左前腿
             pwm_coxa = leg_param[leg_index].COXA_DIR * -45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
         else // 右前腿和左后腿
             pwm_coxa = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
@@ -108,9 +108,9 @@ void AP_QuadRuped_Backend::zongxiang_up_sleep_leg()
     float angle_value = (float)(hal.rcin->read(CH_7) - 1500) / 500.0f * 90.0f;
 
     // 遍历所有腿，设置横向抬升姿态
-    for (uint8_t leg_index = 0; leg_index < LEG_ALL; leg_index++) {
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
         // 根据腿的位置设置不同的髋关节角度
-        if (leg_index == Leg_RB || leg_index == Leg_LF) // 右后腿和左前腿
+        if (leg_index == AP_QuadRuped::Leg_RB || leg_index == AP_QuadRuped::Leg_LF) // 右后腿和左前腿
             pwm_coxa = leg_param[leg_index].COXA_DIR * 45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
         else // 右前腿和左后腿
             pwm_coxa = leg_param[leg_index].COXA_DIR * -45 * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;

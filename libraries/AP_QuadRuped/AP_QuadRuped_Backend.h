@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AP_DroneCAN/AP_DroneCAN.h"
 #include "AP_QuadRuped_Params.h"
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
@@ -7,7 +8,6 @@
 #include <AP_Math/AP_Math.h>
 #include <AP_Motors/AP_Motors.h>
 #include <AP_Param/AP_Param.h>
-#include "AP_DroneCAN/AP_DroneCAN.h"
 
 // 腿部电机参数定义
 #define LEG_MOTOR_MAX_DEG       (120)  // 腿部电机最大角度（度）
@@ -16,10 +16,8 @@
 
 // 默认参数定义
 #define LIFT_HEIGHT_DEFAULT     50.0f  // 默认抬腿高度（mm）
-#define SPEED_HZ_DEFAULT        25.0f  // 默认步态频率（Hz）
 #define MAX_THROTTLE_X_DEFAULT  200.0f // 默认最大油门行程（mm）
 #define MAX_THROTTLE_Y_DEFAULT  200.0f // 默认最大油门行程（mm）
-#define GAIT_STEP_TOTAL_DEFAULT 24     // 默认步态总步数
 
 #define START_COXA_ANGLE        45 // 起始髋关节角度（度）
 
@@ -44,14 +42,13 @@ public:
     virtual bool init()                                   = 0;
     virtual void update()                                 = 0;
     virtual void gait_init()                              = 0;
-    virtual void calc_gait_sequence()                     = 0;
     virtual void trajectory_generation(uint8_t leg_index) = 0;
-    virtual bool healthy() const                          = 0;
 
     // 可选重写的虚函数
     virtual void yaw_trajectory_generation(uint8_t leg_index) { }
     virtual void set_centre_offset(float x, float y, float z) { }
     virtual void update_leg() { }
+    virtual void calc_gait_sequence();
 
     // 通用工具函数
     virtual void     reset_leg();
@@ -59,10 +56,11 @@ public:
     virtual Vector3f leg_inverse_kinematics(Vector3f posxyz);
     virtual Vector3f body_forward_kinematics(uint8_t leg_index);
     virtual void     main_inverse_kinematics(void);
-    virtual void     controller();
+    virtual void     main_radio_controller();
 
+    // 输出函数
     virtual void output_leg_angle();
-    bool         dronecan_send_servo_cmd();
+    virtual bool send_servo_cmd();
 
     // 辅助函数
     void right_sleep_leg();
@@ -79,10 +77,19 @@ protected:
     AP_AHRS_View& _ahrs;
     AP_Motors&    _motors;
 
-    bool _initialized; // 初始化标志
-
     // 移动请求标志 - true表示需要移动，false表示保持静止
     bool move_requested;
+
+    // 步态参数
+    uint8_t gait_step_leg_start[AP_QuadRuped::LEG_ALL]; // 每条腿的步态起始步数
+    uint8_t gait_lift_divisor;                          // 抬腿除数 - 控制抬腿速度
+    uint8_t gait_travel_divisor;                        // 行程除数 - 控制前进速度
+
+    // 伺服输出命令
+    Vector3ui servo_output_cmd[AP_QuadRuped::LEG_ALL]; // 存储每条腿三个关节的PWM值
+
+    // 运动参数
+    uint16_t gait_step_now; // 当前步态计数 - 当前步态周期中的步数
 
     // 腿部位置和角度
     Vector3f endpoint_leg_pos[AP_QuadRuped::LEG_ALL];        // 腿部末端初始位置（相对于髋关节）
@@ -93,16 +100,67 @@ protected:
     // 步态目标位置
     Vector3f gait_pos_xyz[AP_QuadRuped::LEG_ALL]; // 步态生成的目标位置（相对于初始位置的偏移）
 
-    // 通用运动参数
-    float _throttle_x;  // X轴油门
-    float _throttle_y;  // Y轴油门
-    float _yaw_rate;    // 偏航角速度
-    float _body_height; // 机身高度
+    // 机体姿态
+    Vector3f body_rot_xyz_deg; // 机体旋转角度（横滚、俯仰、偏航）
 
-    // 伺服输出命令
-    Vector3ui servo_output_cmd[AP_QuadRuped::LEG_ALL]; // 存储每条腿三个关节的PWM值
+    // 腿部旋转补偿
+    float gait_rot_z[AP_QuadRuped::LEG_ALL]; // 每条腿的Z轴旋转补偿（用于转向）
 
-    // 辅助函数
-    void update_control_inputs();
-    void normalize_leg_angles();
+    // 限制和状态
+    float max_yaw_rate;     // 最大允许偏航角速度（rad/s）
+    bool  first_run = true; // 首次运行标志
+
+    // 运动控制变量
+    float target_yaw;        // 目标偏航角
+    float throttle_x_travel; // 油门行程 - 前进/后退距离
+    float throttle_y_travel; // 油门行程 - 左/右距离
+    float z_travel;          // Z轴行程 - 机体升降高度
+    float yaw_travel;        // 偏航行程 - 旋转补偿量
+    float roll_travel;       // 横滚行程 - 横滚平衡补偿
+    float pitch_travel;      // 俯仰行程 - 俯仰平衡补偿
+    float leg_lift_height;   // 抬腿高度（mm）- 腿抬起的高度
+
+    // 重心控制
+    Vector3f centre_offset;      // 主动控制的重心偏移量（X、Y、Z）
+    Vector3f centre_offset_move; // 主动控制的重心偏移量（X、Y、Z）
+    Vector2f offset_xy;          // 重心平移控制（X、Y平面）
+
+    //    AC_PID roll_pid {
+    //     AC_PID::Defaults {
+    //         .p         = 1.0f,
+    //         .i         = 0.02f,
+    //         .d         = 0.05f,
+    //         .imax      = 1,
+    //         .filt_T_hz = 10.0f,
+    //         .filt_E_hz = 10.0f,
+    //         .filt_D_hz = 10.0f,
+    //         .srmax     = 0,
+    //         .srtau     = 1.0 }
+    // };
+
+    // AC_PID pitch_pid {
+    //     AC_PID::Defaults {
+    //         .p         = 1.0f,
+    //         .i         = 0.02f,
+    //         .d         = 0.1f,
+    //         .imax      = 1,
+    //         .filt_T_hz = 10.0f,
+    //         .filt_E_hz = 10.0f,
+    //         .filt_D_hz = 10.0f,
+    //         .srmax     = 0,
+    //         .srtau     = 1.0 }
+    // };
+
+    // AC_PID yaw_pid {
+    //     AC_PID::Defaults {
+    //         .p         = 0.5f,
+    //         .i         = 0.01f,
+    //         .d         = 0.05f,
+    //         .imax      = 1,
+    //         .filt_T_hz = 10.0f,
+    //         .filt_E_hz = 10.0f,
+    //         .filt_D_hz = 10.0f,
+    //         .srmax     = 0,
+    //         .srtau     = 1.0 }
+    // };
 };

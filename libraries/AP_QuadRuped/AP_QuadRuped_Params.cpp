@@ -21,8 +21,8 @@ const AP_Param::GroupInfo AP_QuadRuped_Params::var_info[] = {
 const AP_Param::GroupInfo AP_QuadRuped_CHANNEL_Params::var_info[] = {
     AP_GROUPINFO("THR_X", 1, AP_QuadRuped_CHANNEL_Params, throttle_x_channel, -1),
     AP_GROUPINFO("THR_Y", 2, AP_QuadRuped_CHANNEL_Params, throttle_y_channel, -1),
-    AP_GROUPINFO("HGH", 3, AP_QuadRuped_CHANNEL_Params, height_channel, -1),
-    AP_GROUPINFO("LIFT", 4, AP_QuadRuped_CHANNEL_Params, lift_channel, -1),
+    AP_GROUPINFO("HGH", 3, AP_QuadRuped_CHANNEL_Params, body_height, -1),
+    AP_GROUPINFO("LIFT", 4, AP_QuadRuped_CHANNEL_Params, left_lift, -1),
 
     AP_GROUPINFO("ROL", 5, AP_QuadRuped_CHANNEL_Params, roll_channel, -1),
     AP_GROUPINFO("PIT", 6, AP_QuadRuped_CHANNEL_Params, pitch_channel, -1),

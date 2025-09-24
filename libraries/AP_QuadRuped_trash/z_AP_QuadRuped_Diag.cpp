@@ -1,47 +1,34 @@
 #include "AP_QuadRuped_Diag.h"
-#include "AP_QuadRuped.h"
-#include <AP_HAL/AP_HAL.h>
 
-#define SPEED_HZ_DEFAULT        25.0f // 默认步态频率（Hz）
-#define GAIT_STEP_TOTAL_DEFAULT 24    // 默认步态总步数
-
-// 外部HAL实例
 extern const AP_HAL::HAL& hal;
 
-// 参数表定义
 const AP_Param::GroupInfo AP_QuadRuped_Diag::var_info[] = {
-    // 步态参数 (1-10)
-    AP_GROUPINFO("Hz", 1, AP_QuadRuped_Diag, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
-    // 步长
-    AP_GROUPINFO("STEP", 2, AP_QuadRuped_Diag, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
+    // 频率
+    AP_GROUPINFO("Hz", 1, AP_QuadRuped_Base, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
 
-    AP_GROUPEND
+    // 步长
+    AP_GROUPINFO("STEP", 5, AP_QuadRuped_Base, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
 };
 
-// 构造函数
-AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_AHRS_View& ahrs, AP_Motors& motors)
-    : AP_QuadRuped_Backend(frontend, ahrs, motors)
-    , _diag_phase(0)
-    , _gait_cycle_time(0.0f)
-    , _last_update_time(0)
+// 初始化对角步态参数
+void AP_QuadRuped_Diag::gait_init()
 {
-    // 设置参数默认值
-    AP_Param::setup_object_defaults(this, var_info);
-}
+    // 设置每条腿的起始步数
+    // 对角步态：左前右后同时抬起，右前左后同时抬起
+    gait_step_leg_start[Leg_RF] = 0;                   // 右前腿从第0步开始
+    gait_step_leg_start[Leg_RB] = gait_step_total / 2; // 右后腿从中间步开始
+    gait_step_leg_start[Leg_LB] = 0;                   // 左后腿从第0步开始
+    gait_step_leg_start[Leg_LF] = gait_step_total / 2; // 左前腿从中间步开始
 
-// 初始化
-bool AP_QuadRuped_Diag::init()
-{
-    // 初始化步态
-    gait_init();
-
-    return true;
+    // 设置步态参数
+    gait_travel_divisor = gait_step_total / 2; // 行程除数
+    gait_lift_divisor   = 2;                   // 抬腿除数
 }
 
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
 // 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
 // 末段时间缩放函数：C2 连续，末端 v=a=0
-float AP_QuadRuped_Diag::slow_phi(float s, float s0)
+inline float slow_phi(float s, float s0)
 {
     if (s <= s0) return s;
     float sigma = (s - s0) / (1.0f - s0); // 0..1
@@ -52,22 +39,6 @@ float AP_QuadRuped_Diag::slow_phi(float s, float s0)
     return s0 + (1.0f - s0) * w;
 }
 
-// 步态初始化
-void AP_QuadRuped_Diag::gait_init()
-{
-    // 设置每条腿的起始步数
-    // 对角步态：左前右后同时抬起，右前左后同时抬起
-    gait_step_leg_start[AP_QuadRuped::Leg_RF] = 0;                   // 右前腿从第0步开始
-    gait_step_leg_start[AP_QuadRuped::Leg_RB] = gait_step_total / 2; // 右后腿从中间步开始
-    gait_step_leg_start[AP_QuadRuped::Leg_LB] = 0;                   // 左后腿从第0步开始
-    gait_step_leg_start[AP_QuadRuped::Leg_LF] = gait_step_total / 2; // 左前腿从中间步开始
-
-    // 设置步态参数
-    gait_travel_divisor = gait_step_total / 2; // 行程除数
-    gait_lift_divisor   = 2;                   // 抬腿除数
-}
-
-// 轨迹生成
 void AP_QuadRuped_Diag::trajectory_generation(uint8_t leg_index)
 {
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
@@ -131,7 +102,7 @@ void AP_QuadRuped_Diag::update_leg()
     if (gait_step_now >= gait_step_total) gait_step_now = 0; // 循环计数
 
     // 遍历所有腿，生成轨迹
-    for (uint8_t moving_leg = 0; moving_leg < AP_QuadRuped::LEG_ALL; moving_leg++) {
+    for (uint8_t moving_leg = 0; moving_leg < LEG_ALL; moving_leg++) {
         int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
 
         if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
@@ -145,28 +116,8 @@ void AP_QuadRuped_Diag::update_leg()
 // 主更新函数，按顺序执行控制流程
 void AP_QuadRuped_Diag::update()
 {
-    if ((AP_HAL::millis() - lasttime) < (1000 / gait_hz)) {
-        return;
-    }
-
-    // 更新最后执行时间
-    lasttime = AP_HAL::millis();
-
-    // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
-    if (hal.rcin->read(CH_6) > 1800 && !motors->armed()) {
-        // 执行主控制器
-        main_radio_controller();
-
-        // 执行平衡控制器
-        balance_controller();
-
-        // 执行逆运动学解算
-        main_inverse_kinematics();
-
-        // 输出腿部关节角度
-        output_leg_angle();
-
-        // 发送数据
-        send_servo_cmd();
-    }
+    controller();              // 执行主控制器
+    balance_controller();      // 执行平衡控制器
+    main_inverse_kinematics(); // 执行逆运动学解算
+    output_leg_angle();        // 输出腿部关节角度
 }

@@ -1,16 +1,22 @@
 #include "AP_QuadRuped.h"
 #include "AP_QuadRuped_Backend.h"
-#include "AP_QuadRuped_Crab.h"
-#include "AP_QuadRuped_Diag_New.h"
-#include "AP_QuadRuped_WAVE_New.h"
+#include "AP_QuadRuped_Diag.h"
 #include <AP_RCMapper/AP_RCMapper.h>
 #include <RC_Channel/RC_Channel.h>
+
+#if AP_QUADRUPED_WAVE_ENABLE
+# include "AP_QuadRuped_WAVE_New.h"
+#endif
+#if AP_QUADRUPED_CRUBE_ENABLE
+# include "AP_QuadRuped_Crab.h"
+#endif
 
 // 参数定义
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     // 基础参数组 (1-10)
-    AP_GROUPINFO("GTYPE", 1, AP_QuadRuped, _gait_type, (int8_t)GAIT_DIAGONAL),
     AP_GROUPINFO("ENABLE", 2, AP_QuadRuped, _enabled, 1),
+
+    AP_GROUPINFO("GTYPE", 1, AP_QuadRuped, _gait_type, (int8_t)GAIT_DIAGONAL),
 
     // 系统参数组 (11-20)
     AP_SUBGROUPINFO(_sys_params, "SYS_", 11, AP_QuadRuped, AP_QuadRuped_SYS_Params),
@@ -76,33 +82,28 @@ void AP_QuadRuped::update()
     // 读取遥控器输入
     read_radio_input();
 
-    // 更新控制限制
-    update_control_limits();
+    switch (_gait_type) {
+        default:
+        case GAIT_DIAGONAL:
+            set_gait_type(GAIT_DIAGONAL);
+            break;
+
+#if AP_QUADRUPED_WAVE_ENABLE
+        case GAIT_WAVE:
+            set_gait_type(GAIT_WAVE);
+            break;
+#endif
+#if AP_QUADRUPED_CRUBE_ENABLE
+        case GAIT_CRAB:
+            set_gait_type(GAIT_CRAB);
+            break;
+#endif
+    }
 
     // 调用后端更新
-    if (_backend && _backend->healthy()) {
+    if (_backend) {
         _backend->update();
     }
-}
-
-// 健康状态检查
-bool AP_QuadRuped::healthy() const
-{
-    if (!_enabled) {
-        return false;
-    }
-
-    // 检查硬件接口
-    if (!_ahrs.healthy()) {
-        return false;
-    }
-
-    // 检查后端
-    if (!_backend || !_backend->healthy()) {
-        return false;
-    }
-
-    return true;
 }
 
 // 设置步态类型
@@ -151,31 +152,18 @@ void AP_QuadRuped::create_backends()
 {
     // 创建对角步态后端
     _gait_backends[GAIT_DIAGONAL] = new AP_QuadRuped_Diag(*this, _ahrs, _motors);
+    _gait_backends[GAIT_DIAGONAL]->init();
 
     // 创建波浪步态后端
+#if AP_QUADRUPED_WAVE_ENABLE
     _gait_backends[GAIT_WAVE] = new AP_QuadRuped_WAVE(*this, _ahrs, _motors);
-
+    _gait_backends[GAIT_WAVE]->init();
+#endif
     // 创建工字步态后端
+#if AP_QUADRUPED_CRUBE_ENABLE
     _gait_backends[GAIT_CRAB] = new AP_QuadRuped_Crab(*this, _ahrs, _motors);
-
-    // 初始化所有后端
-    for (uint8_t i = 0; i < GAIT_COUNT; i++) {
-        if (_gait_backends[i]) {
-            _gait_backends[i]->init();
-        }
-    }
-}
-
-// 销毁后端实例
-void AP_QuadRuped::destroy_backends()
-{
-    for (uint8_t i = 0; i < GAIT_COUNT; i++) {
-        if (_gait_backends[i]) {
-            delete _gait_backends[i];
-            _gait_backends[i] = nullptr;
-        }
-    }
-    _backend = nullptr;
+    _gait_backends[GAIT_CRAB]->init();
+#endif
 }
 
 // 读取遥控器输入
@@ -203,11 +191,7 @@ void AP_QuadRuped::read_radio_input()
     if (height_chan) {
         _body_height = height_chan->norm_input();
     }
-}
 
-// 更新控制限制
-void AP_QuadRuped::update_control_limits()
-{
     // 限制油门输入范围
     _throttle_x  = constrain_float(_throttle_x, -1.0f, 1.0f);
     _throttle_y  = constrain_float(_throttle_y, -1.0f, 1.0f);

@@ -1,20 +1,27 @@
 #pragma once
-#include <AC_PID/AC_PID>                   // PID控制器
-#include <AP_AHRS/AP_AHRS_View.h>          // 姿态航向参考系统
-#include <AP_HAL/AP_HAL_Boards.h>          // 硬件抽象层
-#include <AP_Math/AP_Math.h>               // 数学库
-#include <AP_Motors/AP_Motors.h>           // 电机控制
-#include <AP_Param/AP_Param.h>             // 参数系统
-#include <AP_QuadRuped_Backend.h>          // 后端接口
+
+#include <AP_AHRS/AP_AHRS_View.h> // 姿态航向参考系统
+#include <AP_HAL/AP_HAL_Boards.h> // 硬件抽象层
+#include <AP_Math/AP_Math.h>      // 数学库
+#include <AP_Motors/AP_Motors.h>  // 电机控制
+#include <AP_Param/AP_Param.h>    // 参数系统
+#include <AP_QuadRuped_Backend.h> // 后端接口
+#include <AP_QuadRuped_Config.h>
 #include <AP_QuadRuped_Params.h>           // 参数定义
 #include <AP_RangeFinder/AP_RangeFinder.h> // 测距传感器
 #include <stdio.h>
 
+
 // 前向声明
 class AP_QuadRuped_Backend;
 class AP_QuadRuped_Diag;
+
+#if AP_QUADRUPED_WAVE_ENABLE
 class AP_QuadRuped_WAVE;
+#endif
+#if AP_QUADRUPED_CRUBE_ENABLE
 class AP_QuadRuped_Crab;
+#endif
 
 class AP_QuadRuped {
 public:
@@ -45,9 +52,8 @@ public:
     };
 
     // 主要功能函数
-    bool init();          // 初始化系统
-    void update();        // 主更新循环
-    bool healthy() const; // 健康状态检查
+    bool init();   // 初始化系统
+    void update(); // 主更新循环
 
     // 步态控制
     void     set_gait_type(GaitType type);
@@ -101,7 +107,5 @@ private:
 
     // 内部辅助函数
     void create_backends();
-    void destroy_backends();
     void read_radio_input();
-    void update_control_limits();
 };

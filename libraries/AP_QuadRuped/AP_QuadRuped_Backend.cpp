@@ -14,10 +14,10 @@ void AP_QuadRuped_Backend::reset_leg()
 // 计算步态序列 - 判断是否需要移动并执行相应动作
 void AP_QuadRuped_Backend::calc_gait_sequence()
 {
-    const float travel_dz = 5; // 移动死区阈值，防止微小抖动
+    const float travel_dz = 5.0f / 500.0f; // 移动死区阈值，防止微小抖动
 
     // 判断是否有移动请求（前进/后退或旋转）
-    if ((fabsf(_throttle_x) > travel_dz) || (fabsf(_throttle_y) > travel_dz) || (fabsf(_yaw_rate) > travel_dz / 2))
+    if ((fabsf(_frontend.get_throttle_x()) > travel_dz) || (fabsf(_frontend.get_throttle_y()) > travel_dz) || (fabsf(_frontend.get_yaw_rate()) > travel_dz / 2))
         move_requested = true; // 需要移动
     else
         move_requested = false; // 保持静止
@@ -33,9 +33,10 @@ void AP_QuadRuped_Backend::calc_gait_sequence()
 // 腿部逆运动学计算
 Vector3f AP_QuadRuped_Backend::leg_inverse_kinematics(Vector3f posxyz)
 {
-    Vector3f leg_deg = { 0, 0, 0 }; // 存储计算出的关节角度（度）
+    AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
 
-    AP_QuadRuped_SYS_Params& Sys_Param = get_sys_params();
+    // 存储计算出的关节角度（度）
+    Vector3f leg_deg = { 0, 0, 0 };
 
     // 1. 计算髋关节角度（绕Z轴旋转）
     leg_deg.x = -degrees(atan2f(posxyz.x, posxyz.y)); // 使用atan2计算XY平面内的角度
@@ -141,59 +142,27 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
 }
 
 // 主控制器 - 处理遥控器输入并转换为运动指令
-void AP_QuadRuped_Backend::controller()
+void AP_QuadRuped_Backend::main_radio_controller()
 {
-    float temp_rc; // 临时存储遥控器值
+    AP_QuadRuped_CHANNEL_Params& channel = _frontend.get_channel_params();
 
     // 处理油门通道（前进/后退）
     if (channel.throttle_x_channel != -1) {
-        // 读取遥控器输入并约束在[1000, 2000]范围内
-        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_x_channel - 1), (float)1000, (float)2000);
-        // 死区处理：当摇杆在中间位置附近时，认为无输入
-        if (temp_rc < 1550 && temp_rc > 1450) {
-            temp_rc = 1500;
-            set_centre_offset(0.0, 0.0, 0.0); // 重置重心偏移
-        }
         // 将遥控器输入转换为前进/后退行程
-        throttle_x_travel = (temp_rc - 1500) / 500.0f * throttle_x_max;
+        throttle_x_travel = _frontend.get_throttle_x() * channel.throttle_x_max;
     } else {
         throttle_x_travel = 0; // 无通道配置时保持静止
     }
 
     // 处理横移通道（向右为正，向左为负）
     if (channel.throttle_y_channel != -1) {
-        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_y_channel - 1), 1000.0f, 2000.0f);
-        // 死区：1450~1550
-        if (temp_rc < 1550 && temp_rc > 1450) {
-            temp_rc = 1500;
-        }
-        // 将遥控器输入转换为横移行程（mm）
-        // 建议与 throttle_travel 一样的线性映射
-        throttle_y_travel = (temp_rc - 1500) / 500.0f * throttle_y_max;
+        throttle_x_travel = _frontend.get_throttle_y() * channel.throttle_y_max;
     } else {
         throttle_y_travel = 0.0f;
     }
 
-    // // 处理高度通道（机体升降）
-    // if (channel.height_channel != -1) {
-    //     // 读取遥控器输入
-    //     temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.height_channel - 1), (float)1000, (float)2000);
-    //     // 转换为高度偏移：范围-50mm到+70mm
-    //     z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
-    // } else {
-    // }
-    z_travel = (float)channel.height_channel; // 默认高度
-
-    if (channel.lift_channel != -1) {
-        // 读取遥控器输入
-        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.lift_channel - 1), (float)1000, (float)2000);
-        // 转换为高度偏移：范围-50mm到+70mm
-        leg_lift_height = (temp_rc - 1500) / 10.0f + 25;
-    } else {
-        leg_lift_height = 25; // 默认高度
-    }
-
-    leg_lift_height = (float)channel.lift_channel; // 默认高度
+    z_travel        = channel.body_height; // 默认高度
+    leg_lift_height = channel.left_lift;   // 抬腿高度
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -223,7 +192,7 @@ void AP_QuadRuped_Backend::output_leg_angle(void)
 }
 
 // 硬件伺服命令设置 - 通过CAN总线发送PWM控制信号到舵机
-bool AP_QuadRuped_Backend::dronecan_send_servo_cmd()
+bool AP_QuadRuped_Backend::send_servo_cmd()
 {
     com_usl_ServoCmd msg {}; // 创建DroneCAN伺服控制消息结构体
     msg.cmd.len = 12;        // 设置消息长度(4条腿×3个关节 = 12个数据)

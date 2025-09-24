@@ -695,8 +695,6 @@ public:
 
     AP_Int8 att_enable;
     AP_Int8 att_decimation;
-
-    AP_Int8 qrupd_class;
 };
 
 extern const AP_Param::Info        var_info[];

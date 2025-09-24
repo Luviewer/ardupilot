@@ -72,9 +72,7 @@
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
 #include <AP_SurfaceDistance/AP_SurfaceDistance.h>
-#include <AP_QuadRuped/AP_QuadRuped_Base.h>
-#include <AP_QuadRuped/AP_QuadRuped_Diag.h>
-#include <AP_QuadRuped/AP_QuadRuped_WAVE.h>
+#include <AP_QuadRuped/AP_QuadRuped.h>
 
 // Configuration
 #include "defines.h"
@@ -1126,8 +1124,7 @@ private:
 public:
     void failsafe_check();      // failsafe.cpp
 
-    AP_QuadRuped_Base* qrupd;
-    const struct AP_Param::GroupInfo *qrupd_var_info;
+    AP_QuadRuped qrupd;
 };
 
 extern Copter copter;

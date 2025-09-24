@@ -1165,7 +1165,6 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
 
     // ID 62 is reserved for the SHOW_... parameters from the Skybrush fork at
     // https://github.com/skybrush-io/ardupilot
-    AP_GROUPINFO("QRPUD_CLASS", 63, ParametersG2, qrupd_class, 0),
 
     AP_GROUPEND
 };

@@ -181,6 +181,8 @@ void Copter::init_ardupilot()
     custom_control.init();
 #endif
 
+    qrupd.init();
+
     // set landed flags
     set_land_complete(true);
     set_land_complete_maybe(true);
@@ -478,21 +480,6 @@ void Copter::allocate_motors(void)
     }
     AP_Param::load_object_from_eeprom(circle_nav, circle_nav->var_info);
 #endif
-
-    switch ((AP_QuadRuped_Base::GaitType)g2.qrupd_class.get() ) {
-        case AP_QuadRuped_Base::GAIT_DIAGONAL:
-        default:
-            qrupd          = NEW_NOTHROW AP_QuadRuped_Diag(*ahrs_view, *motors);
-            qrupd_var_info = AP_QuadRuped_Diag::var_info;
-            AP_Param::load_object_from_eeprom(qrupd, qrupd_var_info);
-            break;
-
-        case AP_QuadRuped_Base::GAIT_WAVE:
-            qrupd          = NEW_NOTHROW AP_QuadRuped_WAVE(*ahrs_view, *motors);
-            qrupd_var_info = AP_QuadRuped_WAVE::var_info;
-            AP_Param::load_object_from_eeprom(qrupd, qrupd_var_info);
-            break;
-    }
     
     // reload lines from the defaults file that may now be accessible
     AP_Param::reload_defaults_file(true);
