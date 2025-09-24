@@ -481,6 +481,7 @@ void Copter::allocate_motors(void)
 
     switch ((AP_QuadRuped_Base::GaitType)g2.qrupd_class.get() ) {
         case AP_QuadRuped_Base::GAIT_DIAGONAL:
+        default:
             qrupd          = NEW_NOTHROW AP_QuadRuped_Diag(*ahrs_view, *motors);
             qrupd_var_info = AP_QuadRuped_Diag::var_info;
             AP_Param::load_object_from_eeprom(qrupd, qrupd_var_info);

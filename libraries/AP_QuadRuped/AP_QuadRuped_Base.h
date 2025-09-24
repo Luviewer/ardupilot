@@ -10,14 +10,15 @@
 #include <AP_Param/AP_Param.h>              // 参数系统
 #include <stdio.h>
 
+#define ENABLE_LEG_ALPHA_COMP
 #ifdef ENABLE_LEG_ALPHA_COMP
-  // Allow overriding from the build system, otherwise use defaults:
-  #ifndef LEG_ALPHA_A
-    #define LEG_ALPHA_A 55.80f
-  #endif
-  #ifndef LEG_ALPHA_B
-    #define LEG_ALPHA_B 50.00f
-  #endif
+// Allow overriding from the build system, otherwise use defaults:
+# ifndef LEG_ALPHA_A
+#  define LEG_ALPHA_A 55.80f
+# endif
+# ifndef LEG_ALPHA_B
+#  define LEG_ALPHA_B 50.00f
+# endif
 #endif
 
 // 腿部索引枚举
