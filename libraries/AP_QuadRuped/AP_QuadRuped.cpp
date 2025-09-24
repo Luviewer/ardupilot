@@ -1,39 +1,216 @@
 #include "AP_QuadRuped.h"
+#include "AP_QuadRuped_Backend.h"
+#include "AP_QuadRuped_Crab.h"
+#include "AP_QuadRuped_Diag_New.h"
+#include "AP_QuadRuped_WAVE_New.h"
+#include <AP_RCMapper/AP_RCMapper.h>
+#include <RC_Channel/RC_Channel.h>
 
+// 参数定义
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
+    // 基础参数组 (1-10)
+    AP_GROUPINFO("GTYPE", 1, AP_QuadRuped, _gait_type, (int8_t)GAIT_DIAGONAL),
+    AP_GROUPINFO("ENABLE", 2, AP_QuadRuped, _enabled, 1),
 
-    // 基本运动参数
-    AP_GROUPINFO("Hz", 1, AP_QuadRuped_Base, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
+    // 系统参数组 (11-20)
+    AP_SUBGROUPINFO(_sys_params, "SYS_", 11, AP_QuadRuped, AP_QuadRuped_SYS_Params),
 
-    // 遥控通道参数组
-    AP_SUBGROUPINFO(channel, "CH_", 2, AP_QuadRuped_Base, AP_QuadRuped_CHANNEL_Params), // 通道配置
+    // 通道参数组 (21-30)
+    AP_SUBGROUPINFO(_channel_params, "CH_", 21, AP_QuadRuped, AP_QuadRuped_CHANNEL_Params),
 
-    // 系统参数组
-    AP_SUBGROUPINFO(Sys_Param, "SYS", 3, AP_QuadRuped_Base, AP_QuadRuped_SYS_Params), // 系统参数
+    // 腿部参数组 (31-40)
+    AP_SUBGROUPINFO(_leg_params[Leg_RF], "RF_", 31, AP_QuadRuped, AP_QuadRuped_Params), // 右前腿
+    AP_SUBGROUPINFO(_leg_params[Leg_RB], "RB_", 32, AP_QuadRuped, AP_QuadRuped_Params), // 右后腿
+    AP_SUBGROUPINFO(_leg_params[Leg_LB], "LB_", 33, AP_QuadRuped, AP_QuadRuped_Params), // 左后腿
+    AP_SUBGROUPINFO(_leg_params[Leg_LF], "LF_", 34, AP_QuadRuped, AP_QuadRuped_Params), // 左前腿
 
-    // 四条腿的参数组
-    AP_SUBGROUPINFO(leg_param[Leg_RF], "RF_", 4, AP_QuadRuped_Base, AP_QuadRuped_Params), // 右前腿参数
-    AP_SUBGROUPINFO(leg_param[Leg_RB], "RB_", 5, AP_QuadRuped_Base, AP_QuadRuped_Params), // 右后腿参数
-    AP_SUBGROUPINFO(leg_param[Leg_LB], "LB_", 6, AP_QuadRuped_Base, AP_QuadRuped_Params), // 左后腿参数
-    AP_SUBGROUPINFO(leg_param[Leg_LF], "LF_", 7, AP_QuadRuped_Base, AP_QuadRuped_Params), // 左前腿参数
-
-    // 行程参数
-    AP_GROUPINFO("THR_X", 3, AP_QuadRuped_Base, throttle_x_max, MAX_THROTTLE_X_DEFAULT),  // 最大x方向油门行程
-    AP_GROUPINFO("THR_Y", 4, AP_QuadRuped_Base, throttle_y_max, MAX_THROTTLE_Y_DEFAULT),  // 最大y方向油门行程
-    AP_GROUPINFO("STEP", 5, AP_QuadRuped_Base, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
-
+    AP_GROUPEND
 };
 
-// 构造函数 - 初始化四足机器人基类
+// 构造函数
 AP_QuadRuped::AP_QuadRuped(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rangefinder)
-    : _ahrs(ahrs)               // 初始化姿态航向参考系统接口
-    , _motors(motors)           // 初始化电机控制接口
-    , _rangefinder(rangefinder) //
+    : _ahrs(ahrs)
+    , _motors(motors)
+    , _rangefinder(rangefinder)
+    , _backend(nullptr)
+    , _throttle_x(0.0f)
+    , _throttle_y(0.0f)
+    , _yaw_rate(0.0f)
+    , _body_height(0.0f)
 {
-    // 初始化成员变量
-    // move_requested = false;          // 移动请求标志，初始为静止
-    // max_yaw_rate   = radians(30.0f); // 最大偏航角速度限制为30度/秒
+    // 初始化后端指针数组
+    for (uint8_t i = 0; i < GAIT_COUNT; i++) {
+        _gait_backends[i] = nullptr;
+    }
 
     // 设置参数默认值
     AP_Param::setup_object_defaults(this, var_info);
+}
+
+// 析构函数
+AP_QuadRuped::~AP_QuadRuped()
+{
+    destroy_backends();
+}
+
+// 初始化系统
+bool AP_QuadRuped::init()
+{
+    // 创建后端实例
+    create_backends();
+
+    // 设置初始步态
+    set_gait_type(get_gait_type());
+
+    return _backend != nullptr;
+}
+
+// 主更新循环
+void AP_QuadRuped::update()
+{
+    // 检查是否启用
+    if (!_enabled) {
+        return;
+    }
+
+    // 读取遥控器输入
+    read_radio_input();
+
+    // 更新控制限制
+    update_control_limits();
+
+    // 调用后端更新
+    if (_backend && _backend->healthy()) {
+        _backend->update();
+    }
+}
+
+// 健康状态检查
+bool AP_QuadRuped::healthy() const
+{
+    if (!_enabled) {
+        return false;
+    }
+
+    // 检查硬件接口
+    if (!_ahrs.healthy()) {
+        return false;
+    }
+
+    // 检查后端
+    if (!_backend || !_backend->healthy()) {
+        return false;
+    }
+
+    return true;
+}
+
+// 设置步态类型
+void AP_QuadRuped::set_gait_type(GaitType type)
+{
+    if (type >= GAIT_COUNT) {
+        return;
+    }
+
+    if (_gait_backends[type]) {
+        _backend = _gait_backends[type];
+        _backend->init();
+    }
+}
+
+// 设置油门输入
+void AP_QuadRuped::set_throttle(float throttle_x, float throttle_y)
+{
+    _throttle_x = throttle_x;
+    _throttle_y = throttle_y;
+}
+
+// 设置偏航角速度
+void AP_QuadRuped::set_yaw_rate(float yaw_rate)
+{
+    _yaw_rate = yaw_rate;
+}
+
+// 设置机身高度
+void AP_QuadRuped::set_body_height(float height)
+{
+    _body_height = height;
+}
+
+// 获取腿部参数
+const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
+{
+    if (leg_index < LEG_ALL) {
+        return _leg_params[leg_index];
+    }
+    return _leg_params[Leg_RF]; // 默认返回第一条腿的参数
+}
+
+// 创建后端实例
+void AP_QuadRuped::create_backends()
+{
+    // 创建对角步态后端
+    _gait_backends[GAIT_DIAGONAL] = new AP_QuadRuped_Diag(*this, _ahrs, _motors);
+
+    // 创建波浪步态后端
+    _gait_backends[GAIT_WAVE] = new AP_QuadRuped_WAVE(*this, _ahrs, _motors);
+
+    // 创建工字步态后端
+    _gait_backends[GAIT_CRAB] = new AP_QuadRuped_Crab(*this, _ahrs, _motors);
+
+    // 初始化所有后端
+    for (uint8_t i = 0; i < GAIT_COUNT; i++) {
+        if (_gait_backends[i]) {
+            _gait_backends[i]->init();
+        }
+    }
+}
+
+// 销毁后端实例
+void AP_QuadRuped::destroy_backends()
+{
+    for (uint8_t i = 0; i < GAIT_COUNT; i++) {
+        if (_gait_backends[i]) {
+            delete _gait_backends[i];
+            _gait_backends[i] = nullptr;
+        }
+    }
+    _backend = nullptr;
+}
+
+// 读取遥控器输入
+void AP_QuadRuped::read_radio_input()
+{
+    // 获取遥控器映射
+    const RC_Channels& rc_mapper = rc()::get_singleton();
+
+    // 读取各通道输入
+    RC_Channel* throttle_x_chan = rc_mapper.rc_channel(_channel_params.throttle_x_channel);
+    RC_Channel* throttle_y_chan = rc_mapper.rc_channel(_channel_params.throttle_y_channel);
+    RC_Channel* yaw_chan        = rc_mapper.rc_channel(_channel_params.yaw_channel);
+    RC_Channel* height_chan     = rc_mapper.rc_channel(_channel_params.height_channel);
+
+    // 获取输入值并归一化
+    if (throttle_x_chan) {
+        _throttle_x = throttle_x_chan->norm_input();
+    }
+    if (throttle_y_chan) {
+        _throttle_y = throttle_y_chan->norm_input();
+    }
+    if (yaw_chan) {
+        _yaw_rate = yaw_chan->norm_input();
+    }
+    if (height_chan) {
+        _body_height = height_chan->norm_input();
+    }
+}
+
+// 更新控制限制
+void AP_QuadRuped::update_control_limits()
+{
+    // 限制油门输入范围
+    _throttle_x  = constrain_float(_throttle_x, -1.0f, 1.0f);
+    _throttle_y  = constrain_float(_throttle_y, -1.0f, 1.0f);
+    _yaw_rate    = constrain_float(_yaw_rate, -1.0f, 1.0f);
+    _body_height = constrain_float(_body_height, -1.0f, 1.0f);
 }

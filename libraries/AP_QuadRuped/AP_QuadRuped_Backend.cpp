@@ -1,0 +1,271 @@
+#include "AP_QuadRuped_Backend.h"
+#include "AP_QuadRuped.h"
+
+// 重置腿部位置 - 将所有腿恢复到初始状态
+void AP_QuadRuped_Backend::reset_leg()
+{
+    // 遍历所有腿，重置其位置和旋转
+    for (uint8_t moving_leg = 0; moving_leg < AP_QuadRuped::LEG_ALL; moving_leg++) {
+        gait_pos_xyz[moving_leg] = { 0, 0, 0 }; // 重置位置坐标为原点（相对于初始位置）
+        gait_rot_z[moving_leg]   = 0;           // 重置旋转角度为0（无旋转）
+    }
+}
+
+// 计算步态序列 - 判断是否需要移动并执行相应动作
+void AP_QuadRuped_Backend::calc_gait_sequence()
+{
+    const float travel_dz = 5; // 移动死区阈值，防止微小抖动
+
+    // 判断是否有移动请求（前进/后退或旋转）
+    if ((fabsf(_throttle_x) > travel_dz) || (fabsf(_throttle_y) > travel_dz) || (fabsf(_yaw_rate) > travel_dz / 2))
+        move_requested = true; // 需要移动
+    else
+        move_requested = false; // 保持静止
+
+    // 根据移动请求执行相应动作
+    if (move_requested == true) {
+        update_leg(); // 更新腿部运动（执行步态）
+    } else {
+        reset_leg(); // 重置腿部到初始位置
+    }
+}
+
+// 腿部逆运动学计算
+Vector3f AP_QuadRuped_Backend::leg_inverse_kinematics(Vector3f posxyz)
+{
+    Vector3f leg_deg = { 0, 0, 0 }; // 存储计算出的关节角度（度）
+
+    AP_QuadRuped_SYS_Params& Sys_Param = get_sys_params();
+
+    // 1. 计算髋关节角度（绕Z轴旋转）
+    leg_deg.x = -degrees(atan2f(posxyz.x, posxyz.y)); // 使用atan2计算XY平面内的角度
+
+    // 2. 计算从髋关节到末端在XY平面的投影距离
+    float trueX = sqrtf(posxyz.x * posxyz.x + posxyz.y * posxyz.y) - Sys_Param.COXA_LEN; // 减去髋关节长度
+
+    // 3. 计算从股关节到末端的空间距离
+    float im = sqrtf(trueX * trueX + posxyz.z * posxyz.z);
+
+    // 4. 计算股关节角度（使用余弦定理）
+    float q1 = atan2f(trueX, posxyz.z); // 股关节与末端连线与垂直方向的夹角
+
+    // 使用余弦定理计算股关节角度
+    float d1  = Sys_Param.FEMUR_LEN * Sys_Param.FEMUR_LEN - Sys_Param.TIBIA_LEN * Sys_Param.TIBIA_LEN + im * im;
+    float d2  = 2 * Sys_Param.FEMUR_LEN * im;
+    float q2  = acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f)); // 约束在[-1,1]范围内防止数值错误
+    leg_deg.y = -(degrees(q1 + q2) - 90);                            // 计算股关节角度并调整坐标系
+
+    // 5. 计算胫关节角度（使用余弦定理）
+    d1        = Sys_Param.FEMUR_LEN * Sys_Param.FEMUR_LEN - im * im + Sys_Param.TIBIA_LEN * Sys_Param.TIBIA_LEN;
+    d2        = 2 * Sys_Param.TIBIA_LEN * Sys_Param.FEMUR_LEN;
+    leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90); // 计算胫关节角度
+
+#ifdef ENABLE_LEG_ALPHA_COMP
+    {
+        const float alpha = degrees(atan2f(LEG_ALPHA_B, LEG_ALPHA_A));
+        leg_deg.y -= alpha;
+        leg_deg.z += 90.0f - alpha;
+    }
+#endif
+    return leg_deg; // 返回{髋关节, 股关节, 胫关节}角度
+}
+
+// 机体正向运动学 - 计算考虑机体姿态和重心偏移后的腿部末端位置
+Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
+{
+    // 计算腿部末端在机体坐标系中的总位置
+    // gait_pos_xyz：步态生成的目标位置（相对于初始位置的偏移）
+    // endpoint_leg_pos：腿部初始展开位置（髋关节+股关节长度在45度方向的投影）
+    // endpoint_leg_frame：机体框架几何尺寸（腿在机体上的安装位置）
+    Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
+
+    // 添加重心偏移补偿
+    // 减去 centre_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
+    totaldist_xyz -= centre_offset;
+    totaldist_xyz -= centre_offset_move;
+
+    // 添加Z轴高度偏移（机体升降）
+    totaldist_xyz.z += z_travel;
+
+    // 创建四元数用于旋转变换
+    Quaternion quat = { 1, 0, 0, 0 };
+
+    // 设置机体旋转角度
+    body_rot_xyz_deg.x = -radians(roll_travel);  // 横滚角（绕X轴）- 取负值是因为坐标系定义
+    body_rot_xyz_deg.y = -radians(pitch_travel); // 俯仰角（绕Y轴）- 取负值是因为坐标系定义
+    // 偏航角（绕Z轴）- 来自步态生成的旋转补偿，影响腿末端轨迹的旋转偏移
+    body_rot_xyz_deg.z = radians(gait_rot_z[leg_index]);
+
+    // 根据欧拉角创建四元数
+    quat.from_euler(body_rot_xyz_deg);
+
+    // 应用旋转变换
+    Vector3f totaldist_xyz_rot = quat * totaldist_xyz;
+
+    // 返回相对于髋关节的位置（减去机体框架偏移）
+    return (totaldist_xyz_rot - endpoint_leg_frame[leg_index]);
+}
+
+// 主逆运动学计算 - 计算所有腿的关节角度
+void AP_QuadRuped_Backend::main_inverse_kinematics(void)
+{
+    Vector3f ansxyz = { 0, 0, 0 }; // 临时变量，存储腿部末端位置
+
+    // 腿部角度偏移补偿 - 由于机械安装误差，每条腿需要不同的角度补偿
+    const Vector3f endpoint_leg_angle_offset[AP_QuadRuped::LEG_ALL] = {
+        { 45, 0, 0 },   // 右前腿：髋关节补偿45度
+        { -45, 0, 0 },  // 右后腿：髋关节补偿-45度
+        { -135, 0, 0 }, // 左后腿：髋关节补偿-135度
+        { -225, 0, 0 }  // 左前腿：髋关节补偿-225度
+    }; // 格式：{髋关节角度，股关节角度，胫关节角度} - 只有髋关节需要补偿
+
+    // 遍历所有腿，计算逆运动学
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+        // 1. 计算腿部末端在机体坐标系中的位置
+        ansxyz = body_forward_kinematics(leg_index);
+        // 2. 计算逆运动学得到关节角度，并加上补偿值
+        endpoint_leg_angle[leg_index] = leg_inverse_kinematics(ansxyz) + endpoint_leg_angle_offset[leg_index];
+        // 3. 将髋关节角度规范到[-180, 180]范围内
+        endpoint_leg_angle[leg_index].x = wrap_180(endpoint_leg_angle[leg_index].x);
+    }
+
+    // 计算步态序列
+    // 根据 throttle_travel（前进/后退）和 yaw_travel（旋转）更新步态相位
+    // 决定下一步的足端轨迹
+    calc_gait_sequence();
+
+    // 保存当前关节角度到上一时刻变量
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+        endpoint_leg_angle_last[leg_index] = endpoint_leg_angle[leg_index];
+    }
+}
+
+// 主控制器 - 处理遥控器输入并转换为运动指令
+void AP_QuadRuped_Backend::controller()
+{
+    float temp_rc; // 临时存储遥控器值
+
+    // 处理油门通道（前进/后退）
+    if (channel.throttle_x_channel != -1) {
+        // 读取遥控器输入并约束在[1000, 2000]范围内
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_x_channel - 1), (float)1000, (float)2000);
+        // 死区处理：当摇杆在中间位置附近时，认为无输入
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+            set_centre_offset(0.0, 0.0, 0.0); // 重置重心偏移
+        }
+        // 将遥控器输入转换为前进/后退行程
+        throttle_x_travel = (temp_rc - 1500) / 500.0f * throttle_x_max;
+    } else {
+        throttle_x_travel = 0; // 无通道配置时保持静止
+    }
+
+    // 处理横移通道（向右为正，向左为负）
+    if (channel.throttle_y_channel != -1) {
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.throttle_y_channel - 1), 1000.0f, 2000.0f);
+        // 死区：1450~1550
+        if (temp_rc < 1550 && temp_rc > 1450) {
+            temp_rc = 1500;
+        }
+        // 将遥控器输入转换为横移行程（mm）
+        // 建议与 throttle_travel 一样的线性映射
+        throttle_y_travel = (temp_rc - 1500) / 500.0f * throttle_y_max;
+    } else {
+        throttle_y_travel = 0.0f;
+    }
+
+    // // 处理高度通道（机体升降）
+    // if (channel.height_channel != -1) {
+    //     // 读取遥控器输入
+    //     temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.height_channel - 1), (float)1000, (float)2000);
+    //     // 转换为高度偏移：范围-50mm到+70mm
+    //     z_travel = (temp_rc - 1500) / 500.0f * 120.0f - 50;
+    // } else {
+    // }
+    z_travel = (float)channel.height_channel; // 默认高度
+
+    if (channel.lift_channel != -1) {
+        // 读取遥控器输入
+        temp_rc = constrain_value((float)rc().RC_Channels::get_radio_in(channel.lift_channel - 1), (float)1000, (float)2000);
+        // 转换为高度偏移：范围-50mm到+70mm
+        leg_lift_height = (temp_rc - 1500) / 10.0f + 25;
+    } else {
+        leg_lift_height = 25; // 默认高度
+    }
+
+    leg_lift_height = (float)channel.lift_channel; // 默认高度
+}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+// 输出腿部关节角度 - 将计算出的关节角度转换为PWM信号
+void AP_QuadRuped_Backend::output_leg_angle(void)
+{
+    uint16_t pwm_coxa;  // 髋关节PWM值
+    uint16_t pwm_femur; // 股关节PWM值
+    uint16_t pwm_tibia; // 胫关节PWM值
+
+    // 遍历所有腿，计算每个关节的PWM值
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+        // 将角度转换为PWM值
+        // 公式：PWM = 方向系数 × 角度 × PWM范围/角度范围 + 中间值
+        pwm_coxa  = leg_param[leg_index].COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_femur = leg_param[leg_index].FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+        pwm_tibia = leg_param[leg_index].TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE;
+
+        // 存储PWM命令到输出数组
+        servo_output_cmd[leg_index].x = pwm_coxa;  // 髋关节PWM
+        servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
+        servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
+    }
+}
+
+// 硬件伺服命令设置 - 通过CAN总线发送PWM控制信号到舵机
+bool AP_QuadRuped_Backend::dronecan_send_servo_cmd()
+{
+    com_usl_ServoCmd msg {}; // 创建DroneCAN伺服控制消息结构体
+    msg.cmd.len = 12;        // 设置消息长度(4条腿×3个关节 = 12个数据)
+
+    // 遍历所有腿部，准备发送数据
+    for (uint8_t leg_index = 0; leg_index < AP_QuadRuped::LEG_ALL; leg_index++) {
+        // 填充CAN消息数据（添加偏移补偿）
+        msg.cmd.data[leg_index * 3 + 0] = servo_output_cmd[leg_index].x + leg_param[leg_index].COXA_OFS; // 髋关节
+        msg.cmd.data[leg_index * 3 + 1] = servo_output_cmd[leg_index].y + leg_param[leg_index].FEMU_OFS; // 股关节
+        msg.cmd.data[leg_index * 3 + 2] = servo_output_cmd[leg_index].z + leg_param[leg_index].TIBI_OFS; // 胫关节
+
+        // 同时设置PWM输出通道（直接输出模式）
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_coxa + leg_index * 3),
+                                     servo_output_cmd[leg_index].x + leg_param[leg_index].COXA_OFS);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_femu + leg_index * 3),
+                                     servo_output_cmd[leg_index].y + leg_param[leg_index].FEMU_OFS);
+        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_legmotor_rf_tibi + leg_index * 3),
+                                     servo_output_cmd[leg_index].z + leg_param[leg_index].TIBI_OFS);
+    }
+
+    // 在所有可用的CAN总线接口上广播伺服控制命令
+    // 获取CAN驱动数量
+    uint8_t can_num_drivers = AP::can().get_num_drivers();
+
+    // 发送成功标志
+    bool ok = false;
+
+    // 遍历所有CAN接口
+    for (uint8_t i = 0; i < can_num_drivers; i++) {
+        auto* dronecan = AP_DroneCAN::get_dronecan(i); // 获取第i个CAN驱动实例
+        if (dronecan != nullptr) {
+            // 尝试广播消息，使用|=确保只要有一个接口成功就返回true
+            ok |= dronecan->com_usl_servocmd.broadcast(msg); // 发送伺服控制命令
+        }
+    }
+    return ok; // 返回广播结果
+}
+
+// 辅助函数：角度转PWM
+uint16_t AP_QuadRuped_Backend::radians_to_pwm(float angle_rad)
+{
+    // 假设PWM范围1000-2000对应-90到90度
+    float angle_deg = degrees(angle_rad);
+    return uint16_t(1500 + (angle_deg / 90.0f) * 500);
+}

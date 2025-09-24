@@ -16,7 +16,7 @@ public:
         : AP_QuadRuped_Base(ahrs, motors)
     {
     }
-	virtual ~AP_QuadRuped_Diag() {}
+    virtual ~AP_QuadRuped_Diag() { }
 
     void gait_init() override;
     void update_leg() override;
@@ -24,4 +24,7 @@ public:
     void yaw_trajectory_generation(uint8_t leg_index) override;
 
     void update() override;
+
+    // 参数表定义 - 用于配置系统参数
+    static const struct AP_Param::GroupInfo var_info[];
 };

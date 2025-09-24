@@ -2,6 +2,14 @@
 
 extern const AP_HAL::HAL& hal;
 
+const AP_Param::GroupInfo AP_QuadRuped_Diag::var_info[] = {
+    // 频率
+    AP_GROUPINFO("Hz", 1, AP_QuadRuped_Base, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
+
+    // 步长
+    AP_GROUPINFO("STEP", 5, AP_QuadRuped_Base, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
+};
+
 // 初始化对角步态参数
 void AP_QuadRuped_Diag::gait_init()
 {

@@ -150,10 +150,6 @@ protected:
     Vector3f centre_offset_move; // 主动控制的重心偏移量（X、Y、Z）
     Vector2f offset_xy;          // 重心平移控制（X、Y平面）
 
-    // 油门参数
-    AP_Float throttle_x_max; // 油门最大值 - 最大前进/后退距离
-    AP_Float throttle_y_max;
-
     // 系统和腿的参数
     AP_QuadRuped_SYS_Params     Sys_Param;          // 系统参数（机身尺寸、腿长等）
     AP_QuadRuped_Params         leg_param[LEG_ALL]; // 每条腿的参数（方向、偏移等）
