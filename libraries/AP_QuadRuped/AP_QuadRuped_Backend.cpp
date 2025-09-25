@@ -2,6 +2,15 @@
 #include "AP_QuadRuped.h"
 #include "AP_QuadRuped_Defines.h"
 
+// 构造函数
+AP_QuadRuped_Backend::AP_QuadRuped_Backend(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
+    : _frontend(frontend)
+    , _state(state)
+    , _ahrs(ahrs)
+    , _motors(motors)
+{
+}
+
 // 重置腿部位置 - 将所有腿恢复到初始状态
 void AP_QuadRuped_Backend::reset_leg()
 {
@@ -23,12 +32,14 @@ void AP_QuadRuped_Backend::calc_gait_sequence()
     else
         move_requested = false; // 保持静止
 
-    // 根据移动请求执行相应动作
-    if (move_requested == true) {
-        update_leg(); // 更新腿部运动（执行步态）
-    } else {
-        reset_leg(); // 重置腿部到初始位置
-    }
+    // // 根据移动请求执行相应动作
+    // if (move_requested == true) {
+    //     update_leg(); // 更新腿部运动（执行步态）
+    // } else {
+    //     reset_leg(); // 重置腿部到初始位置
+    // }
+
+    reset_leg(); // 重置腿部到初始位置
 }
 
 // 腿部逆运动学计算
@@ -83,8 +94,8 @@ Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
 
     // 添加重心偏移补偿
     // 减去 centre_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
-    totaldist_xyz -= centre_offset;
-    totaldist_xyz -= centre_offset_move;
+    // totaldist_xyz -= centre_offset;
+    // totaldist_xyz -= centre_offset_move;
 
     // 添加Z轴高度偏移（机体升降）
     totaldist_xyz.z += z_travel;
@@ -157,7 +168,7 @@ void AP_QuadRuped_Backend::main_radio_controller()
 
     // 处理横移通道（向右为正，向左为负）
     if (channel.throttle_y_channel != -1) {
-        throttle_x_travel = _frontend.get_throttle_y() * channel.throttle_y_max;
+        throttle_y_travel = _frontend.get_throttle_y() * channel.throttle_y_max;
     } else {
         throttle_y_travel = 0.0f;
     }

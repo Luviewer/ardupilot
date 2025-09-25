@@ -19,11 +19,12 @@ const AP_Param::GroupInfo AP_QuadRuped_Diag::var_info[] = {
 };
 
 // 构造函数
-AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_AHRS_View& ahrs, AP_Motors& motors)
-    : AP_QuadRuped_Backend(frontend, ahrs, motors)
+AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
+    : AP_QuadRuped_Backend(frontend, state, ahrs, motors)
 {
     // 设置参数默认值
     AP_Param::setup_object_defaults(this, var_info);
+    _state.var_info = var_info;
 }
 
 // 初始化
@@ -162,10 +163,12 @@ void AP_QuadRuped_Diag::update()
 
         // 输出腿部关节角度
         output_leg_angle();
-
-        // 发送数据
-        send_servo_cmd();
+    } else {
+        hengxiang_up_sleep_leg();
     }
+
+    // 发送数据
+    send_servo_cmd();
 }
 
 // 平衡控制器 - 简单的平衡控制实现

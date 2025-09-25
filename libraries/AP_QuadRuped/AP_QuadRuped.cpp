@@ -1,5 +1,4 @@
 #include "AP_QuadRuped.h"
-#include "AP_QuadRuped_Backend.h"
 #include "AP_QuadRuped_Diag.h"
 #include <AP_RCMapper/AP_RCMapper.h>
 #include <RC_Channel/RC_Channel.h>
@@ -30,6 +29,17 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_SUBGROUPINFO(_leg_params[AP_QUADRUPED_LEG_LB], "LB_", 33, AP_QuadRuped, AP_QuadRuped_Params), // 左后腿
     AP_SUBGROUPINFO(_leg_params[AP_QUADRUPED_LEG_LF], "LF_", 34, AP_QuadRuped, AP_QuadRuped_Params), // 左前腿
 
+    // 步态后端参数组 (41-50)
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_DIAGONAL], "DIAG_", 41, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_DIAGONAL]),
+
+#if AP_QUADRUPED_WAVE_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_WAVE], "WAVE_", 42, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_WAVE]),
+#endif
+
+#if AP_QUADRUPED_CRUBE_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_CRAB], "CRAB_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_CRAB]),
+#endif
+
     AP_GROUPEND
 };
 
@@ -46,7 +56,10 @@ AP_QuadRuped::AP_QuadRuped()
 {
     // 初始化后端指针数组
     for (uint8_t i = 0; i < AP_QUADRUPED_GAIT_COUNT; i++) {
-        _gait_backends[i] = nullptr;
+        _gait_backends[i]      = nullptr;
+        _state[i].last_time_ms = 0;
+        _state[i].instance     = i;
+        _state[i].var_info     = nullptr;
     }
 
     // 设置参数默认值
@@ -69,8 +82,8 @@ void AP_QuadRuped::destroy_backends()
 // 初始化函数 - 设置硬件接口
 bool AP_QuadRuped::init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rangefinder)
 {
-    _ahrs = &ahrs;
-    _motors = &motors;
+    _ahrs        = &ahrs;
+    _motors      = &motors;
     _rangefinder = &rangefinder;
 
     return init_system();
@@ -86,6 +99,34 @@ bool AP_QuadRuped::init_system()
     set_gait_type(get_gait_type());
 
     return _backend != nullptr;
+}
+
+// 创建后端实例
+void AP_QuadRuped::create_backends()
+{
+    // 创建对角步态后端
+    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL] = NEW_NOTHROW AP_QuadRuped_Diag(*this, _state[AP_QUADRUPED_GAIT_DIAGONAL], *_ahrs, *_motors);
+    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL]->init();
+    backend_var_info[AP_QUADRUPED_GAIT_DIAGONAL] = _state[AP_QUADRUPED_GAIT_DIAGONAL].var_info;
+    _state[AP_QUADRUPED_GAIT_DIAGONAL].instance  = AP_QUADRUPED_GAIT_DIAGONAL;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_DIAGONAL], backend_var_info[AP_QUADRUPED_GAIT_DIAGONAL]);
+
+    // 创建波浪步态后端
+#if AP_QUADRUPED_WAVE_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_WAVE] = new AP_QuadRuped_WAVE(*this, _state[AP_QUADRUPED_GAIT_WAVE], *_ahrs, *_motors);
+    _gait_backends[AP_QUADRUPED_GAIT_WAVE]->init();
+    backend_var_info[AP_QUADRUPED_GAIT_WAVE] = _state[AP_QUADRUPED_GAIT_WAVE].var_info;
+    _state[AP_QUADRUPED_GAIT_WAVE].instance  = AP_QUADRUPED_GAIT_WAVE;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
+#endif
+    // 创建工字步态后端
+#if AP_QUADRUPED_CRUBE_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_CRAB] = new AP_QuadRuped_Crab(*this, _state[AP_QUADRUPED_GAIT_CRAB], *_ahrs, *_motors);
+    _gait_backends[AP_QUADRUPED_GAIT_CRAB]->init();
+    backend_var_info[AP_QUADRUPED_GAIT_CRAB] = _state[AP_QUADRUPED_GAIT_CRAB].var_info;
+    _state[AP_QUADRUPED_GAIT_CRAB].instance  = AP_QUADRUPED_GAIT_CRAB;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_CRAB], backend_var_info[AP_QUADRUPED_GAIT_CRAB]);
+#endif
 }
 
 // 主更新循环
@@ -164,25 +205,6 @@ const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
     return _leg_params[AP_QUADRUPED_LEG_RF]; // 默认返回第一条腿的参数
 }
 
-// 创建后端实例
-void AP_QuadRuped::create_backends()
-{
-    // 创建对角步态后端
-    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL] = new AP_QuadRuped_Diag(*this, *_ahrs, *_motors);
-    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL]->init();
-
-    // 创建波浪步态后端
-#if AP_QUADRUPED_WAVE_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_WAVE] = new AP_QuadRuped_WAVE(*this, *_ahrs, *_motors);
-    _gait_backends[AP_QUADRUPED_GAIT_WAVE]->init();
-#endif
-    // 创建工字步态后端
-#if AP_QUADRUPED_CRUBE_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_CRAB] = new AP_QuadRuped_Crab(*this, *_ahrs, *_motors);
-    _gait_backends[AP_QUADRUPED_GAIT_CRAB]->init();
-#endif
-}
-
 // 读取遥控器输入
 void AP_QuadRuped::read_radio_input()
 {
@@ -205,7 +227,7 @@ void AP_QuadRuped::read_radio_input()
         _yaw_rate = yaw_chan->norm_input();
     }
     // 身体高度通过参数配置，不通过遥控器通道直接控制
-    _body_height = 0.0f;  // 使用默认值
+    _body_height = 0.0f; // 使用默认值
 
     // 限制油门输入范围
     _throttle_x  = constrain_float(_throttle_x, -1.0f, 1.0f);
@@ -213,3 +235,6 @@ void AP_QuadRuped::read_radio_input()
     _yaw_rate    = constrain_float(_yaw_rate, -1.0f, 1.0f);
     _body_height = constrain_float(_body_height, -1.0f, 1.0f);
 }
+
+// 静态成员变量定义
+const struct AP_Param::GroupInfo* AP_QuadRuped::backend_var_info[AP_QUADRUPED_GAIT_COUNT];

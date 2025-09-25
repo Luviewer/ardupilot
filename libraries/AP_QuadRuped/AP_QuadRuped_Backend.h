@@ -1,8 +1,9 @@
 #pragma once
 
 #include "AP_DroneCAN/AP_DroneCAN.h"
-#include "AP_QuadRuped_Params.h"
+#include "AP_QuadRuped.h"
 #include "AP_QuadRuped_Defines.h"
+#include "AP_QuadRuped_Params.h"
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
 #include <AP_HAL/AP_HAL_Boards.h>
@@ -29,12 +30,7 @@ class AP_QuadRuped;
 class AP_QuadRuped_Backend {
 public:
     // 构造函数
-    AP_QuadRuped_Backend(AP_QuadRuped& frontend, AP_AHRS_View& ahrs, AP_Motors& motors)
-        : _frontend(frontend)
-        , _ahrs(ahrs)
-        , _motors(motors)
-    {
-    }
+    AP_QuadRuped_Backend(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
 
     // 虚析构函数
     virtual ~AP_QuadRuped_Backend() { }
@@ -75,6 +71,7 @@ public:
 protected:
     // 前端控制器引用
     AP_QuadRuped& _frontend;
+    AP_QuadRuped::QuadRuped_State& _state;
 
     // 硬件接口引用
     AP_AHRS_View& _ahrs;

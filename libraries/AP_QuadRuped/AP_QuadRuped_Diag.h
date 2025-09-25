@@ -16,7 +16,7 @@ class AP_QuadRuped;
 class AP_QuadRuped_Diag : public AP_QuadRuped_Backend {
 public:
     // 构造函数
-    AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_AHRS_View& ahrs, AP_Motors& motors);
+    AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
 
     // 析构函数
     virtual ~AP_QuadRuped_Diag() { }
