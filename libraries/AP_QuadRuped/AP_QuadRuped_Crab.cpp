@@ -36,8 +36,8 @@ bool AP_QuadRuped_Crab::init()
     // 计算腿部末端执行器在机体坐标系中的位置 (Calculate end effector position in body frame)
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
         const float hx = (leg_index == AP_QUADRUPED_LEG_RF || leg_index == AP_QUADRUPED_LEG_LF)
-            ? (Sys_Param.FRAME_LEN + Sys_Param.COXA_LEN)
-            : -(Sys_Param.FRAME_LEN + Sys_Param.COXA_LEN);
+            ? (Sys_Param.FEMUR_LEN + Sys_Param.COXA_LEN)
+            : -(Sys_Param.FEMUR_LEN + Sys_Param.COXA_LEN);
 
         endpoint_leg_pos[leg_index] = Vector3f(hx, 0.0f, Sys_Param.TIBIA_LEN);
     }
