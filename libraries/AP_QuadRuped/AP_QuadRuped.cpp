@@ -15,9 +15,11 @@ extern const AP_HAL::HAL& hal;
 // 参数定义
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     // 基础参数组 (1-10)
-    AP_GROUPINFO("ENABLE", 2, AP_QuadRuped, _enabled, 1),
+    AP_GROUPINFO("ENABLE", 1, AP_QuadRuped, _enabled, 1),
 
-    AP_GROUPINFO("GTYPE", 1, AP_QuadRuped, _gait_type, (int8_t)AP_QUADRUPED_GAIT_DIAGONAL),
+    AP_GROUPINFO("GTYPE", 2, AP_QuadRuped, _gait_type, (int8_t)AP_QUADRUPED_GAIT_DIAGONAL),
+
+    AP_GROUPINFO("CLASS", 3, AP_QuadRuped, _quadruped_class, (int8_t)AP_QUADRUPED_NORMAL),
 
     // 系统参数组 (11-20)
     AP_SUBGROUPINFO(_sys_params, "SYS_", 11, AP_QuadRuped, AP_QuadRuped_SYS_Params),

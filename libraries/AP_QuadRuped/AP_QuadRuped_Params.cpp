@@ -44,6 +44,9 @@ const AP_Param::GroupInfo AP_QuadRuped_SYS_Params::var_info[] = {
     AP_GROUPINFO("FLEN", 4, AP_QuadRuped_SYS_Params, FRAME_LEN, FRAME_LEN_DEFAULT),
     AP_GROUPINFO("FWID", 5, AP_QuadRuped_SYS_Params, FRAME_WIDTH, FRAME_WIDTH_DEFAULT),
 
+    AP_GROUPINFO("ALPH_A", 6, AP_QuadRuped_SYS_Params, Alpha_A, 55),
+    AP_GROUPINFO("ALPH_B", 7, AP_QuadRuped_SYS_Params, Alpha_B, 50),
+
     AP_GROUPEND
 };
 

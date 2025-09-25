@@ -59,4 +59,8 @@ public:
 
     /* 机身的Y长度 */
     AP_Float FRAME_WIDTH;
+
+    /* 附加参数 */
+    AP_Float Alpha_A;
+    AP_Float Alpha_B;
 };

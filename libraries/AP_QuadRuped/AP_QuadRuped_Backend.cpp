@@ -104,13 +104,12 @@ Vector3f AP_QuadRuped_Backend::leg_inverse_kinematics(Vector3f posxyz)
     d2        = 2 * Sys_Param.TIBIA_LEN * Sys_Param.FEMUR_LEN;
     leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90); // 计算胫关节角度
 
-#ifdef ENABLE_LEG_ALPHA_COMP
-    {
-        const float alpha = degrees(atan2f(LEG_ALPHA_B, LEG_ALPHA_A));
+    if (_frontend.get_class() == AP_QUADRUPED_USL_BV2) {
+        const float alpha = degrees(atan2f(Sys_Param.Alpha_A, Sys_Param.Alpha_B));
         leg_deg.y -= alpha;
         leg_deg.z += 90.0f - alpha;
     }
-#endif
+
     return leg_deg; // 返回{髋关节, 股关节, 胫关节}角度
 }
 

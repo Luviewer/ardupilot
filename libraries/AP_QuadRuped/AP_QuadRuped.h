@@ -45,6 +45,8 @@ public:
 
     void update(); // 主更新循环
 
+    QuadRupedClass get_class() const { return (QuadRupedClass)_quadruped_class.get(); }
+
     // 步态控制
     void     set_gait_type(GaitType type);
     GaitType get_gait_type() const { return (GaitType)_gait_type.get(); }
@@ -90,6 +92,8 @@ private:
 
     AP_Int8 _gait_type;      // 当前步态类型
     int8_t  _gait_last_type; // 上次步态类型
+
+    AP_Int8 _quadruped_class;
 
     // 控制输入
     Vector3f _throttle_xyz; // Xyz轴油门输入

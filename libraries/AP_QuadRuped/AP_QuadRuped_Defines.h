@@ -17,6 +17,14 @@ enum AP_QuadRuped_GaitType {
     AP_QUADRUPED_GAIT_COUNT,        // 步态总数
 };
 
+// 蜘蛛类型枚举
+enum AP_QuadRuped_CLASS {
+    AP_QUADRUPED_NORMAL  = 0, // 普通模型
+    AP_QUADRUPED_USL_BV2 = 1, // USL_BV2
+    AP_QuadRuped_CLASS_COUNT, // 步态总数
+};
+
 // 使用 AP_QuadRuped_Defines.h 中定义的枚举类型
 typedef AP_QuadRuped_GaitType GaitType;
 typedef AP_QuadRuped_LegIndex LegIndex;
+typedef AP_QuadRuped_CLASS    QuadRupedClass;
