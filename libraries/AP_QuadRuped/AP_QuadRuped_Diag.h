@@ -22,7 +22,6 @@ public:
     virtual ~AP_QuadRuped_Diag() { }
 
     // 后端接口实现
-    bool init() override;
     void update() override;
     void update_leg() override;
 

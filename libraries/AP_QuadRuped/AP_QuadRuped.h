@@ -43,9 +43,7 @@ public:
     static const struct AP_Param::GroupInfo  var_info[];
     static const struct AP_Param::GroupInfo* backend_var_info[AP_QUADRUPED_GAIT_COUNT];
 
-    // 主要功能函数
-    bool init_system(); // 初始化系统
-    void update();      // 主更新循环
+    void update(); // 主更新循环
 
     // 步态控制
     void     set_gait_type(GaitType type);
@@ -54,13 +52,11 @@ public:
     // 控制输入接口
     void set_throttle(float throttle_x, float throttle_y);
     void set_yaw_rate(float yaw_rate);
-    void set_body_height(float height);
 
     // 状态查询接口
     float get_throttle_x() const { return _throttle_x; }
     float get_throttle_y() const { return _throttle_y; }
     float get_yaw_rate() const { return _yaw_rate; }
-    float get_body_height() const { return _body_height; }
 
     // 参数访问接口
     const AP_QuadRuped_Params&         get_leg_params(uint8_t leg_index) const;
@@ -89,17 +85,16 @@ private:
     AP_QuadRuped_Backend* _backend;                                // 当前活跃的后端
     AP_QuadRuped_Backend* _gait_backends[AP_QUADRUPED_GAIT_COUNT]; // 所有的步态后端
 
-    // 主要参数
-    AP_Int8 _enabled; // 使能状态
+    // 使能状态
+    AP_Int8 _enabled;
 
-    AP_Int8 _gait_type; // 当前步态类型
-    int8_t _gait_last_type;
+    AP_Int8 _gait_type;      // 当前步态类型
+    int8_t  _gait_last_type; // 上次步态类型
 
     // 控制输入
-    float _throttle_x;  // X轴油门输入
-    float _throttle_y;  // Y轴油门输入
-    float _yaw_rate;    // 偏航角速度
-    float _body_height; // 机身高度
+    float _throttle_x; // X轴油门输入
+    float _throttle_y; // Y轴油门输入
+    float _yaw_rate;   // 偏航角速度
 
     // 参数组
     AP_QuadRuped_SYS_Params     _sys_params;                       // 系统参数

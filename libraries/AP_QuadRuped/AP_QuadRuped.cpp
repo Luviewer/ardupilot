@@ -10,6 +10,8 @@
 # include "AP_QuadRuped_Crab.h"
 #endif
 
+extern const AP_HAL::HAL& hal;
+
 // 参数定义
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     // 基础参数组 (1-10)
@@ -43,6 +45,9 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_GROUPEND
 };
 
+// 静态成员变量定义
+const struct AP_Param::GroupInfo* AP_QuadRuped::backend_var_info[AP_QUADRUPED_GAIT_COUNT];
+
 // 默认构造函数
 AP_QuadRuped::AP_QuadRuped()
     : _ahrs(nullptr)
@@ -52,7 +57,6 @@ AP_QuadRuped::AP_QuadRuped()
     , _throttle_x(0.0f)
     , _throttle_y(0.0f)
     , _yaw_rate(0.0f)
-    , _body_height(0.0f)
 {
     // 初始化后端指针数组
     for (uint8_t i = 0; i < AP_QUADRUPED_GAIT_COUNT; i++) {
@@ -77,10 +81,14 @@ AP_QuadRuped::~AP_QuadRuped()
 // 销毁后端实例
 void AP_QuadRuped::destroy_backends()
 {
-    // 目前没有需要销毁的后端实例
-    // 未来如果添加动态分配的后端，需要在这里释放内存
+    // 统一释放所有后端内存
+    for (uint8_t i = 0; i < AP_QUADRUPED_GAIT_COUNT; i++) {
+        if (_gait_backends[i] != nullptr) {
+            delete _gait_backends[i];
+            _gait_backends[i] = nullptr;
+        }
+    }
 }
-
 // 初始化函数 - 设置硬件接口
 bool AP_QuadRuped::init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rangefinder)
 {
@@ -88,12 +96,6 @@ bool AP_QuadRuped::init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rang
     _motors      = &motors;
     _rangefinder = &rangefinder;
 
-    return init_system();
-}
-
-// 初始化系统
-bool AP_QuadRuped::init_system()
-{
     // 创建后端实例
     create_backends();
 
@@ -107,24 +109,21 @@ bool AP_QuadRuped::init_system()
 void AP_QuadRuped::create_backends()
 {
     // 创建对角步态后端
-    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL] = NEW_NOTHROW AP_QuadRuped_Diag(*this, _state[AP_QUADRUPED_GAIT_DIAGONAL], *_ahrs, *_motors);
-    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL]->init();
+    _gait_backends[AP_QUADRUPED_GAIT_DIAGONAL]   = NEW_NOTHROW AP_QuadRuped_Diag(*this, _state[AP_QUADRUPED_GAIT_DIAGONAL], *_ahrs, *_motors);
     backend_var_info[AP_QUADRUPED_GAIT_DIAGONAL] = _state[AP_QUADRUPED_GAIT_DIAGONAL].var_info;
     _state[AP_QUADRUPED_GAIT_DIAGONAL].instance  = AP_QUADRUPED_GAIT_DIAGONAL;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_DIAGONAL], backend_var_info[AP_QUADRUPED_GAIT_DIAGONAL]);
 
     // 创建波浪步态后端
 #if AP_QUADRUPED_WAVE_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_WAVE] = new AP_QuadRuped_WAVE(*this, _state[AP_QUADRUPED_GAIT_WAVE], *_ahrs, *_motors);
-    _gait_backends[AP_QUADRUPED_GAIT_WAVE]->init();
+    _gait_backends[AP_QUADRUPED_GAIT_WAVE]   = NEW_NOTHROW AP_QuadRuped_WAVE(*this, _state[AP_QUADRUPED_GAIT_WAVE], *_ahrs, *_motors);
     backend_var_info[AP_QUADRUPED_GAIT_WAVE] = _state[AP_QUADRUPED_GAIT_WAVE].var_info;
     _state[AP_QUADRUPED_GAIT_WAVE].instance  = AP_QUADRUPED_GAIT_WAVE;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
 #endif
     // 创建工字步态后端
 #if AP_QUADRUPED_CRUBE_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_CRAB] = new AP_QuadRuped_Crab(*this, _state[AP_QUADRUPED_GAIT_CRAB], *_ahrs, *_motors);
-    _gait_backends[AP_QUADRUPED_GAIT_CRAB]->init();
+    _gait_backends[AP_QUADRUPED_GAIT_CRAB]   = NEW_NOTHROW AP_QuadRuped_Crab(*this, _state[AP_QUADRUPED_GAIT_CRAB], *_ahrs, *_motors);
     backend_var_info[AP_QUADRUPED_GAIT_CRAB] = _state[AP_QUADRUPED_GAIT_CRAB].var_info;
     _state[AP_QUADRUPED_GAIT_CRAB].instance  = AP_QUADRUPED_GAIT_CRAB;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_CRAB], backend_var_info[AP_QUADRUPED_GAIT_CRAB]);
@@ -182,12 +181,6 @@ void AP_QuadRuped::set_yaw_rate(float yaw_rate)
     _yaw_rate = yaw_rate;
 }
 
-// 设置机身高度
-void AP_QuadRuped::set_body_height(float height)
-{
-    _body_height = height;
-}
-
 // 获取腿部参数
 const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
 {
@@ -219,14 +212,11 @@ void AP_QuadRuped::read_radio_input()
         _yaw_rate = yaw_chan->norm_input();
     }
     // 身体高度通过参数配置，不通过遥控器通道直接控制
-    _body_height = 0.0f; // 使用默认值
 
     // 限制油门输入范围
-    _throttle_x  = constrain_float(_throttle_x, -1.0f, 1.0f);
-    _throttle_y  = constrain_float(_throttle_y, -1.0f, 1.0f);
-    _yaw_rate    = constrain_float(_yaw_rate, -1.0f, 1.0f);
-    _body_height = constrain_float(_body_height, -1.0f, 1.0f);
-}
+    _throttle_x = constrain_float(_throttle_x, -1.0f, 1.0f);
+    _throttle_y = constrain_float(_throttle_y, -1.0f, 1.0f);
+    _yaw_rate   = constrain_float(_yaw_rate, -1.0f, 1.0f);
 
-// 静态成员变量定义
-const struct AP_Param::GroupInfo* AP_QuadRuped::backend_var_info[AP_QUADRUPED_GAIT_COUNT];
+    if ()
+}

@@ -36,12 +36,12 @@ public:
     virtual ~AP_QuadRuped_Backend() { }
 
     // 纯虚函数 - 后端必须实现
-    virtual bool init()                                   = 0;
     virtual void update()                                 = 0;
     virtual void gait_init()                              = 0;
     virtual void trajectory_generation(uint8_t leg_index) = 0;
 
     // 可选重写的虚函数
+    virtual bool init();
     virtual void yaw_trajectory_generation(uint8_t leg_index) { }
     virtual void set_centre_offset(float x, float y, float z) { }
     virtual void update_leg() { }

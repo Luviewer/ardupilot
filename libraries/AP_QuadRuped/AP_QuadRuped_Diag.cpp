@@ -27,20 +27,12 @@ AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_QuadRuped::QuadR
     _state.var_info = var_info;
 }
 
-// 初始化
-bool AP_QuadRuped_Diag::init()
-{
-    // 初始化步态
-    gait_init();
-
-    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Diag init");
-
-    return true;
-}
 
 // 步态初始化
 void AP_QuadRuped_Diag::gait_init()
 {
+    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Diag init");
+
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
     gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                   // 右前腿从第0步开始

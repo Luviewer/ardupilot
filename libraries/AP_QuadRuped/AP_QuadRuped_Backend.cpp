@@ -11,6 +11,39 @@ AP_QuadRuped_Backend::AP_QuadRuped_Backend(AP_QuadRuped& frontend, AP_QuadRuped:
 {
 }
 
+bool AP_QuadRuped_Backend::init()
+{
+    const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
+
+    // 初始化腿部起始位置 (Initialize leg starting positions)
+    // 每条腿按90度间隔分布 (Each leg is spaced 90 degrees apart)
+    // 计算腿部末端执行器在机体坐标系中的位置 (Calculate end effector position in body frame)
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
+        // X坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * sin(角度)
+        // Y坐标: (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN) * cos(角度)
+        // Z坐标: Sys_Param.TIBIA_LEN (胫骨长度决定初始高度)
+        endpoint_leg_pos[leg_index] = Vector3f(sinf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+                                               cosf(radians(START_COXA_ANGLE - leg_index * 90)) * (Sys_Param.COXA_LEN + Sys_Param.FEMUR_LEN),
+                                               Sys_Param.TIBIA_LEN);
+    }
+
+    // 初始化腿部框架位置 (Initialize leg frame positions)
+    // 计算每条腿的髋关节在机体坐标系中的位置 (Calculate hip joint position in body frame)
+    // 使用与腿部位置相同的角度基准 (Using same angle reference as leg positions)
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
+        // X坐标: Sys_Param.FRAME_LEN * sin(角度) - 决定前后位置
+        // Y坐标: Sys_Param.FRAME_WIDTH * cos(角度) - 决定左右位置
+        // Z坐标: 0 (髋关节与机体在同一平面)
+        endpoint_leg_frame[leg_index] = Vector3f(sqrtf(2) * sinf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_LEN * 0.5f,
+                                                 sqrtf(2) * cosf(radians(START_COXA_ANGLE - leg_index * 90)) * Sys_Param.FRAME_WIDTH * 0.5f,
+                                                 0);
+    }
+
+    gait_init(); // 初始化四足机器人逆运动学控制器
+
+    return true;
+}
+
 // 重置腿部位置 - 将所有腿恢复到初始状态
 void AP_QuadRuped_Backend::reset_leg()
 {
@@ -32,14 +65,12 @@ void AP_QuadRuped_Backend::calc_gait_sequence()
     else
         move_requested = false; // 保持静止
 
-    // // 根据移动请求执行相应动作
-    // if (move_requested == true) {
-    //     update_leg(); // 更新腿部运动（执行步态）
-    // } else {
-    //     reset_leg(); // 重置腿部到初始位置
-    // }
-
-    reset_leg(); // 重置腿部到初始位置
+    // 根据移动请求执行相应动作
+    if (move_requested == true) {
+        update_leg(); // 更新腿部运动（执行步态）
+    } else {
+        reset_leg(); // 重置腿部到初始位置
+    }
 }
 
 // 腿部逆运动学计算
