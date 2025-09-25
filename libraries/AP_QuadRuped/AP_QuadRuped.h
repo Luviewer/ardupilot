@@ -54,9 +54,9 @@ public:
     void set_yaw_rate(float yaw_rate);
 
     // 状态查询接口
-    float get_throttle_x() const { return _throttle_x; }
-    float get_throttle_y() const { return _throttle_y; }
-    float get_yaw_rate() const { return _yaw_rate; }
+    float get_throttle_x() const { return _throttle_xyz.x; }
+    float get_throttle_y() const { return _throttle_xyz.y; }
+    float get_yaw_rate() const { return _throttle_xyz.z; }
 
     // 参数访问接口
     const AP_QuadRuped_Params&         get_leg_params(uint8_t leg_index) const;
@@ -92,9 +92,7 @@ private:
     int8_t  _gait_last_type; // 上次步态类型
 
     // 控制输入
-    float _throttle_x; // X轴油门输入
-    float _throttle_y; // Y轴油门输入
-    float _yaw_rate;   // 偏航角速度
+    Vector3f _throttle_xyz; // Xyz轴油门输入
 
     // 参数组
     AP_QuadRuped_SYS_Params     _sys_params;                       // 系统参数

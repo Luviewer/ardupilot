@@ -54,9 +54,6 @@ AP_QuadRuped::AP_QuadRuped()
     , _motors(nullptr)
     , _rangefinder(nullptr)
     , _backend(nullptr)
-    , _throttle_x(0.0f)
-    , _throttle_y(0.0f)
-    , _yaw_rate(0.0f)
 {
     // 初始化后端指针数组
     for (uint8_t i = 0; i < AP_QUADRUPED_GAIT_COUNT; i++) {
@@ -171,14 +168,13 @@ void AP_QuadRuped::set_gait_type(GaitType type)
 // 设置油门输入
 void AP_QuadRuped::set_throttle(float throttle_x, float throttle_y)
 {
-    _throttle_x = throttle_x;
-    _throttle_y = throttle_y;
+    _throttle_xyz.xy() = { throttle_x, throttle_y };
 }
 
 // 设置偏航角速度
 void AP_QuadRuped::set_yaw_rate(float yaw_rate)
 {
-    _yaw_rate = yaw_rate;
+    _throttle_xyz.z = yaw_rate;
 }
 
 // 获取腿部参数
@@ -193,30 +189,28 @@ const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
 // 读取遥控器输入
 void AP_QuadRuped::read_radio_input()
 {
-    // 获取遥控器映射
-    RC_Channels& rc_mapper = rc();
-
     // 读取各通道输入
-    RC_Channel* throttle_x_chan = rc_mapper.rc_channel(_channel_params.throttle_x_channel);
-    RC_Channel* throttle_y_chan = rc_mapper.rc_channel(_channel_params.throttle_y_channel);
-    RC_Channel* yaw_chan        = rc_mapper.rc_channel(_channel_params.yaw_channel);
+    Vector3ui throttle_chan = {
+        hal.rcin->read(_channel_params.throttle_x_channel - 1),
+        hal.rcin->read(_channel_params.throttle_y_channel - 1),
+        hal.rcin->read(_channel_params.yaw_channel - 1)
+    };
+
+    for (uint8_t i = 0; i < 3; i++) {
+        if (throttle_chan[i] > 1450 && throttle_chan[i] < 1550) {
+            throttle_chan[i] = 1500;
+        }
+    }
 
     // 获取输入值并归一化
-    if (throttle_x_chan) {
-        _throttle_x = throttle_x_chan->norm_input();
+    for (uint8_t i = 0; i < 3; i++) {
+        _throttle_xyz[i] = ((float)(throttle_chan[i]) - 1500.0f) / 500.0f;
+        _throttle_xyz[i] = constrain_float(_throttle_xyz[i], -1, 1);
     }
-    if (throttle_y_chan) {
-        _throttle_y = throttle_y_chan->norm_input();
-    }
-    if (yaw_chan) {
-        _yaw_rate = yaw_chan->norm_input();
-    }
-    // 身体高度通过参数配置，不通过遥控器通道直接控制
 
-    // 限制油门输入范围
-    _throttle_x = constrain_float(_throttle_x, -1.0f, 1.0f);
-    _throttle_y = constrain_float(_throttle_y, -1.0f, 1.0f);
-    _yaw_rate   = constrain_float(_yaw_rate, -1.0f, 1.0f);
-
-    if ()
+    // static uint32_t lasttime = 0;
+    // if (AP_HAL::millis() - lasttime > 1000) {
+    //     lasttime = AP_HAL::millis();
+    //     gcs().send_text(MAV_SEVERITY_NOTICE, "_throttle_x, y,z:%f, %f,%f", _throttle_x, _throttle_y, _yaw_rate);
+    // }
 }
