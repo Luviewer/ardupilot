@@ -25,12 +25,14 @@ public:
     void update() override;
     void update_leg() override;
 
-    bool init() override;
-    void gait_init() override;
-    void trajectory_generation(uint8_t leg_index) override;
-    void yaw_trajectory_generation(uint8_t leg_index) override;
-    void main_inverse_kinematics(void) override;
+    bool     init() override;
+    void     gait_init() override;
+    void     trajectory_generation(uint8_t leg_index) override;
+    void     yaw_trajectory_generation(uint8_t leg_index) override;
+    void     main_inverse_kinematics(void) override;
     Vector3f leg_inverse_kinematics(Vector3f posxyz) override;
+
+    uint32_t get_Freq() override { return gait_hz.get(); }
 
     // 参数表定义
     static const struct AP_Param::GroupInfo var_info[];

@@ -133,7 +133,6 @@ void AP_QuadRuped::create_backends()
 // 主更新循环
 void AP_QuadRuped::update()
 {
-
     // 检查是否启用
     if (!_enabled) {
         return;
