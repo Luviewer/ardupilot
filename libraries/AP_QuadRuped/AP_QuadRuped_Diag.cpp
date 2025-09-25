@@ -27,7 +27,6 @@ AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_QuadRuped::QuadR
     _state.var_info = var_info;
 }
 
-
 // 步态初始化
 void AP_QuadRuped_Diag::gait_init()
 {
@@ -123,29 +122,40 @@ void AP_QuadRuped_Diag::update_leg()
 // 主更新函数，按顺序执行控制流程
 void AP_QuadRuped_Diag::update()
 {
-    if ((AP_HAL::millis() - lasttime) < (1000 / gait_hz)) {
-        return;
-    }
+    // if ((AP_HAL::millis() - lasttime) < (1000 / gait_hz)) {
+    //     return;
+    // }
 
-    // 更新最后执行时间
-    lasttime = AP_HAL::millis();
+    // // 更新最后执行时间
+    // lasttime = AP_HAL::millis();
 
-    // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
-    if (hal.rcin->read(CH_6) > 1800 && !_motors.armed()) {
-        // 执行主控制器
-        main_radio_controller();
+    // // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
+    // if (_frontend.get_mode_channel() > 1800 && !_motors.armed()) {
+    //     // 执行主控制器
+    //     main_radio_controller();
 
-        // 执行平衡控制器
-        // balance_controller();
+    //     // 执行平衡控制器
+    //     // balance_controller();
 
-        // 执行逆运动学解算
-        main_inverse_kinematics();
+    //     // 执行逆运动学解算
+    //     main_inverse_kinematics();
 
-        // 输出腿部关节角度
-        output_leg_angle();
-    } else {
-        hengxiang_up_sleep_leg();
-    }
+    //     // 输出腿部关节角度
+    //     output_leg_angle();
+    // } else {
+    //     hengxiang_up_sleep_leg();
+    // }
+
+    main_radio_controller();
+
+    // 执行平衡控制器
+    // balance_controller();
+
+    // 执行逆运动学解算
+    main_inverse_kinematics();
+
+    // 输出腿部关节角度
+    output_leg_angle();
 
     // 发送数据
     send_servo_cmd();

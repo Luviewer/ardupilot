@@ -1,6 +1,7 @@
 #include "AP_QuadRuped.h"
 #include "AP_QuadRuped_Diag.h"
 #include <AP_RCMapper/AP_RCMapper.h>
+#include <AP_RangeFinder/AP_RangeFinder_Backend.h>
 #include <RC_Channel/RC_Channel.h>
 
 #if AP_QUADRUPED_WAVE_ENABLE
@@ -132,20 +133,43 @@ void AP_QuadRuped::create_backends()
 // 主更新循环
 void AP_QuadRuped::update()
 {
+
     // 检查是否启用
     if (!_enabled) {
         return;
     }
 
-    // 读取遥控器输入
-    read_radio_input();
-
     // 如果更新则设置步态
     set_gait_type(get_gait_type());
 
     // 调用后端更新
-    if (_backend) {
+    if (_backend == nullptr) {
+        return;
+    }
+
+    if ((AP_HAL::millis() - lasttime) < (1000 / _backend->get_Freq())) {
+        return;
+    }
+
+    // 更新最后执行时间
+    lasttime = AP_HAL::millis();
+
+    // 读取遥控器输入
+    read_radio_input();
+
+    const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
+
+    if (get_mode_channel() > 1800 && !_motors->armed()) {
         _backend->update();
+    } else {
+        // 检测测距cm
+        uint16_t sonar_cm = sensor->distance_cm();
+
+        if (sonar_cm > 30) {
+            _backend->hengxiang_up_sleep_leg();
+        } else {
+            _backend->x_sleep_leg();
+        }
     }
 }
 
@@ -219,4 +243,9 @@ void AP_QuadRuped::read_radio_input()
     //     lasttime = AP_HAL::millis();
     //     gcs().send_text(MAV_SEVERITY_NOTICE, "_throttle_x, y,z:%f, %f,%f", _throttle_x, _throttle_y, _yaw_rate);
     // }
+}
+
+uint16_t AP_QuadRuped::get_mode_channel()
+{
+    return hal.rcin->read(_channel_params.mode_channel - 1);
 }

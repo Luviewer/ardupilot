@@ -60,6 +60,8 @@ public:
     float get_throttle_y() const { return _throttle_xyz.y; }
     float get_yaw_rate() const { return _throttle_xyz.z; }
 
+    uint16_t get_mode_channel() ;
+
     // 参数访问接口
     const AP_QuadRuped_Params&         get_leg_params(uint8_t leg_index) const;
     const AP_QuadRuped_SYS_Params&     get_sys_params() const { return _sys_params; }
@@ -102,6 +104,8 @@ private:
     AP_QuadRuped_SYS_Params     _sys_params;                       // 系统参数
     AP_QuadRuped_Params         _leg_params[AP_QUADRUPED_LEG_ALL]; // 腿部参数
     AP_QuadRuped_CHANNEL_Params _channel_params;                   // 通道参数
+
+    uint32_t lasttime;
 
     // 内部辅助函数
     void create_backends();

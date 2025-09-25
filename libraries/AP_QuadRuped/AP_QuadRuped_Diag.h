@@ -29,6 +29,8 @@ public:
     void trajectory_generation(uint8_t leg_index) override;
     void yaw_trajectory_generation(uint8_t leg_index) override;
 
+    uint32_t get_Freq() override { return gait_hz.get(); }
+
     // 参数表定义
     static const struct AP_Param::GroupInfo var_info[];
 

@@ -37,6 +37,8 @@ public:
 
     AP_Float body_height;
     AP_Float left_lift;
+
+    AP_Int8 mode_channel;
 };
 
 class AP_QuadRuped_SYS_Params {

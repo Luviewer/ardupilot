@@ -34,6 +34,9 @@ const AP_Param::GroupInfo AP_QuadRuped_CHANNEL_Params::var_info[] = {
     AP_GROUPINFO("THR_XMX", 10, AP_QuadRuped_CHANNEL_Params, throttle_x_max, 100),
     AP_GROUPINFO("THR_YMX", 11, AP_QuadRuped_CHANNEL_Params, throttle_y_max, 100),
 
+    AP_GROUPINFO("MODE", 12, AP_QuadRuped_CHANNEL_Params, mode_channel, -1),
+
+
     AP_GROUPEND
 };
 
