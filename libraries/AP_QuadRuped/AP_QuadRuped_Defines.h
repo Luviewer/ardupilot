@@ -17,7 +17,6 @@ enum AP_QuadRuped_GaitType {
     AP_QUADRUPED_GAIT_COUNT,        // 步态总数
 };
 
-
-    // 使用 AP_QuadRuped_Defines.h 中定义的枚举类型
-    typedef AP_QuadRuped_GaitType GaitType;
-    typedef AP_QuadRuped_LegIndex LegIndex;
+// 使用 AP_QuadRuped_Defines.h 中定义的枚举类型
+typedef AP_QuadRuped_GaitType GaitType;
+typedef AP_QuadRuped_LegIndex LegIndex;

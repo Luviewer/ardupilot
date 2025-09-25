@@ -90,8 +90,10 @@ private:
     AP_QuadRuped_Backend* _gait_backends[AP_QUADRUPED_GAIT_COUNT]; // 所有的步态后端
 
     // 主要参数
+    AP_Int8 _enabled; // 使能状态
+
     AP_Int8 _gait_type; // 当前步态类型
-    AP_Int8 _enabled;   // 使能状态
+    int8_t _gait_last_type;
 
     // 控制输入
     float _throttle_x;  // X轴油门输入

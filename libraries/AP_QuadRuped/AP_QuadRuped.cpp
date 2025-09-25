@@ -62,6 +62,8 @@ AP_QuadRuped::AP_QuadRuped()
         _state[i].var_info     = nullptr;
     }
 
+    _gait_last_type = -1;
+
     // 设置参数默认值
     AP_Param::setup_object_defaults(this, var_info);
 }
@@ -140,23 +142,8 @@ void AP_QuadRuped::update()
     // 读取遥控器输入
     read_radio_input();
 
-    switch (_gait_type) {
-        default:
-        case AP_QUADRUPED_GAIT_DIAGONAL:
-            set_gait_type(AP_QUADRUPED_GAIT_DIAGONAL);
-            break;
-
-#if AP_QUADRUPED_WAVE_ENABLE
-        case AP_QUADRUPED_GAIT_WAVE:
-            set_gait_type(AP_QUADRUPED_GAIT_WAVE);
-            break;
-#endif
-#if AP_QUADRUPED_CRUBE_ENABLE
-        case AP_QUADRUPED_GAIT_CRAB:
-            set_gait_type(AP_QUADRUPED_GAIT_CRAB);
-            break;
-#endif
-    }
+    // 如果更新则设置步态
+    set_gait_type(get_gait_type());
 
     // 调用后端更新
     if (_backend) {
@@ -171,9 +158,14 @@ void AP_QuadRuped::set_gait_type(GaitType type)
         return;
     }
 
+    if (_gait_last_type == type)
+        return;
+
     if (_gait_backends[type]) {
         _backend = _gait_backends[type];
         _backend->init();
+
+        _gait_last_type = type;
     }
 }
 

@@ -12,16 +12,16 @@
 #include <AP_Param/AP_Param.h>
 
 // 腿部电机参数定义
-#define LEG_MOTOR_MAX_DEG       (120)  // 腿部电机最大角度（度）
-#define LEG_MOTOR_MAX_PWM       (500)  // 腿部电机最大PWM值
-#define LEG_MOTOR_PWM_MIDDLE    (1500) // 腿部电机中间PWM值（1500μs）
+#define LEG_MOTOR_MAX_DEG      (120)  // 腿部电机最大角度（度）
+#define LEG_MOTOR_MAX_PWM      (500)  // 腿部电机最大PWM值
+#define LEG_MOTOR_PWM_MIDDLE   (1500) // 腿部电机中间PWM值（1500μs）
 
 // 默认参数定义
-#define LIFT_HEIGHT_DEFAULT     50.0f  // 默认抬腿高度（mm）
-#define MAX_THROTTLE_X_DEFAULT  200.0f // 默认最大油门行程（mm）
-#define MAX_THROTTLE_Y_DEFAULT  200.0f // 默认最大油门行程（mm）
+#define LIFT_HEIGHT_DEFAULT    (50.0f)  // 默认抬腿高度（mm）
+#define MAX_THROTTLE_X_DEFAULT (200.0f) // 默认最大油门行程（mm）
+#define MAX_THROTTLE_Y_DEFAULT (200.0f) // 默认最大油门行程（mm）
 
-#define START_COXA_ANGLE        45 // 起始髋关节角度（度）
+#define START_COXA_ANGLE       (45) // 起始髋关节角度（度）
 
 // 前向声明
 class AP_QuadRuped;
@@ -70,7 +70,7 @@ public:
 
 protected:
     // 前端控制器引用
-    AP_QuadRuped& _frontend;
+    AP_QuadRuped&                  _frontend;
     AP_QuadRuped::QuadRuped_State& _state;
 
     // 硬件接口引用
@@ -82,8 +82,8 @@ protected:
 
     // 步态参数
     uint8_t gait_step_leg_start[AP_QUADRUPED_LEG_ALL]; // 每条腿的步态起始步数
-    uint8_t gait_lift_divisor;                          // 抬腿除数 - 控制抬腿速度
-    uint8_t gait_travel_divisor;                        // 行程除数 - 控制前进速度
+    uint8_t gait_lift_divisor;                         // 抬腿除数 - 控制抬腿速度
+    uint8_t gait_travel_divisor;                       // 行程除数 - 控制前进速度
 
     // 伺服输出命令
     Vector3ui servo_output_cmd[AP_QUADRUPED_LEG_ALL]; // 存储每条腿三个关节的PWM值

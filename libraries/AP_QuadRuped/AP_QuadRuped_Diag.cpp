@@ -33,21 +33,9 @@ bool AP_QuadRuped_Diag::init()
     // 初始化步态
     gait_init();
 
-    return true;
-}
+    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Diag init");
 
-// gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
-// 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
-// 末段时间缩放函数：C2 连续，末端 v=a=0
-float AP_QuadRuped_Diag::slow_phi(float s, float s0)
-{
-    if (s <= s0) return s;
-    float sigma = (s - s0) / (1.0f - s0); // 0..1
-    float w     = sigma
-        + 4.0f * powf(sigma, 3.0f)
-        - 7.0f * powf(sigma, 4.0f)
-        + 3.0f * powf(sigma, 5.0f); // w(0)=0,w'(0)=1; w(1)=1,w'(1)=0
-    return s0 + (1.0f - s0) * w;
+    return true;
 }
 
 // 步态初始化
@@ -129,14 +117,14 @@ void AP_QuadRuped_Diag::update_leg()
     if (gait_step_now >= gait_step_total) gait_step_now = 0; // 循环计数
 
     // 遍历所有腿，生成轨迹
-    for (uint8_t moving_leg = 0; moving_leg < AP_QUADRUPED_LEG_ALL; moving_leg++) {
-        int16_t delta_step = gait_step_now - gait_step_leg_start[moving_leg];
+    for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
+        int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
 
         if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
 
         // 为每条腿生成位置轨迹和旋转轨迹
-        trajectory_generation(moving_leg);
-        yaw_trajectory_generation(moving_leg);
+        trajectory_generation(leg_index);
+        yaw_trajectory_generation(leg_index);
     }
 }
 
@@ -188,4 +176,18 @@ void AP_QuadRuped_Diag::balance_controller()
 
     // 重心高度补偿（基于Z轴加速度）
     centre_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
+}
+
+// gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
+// 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
+// 末段时间缩放函数：C2 连续，末端 v=a=0
+float AP_QuadRuped_Diag::slow_phi(float s, float s0)
+{
+    if (s <= s0) return s;
+    float sigma = (s - s0) / (1.0f - s0); // 0..1
+    float w     = sigma
+        + 4.0f * powf(sigma, 3.0f)
+        - 7.0f * powf(sigma, 4.0f)
+        + 3.0f * powf(sigma, 5.0f); // w(0)=0,w'(0)=1; w(1)=1,w'(1)=0
+    return s0 + (1.0f - s0) * w;
 }
