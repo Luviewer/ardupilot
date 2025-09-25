@@ -7,7 +7,7 @@
 #if AP_QUADRUPED_WAVE_ENABLE
 # include "AP_QuadRuped_WAVE_New.h"
 #endif
-#if AP_QUADRUPED_CRUBE_ENABLE
+#if AP_QUADRUPED_CRAB_ENABLE
 # include "AP_QuadRuped_Crab.h"
 #endif
 
@@ -41,7 +41,7 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_WAVE], "WAVE_", 42, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_WAVE]),
 #endif
 
-#if AP_QUADRUPED_CRUBE_ENABLE
+#if AP_QUADRUPED_CRAB_ENABLE
     AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_CRAB], "CRAB_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_CRAB]),
 #endif
 
@@ -122,7 +122,7 @@ void AP_QuadRuped::create_backends()
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
 #endif
     // 创建工字步态后端
-#if AP_QUADRUPED_CRUBE_ENABLE
+#if AP_QUADRUPED_CRAB_ENABLE
     _gait_backends[AP_QUADRUPED_GAIT_CRAB]   = NEW_NOTHROW AP_QuadRuped_Crab(*this, _state[AP_QUADRUPED_GAIT_CRAB], *_ahrs, *_motors);
     backend_var_info[AP_QUADRUPED_GAIT_CRAB] = _state[AP_QUADRUPED_GAIT_CRAB].var_info;
     _state[AP_QUADRUPED_GAIT_CRAB].instance  = AP_QUADRUPED_GAIT_CRAB;
