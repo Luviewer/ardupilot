@@ -196,6 +196,10 @@ void AP_QuadRuped::read_radio_input()
         hal.rcin->read(_channel_params.yaw_channel - 1)
     };
 
+    if (_channel_params.throttle_x_channel == -1) throttle_chan[0] = 1500;
+    if (_channel_params.throttle_y_channel == -1) throttle_chan[1] = 1500;
+    if (_channel_params.yaw_channel == -1) throttle_chan[2] = 1500;
+
     for (uint8_t i = 0; i < 3; i++) {
         if (throttle_chan[i] > 1450 && throttle_chan[i] < 1550) {
             throttle_chan[i] = 1500;

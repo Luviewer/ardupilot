@@ -57,7 +57,7 @@ void AP_QuadRuped_Backend::reset_leg()
 // 计算步态序列 - 判断是否需要移动并执行相应动作
 void AP_QuadRuped_Backend::calc_gait_sequence()
 {
-    const float travel_dz = 5.0f / 500.0f; // 移动死区阈值，防止微小抖动
+    const float travel_dz = 0.01f; // 移动死区阈值，防止微小抖动
 
     // 判断是否有移动请求（前进/后退或旋转）
     if ((fabsf(_frontend.get_throttle_x()) > travel_dz) || (fabsf(_frontend.get_throttle_y()) > travel_dz) || (fabsf(_frontend.get_yaw_rate()) > travel_dz / 2))
