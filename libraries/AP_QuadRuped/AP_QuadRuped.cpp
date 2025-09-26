@@ -320,7 +320,7 @@ void AP_QuadRuped::send_custom_mavlink_data()
         mavlink_msg_named_value_int_send(
             chan,
             time_boot_ms,
-            "QRD_WALK_MODE",
+            "QRD_WALK_",
             (int32_t)get_walk_mode());
     }
 }
