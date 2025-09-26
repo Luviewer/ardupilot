@@ -99,8 +99,9 @@ void AP_MotorsTailsitter::output_to_motors()
             break;
     }
 
+    extern uint16_t qrud_mode_channel;
     // 必须在通道6大于1800同时小于GROUND_IDLE状态才可以禁用飞机执行器
-    if (hal.rcin->read(CH_6) > 1800 && _spool_state <= SpoolState::GROUND_IDLE) {
+    if (hal.rcin->read(qrud_mode_channel-1) < 1800 && _spool_state <= SpoolState::GROUND_IDLE) {
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 0);
         SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 0);
 

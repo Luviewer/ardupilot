@@ -1,6 +1,9 @@
 #include "Copter.h"
 #include <AP_RangeFinder/AP_RangeFinder_Backend.h>
 
+uint16_t qrud_mode_channel;
+
+
 // 在编程和嵌入式系统中，钩子（Hook） 是一种机制，允许开发者在系统默认流程中插入自定义代码，从而扩展或修改原有功能。
 // 钩子在 ArduPilot 中的作用
 // 在 ArduPilot（如 Copter 代码）中，钩子用于扩展飞行控制器的功能，例如：
@@ -20,6 +23,9 @@ void Copter::userhook_init() // 如果启用了用户初始化钩子
 #ifdef USERHOOK_FASTLOOP // 如果启用了 100Hz 高速循环钩子
 void Copter::userhook_FastLoop()
 {
+    qrud_mode_channel = qrupd.get_channel_params().mode_channel;
+
+
     qrupd.update();
     // // put your 100Hz code here   // 100Hz 代码（每 10ms 执行一次）
     // const AP_RangeFinder_Backend* sensor = rangefinder.get_backend(0);
