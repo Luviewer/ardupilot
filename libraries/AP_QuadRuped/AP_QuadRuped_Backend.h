@@ -10,6 +10,8 @@
 #include <AP_Math/AP_Math.h>
 #include <AP_Motors/AP_Motors.h>
 #include <AP_Param/AP_Param.h>
+#include <GCS_MAVLink/GCS_MAVLink.h>
+#include <GCS_MAVLink/GCS.h>
 
 // 腿部电机参数定义
 #define LEG_MOTOR_MAX_DEG      (120)  // 腿部电机最大角度（度）
