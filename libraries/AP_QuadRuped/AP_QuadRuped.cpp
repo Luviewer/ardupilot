@@ -145,6 +145,8 @@ void AP_QuadRuped::update()
         return;
     }
 
+    send_custom_mavlink_data();
+
     if ((AP_HAL::millis() - lasttime) < (1000 / _backend->get_Freq())) {
         return;
     }
@@ -221,6 +223,11 @@ const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
 // 读取遥控器输入
 void AP_QuadRuped::read_radio_input()
 {
+    if (rc().in_rc_failsafe()) {
+        _throttle_xyz = Vector3f(0,0,0);
+        return;
+    }
+
     // 读取各通道输入
     Vector3ui throttle_chan = {
         hal.rcin->read(_channel_params.throttle_x_channel - 1),
@@ -281,4 +288,39 @@ void AP_QuadRuped::read_radio_input()
     //     lasttime = AP_HAL::millis();
     //     gcs().send_text(MAV_SEVERITY_NOTICE, "_throttle_x, y,z:%f, %f,%f", _throttle_x, _throttle_y, _yaw_rate);
     // }
+}
+
+void AP_QuadRuped::send_custom_mavlink_data()
+{
+    static uint32_t _last_custom_send_ms;
+
+    // 限制发送频率（10Hz）
+    if (AP_HAL::millis() - _last_custom_send_ms < 500) {
+        return;
+    }
+    _last_custom_send_ms = AP_HAL::millis();
+
+    // 获取当前时间
+    uint32_t time_boot_ms = AP_HAL::millis();
+
+    // 遍历所有活跃通道发送数据
+    for (uint8_t i = 0; i < MAVLINK_COMM_NUM_BUFFERS; i++) {
+        // 检查通道是否活跃
+        if (!(GCS_MAVLINK::active_channel_mask() & (1U << i))) {
+            continue;
+        }
+
+        mavlink_channel_t chan = (mavlink_channel_t)(MAVLINK_COMM_0 + i);
+
+        // 检查是否有足够空间发送消息
+        if (!HAVE_PAYLOAD_SPACE(chan, MAVLINK_MSG_ID_NAMED_VALUE_FLOAT)) {
+            continue;
+        }
+
+        mavlink_msg_named_value_int_send(
+            chan,
+            time_boot_ms,
+            "QRD_WALK_MODE",
+            (int32_t)get_walk_mode());
+    }
 }

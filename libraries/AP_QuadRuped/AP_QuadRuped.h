@@ -89,6 +89,8 @@ public:
     AP_Motors&    get_motors() { return *_motors; }
     RangeFinder&  get_rangefinder() { return *_rangefinder; }
 
+    void send_custom_mavlink_data();
+
 private:
     // 状态结构体定义
     struct QuadRuped_State {
