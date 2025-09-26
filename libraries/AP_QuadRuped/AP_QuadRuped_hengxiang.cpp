@@ -103,7 +103,7 @@ void AP_QuadRuped_hengxiang::trajectory_generation(uint8_t leg_index)
         const float delta = M_2PI * phase;
 
         const float S   = (delta - sinf(delta)) / M_2PI * 2.0f;
-        leg_xy_target.y = -throttle_x_travel * S + throttle_x_travel;
+        leg_xy_target.y = -throttle_y_travel * S + throttle_y_travel;
         leg_z_target    = 0.0f;
     }
     leg_xy_target.x         = 0;
