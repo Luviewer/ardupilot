@@ -194,7 +194,7 @@ void AP_QuadRuped_Base::x_up_sleep_leg()
 }
 
 // 横向抬升睡眠姿态 - 将机器人调整为横向展开且抬高的姿态
-void AP_QuadRuped_Base::hengxiang_up_sleep_leg()
+void AP_QuadRuped_Base::hengxiang_claw_leg()
 {
     uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE; // 髋关节PWM值
     uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE; // 股关节PWM值
@@ -222,7 +222,7 @@ void AP_QuadRuped_Base::hengxiang_up_sleep_leg()
 }
 
 // 纵向抬升睡眠姿态 - 将机器人调整为纵向展开且抬高的姿态
-void AP_QuadRuped_Base::zongxiang_up_sleep_leg()
+void AP_QuadRuped_Base::zhongxiang_claw_leg()
 {
     uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE; // 髋关节PWM值
     uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE; // 股关节PWM值
@@ -538,7 +538,7 @@ void AP_QuadRuped_Base::update_all()
             x_sleep_leg();
         }
     } else if (hal.rcin->read(CH_6) > 900 && hal.rcin->read(CH_6) < 1200) {
-        zongxiang_up_sleep_leg();
+        zhongxiang_claw_leg();
     }
 
     // 发送舵机控制命令

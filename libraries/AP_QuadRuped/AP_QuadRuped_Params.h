@@ -39,6 +39,9 @@ public:
     AP_Float left_lift;
 
     AP_Int8 mode_channel;
+    AP_Int8 walk_mode_channel; // 陆地模式通道
+    AP_Int8 fly_mode_channel;  // 飞行模式通道
+    AP_Int8 claw_channel;
 };
 
 class AP_QuadRuped_SYS_Params {

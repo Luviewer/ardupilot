@@ -43,7 +43,7 @@ void Copter::userhook_FastLoop()
     //             qrupd->x_sleep_leg();
     //         }
     //     } else if (hal.rcin->read(CH_6) > 900 && hal.rcin->read(CH_6) < 1200) {
-    //         qrupd->hengxiang_up_sleep_leg();
+    //         qrupd->hengxiang_claw_leg();
     //     }
     //     qrupd->hw_set_servo_cmd(); // 发送舵机控制命令
     // }

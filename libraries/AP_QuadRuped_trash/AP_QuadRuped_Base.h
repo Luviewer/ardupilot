@@ -66,8 +66,8 @@ public:
     virtual void update_leg() { };         // 更新腿部运动（由子类实现）
     virtual void x_sleep_leg();            // X形睡眠姿态
     virtual void x_up_sleep_leg();         // X形抬升睡眠姿态
-    virtual void hengxiang_up_sleep_leg(); // 横向抬升睡眠姿态
-    virtual void zongxiang_up_sleep_leg(); // 纵向抬升睡眠姿态
+    virtual void hengxiang_claw_leg(); // 横向抬升睡眠姿态
+    virtual void zhongxiang_claw_leg(); // 纵向抬升睡眠姿态
 
     // 控制器函数
     virtual void controller();         // 主控制器 - 处理遥控器输入

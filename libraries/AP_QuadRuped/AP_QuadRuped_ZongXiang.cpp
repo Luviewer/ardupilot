@@ -1,4 +1,4 @@
-#include "AP_QuadRuped_shuxiang.h"
+#include "AP_QuadRuped_ZongXiang.h"
 #include "AP_QuadRuped.h"
 #include <AP_HAL/AP_HAL.h>
 
@@ -9,17 +9,17 @@
 extern const AP_HAL::HAL& hal;
 
 // 参数表定义
-const AP_Param::GroupInfo AP_QuadRuped_shuxiang::var_info[] = {
+const AP_Param::GroupInfo AP_QuadRuped_ZongXiang::var_info[] = {
     // 步态参数 (1-10)
-    AP_GROUPINFO("Hz", 1, AP_QuadRuped_shuxiang, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
+    AP_GROUPINFO("Hz", 1, AP_QuadRuped_ZongXiang, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
     // 步长
-    AP_GROUPINFO("STEP", 2, AP_QuadRuped_shuxiang, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
+    AP_GROUPINFO("STEP", 2, AP_QuadRuped_ZongXiang, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
 
     AP_GROUPEND
 };
 
 // 构造函数
-AP_QuadRuped_shuxiang::AP_QuadRuped_shuxiang(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
+AP_QuadRuped_ZongXiang::AP_QuadRuped_ZongXiang(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
     : AP_QuadRuped_Backend(frontend, state, ahrs, motors)
 {
     // 设置参数默认值
@@ -27,7 +27,7 @@ AP_QuadRuped_shuxiang::AP_QuadRuped_shuxiang(AP_QuadRuped& frontend, AP_QuadRupe
     _state.var_info = var_info;
 }
 
-bool AP_QuadRuped_shuxiang::init()
+bool AP_QuadRuped_ZongXiang::init()
 {
     const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
 
@@ -60,9 +60,9 @@ bool AP_QuadRuped_shuxiang::init()
 }
 
 // 步态初始化
-void AP_QuadRuped_shuxiang::gait_init()
+void AP_QuadRuped_ZongXiang::gait_init()
 {
-    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_shuxiang init");
+    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_ZongXiang init");
 
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
@@ -77,7 +77,7 @@ void AP_QuadRuped_shuxiang::gait_init()
 }
 
 // 轨迹生成
-void AP_QuadRuped_shuxiang::trajectory_generation(uint8_t leg_index)
+void AP_QuadRuped_ZongXiang::trajectory_generation(uint8_t leg_index)
 {
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
     if (delta_step < 0) delta_step += gait_step_total;
@@ -111,7 +111,7 @@ void AP_QuadRuped_shuxiang::trajectory_generation(uint8_t leg_index)
 }
 
 // 生成偏航（旋转）轨迹
-void AP_QuadRuped_shuxiang::yaw_trajectory_generation(uint8_t leg_index)
+void AP_QuadRuped_ZongXiang::yaw_trajectory_generation(uint8_t leg_index)
 {
     // 计算当前腿的步数偏移
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
@@ -131,7 +131,7 @@ void AP_QuadRuped_shuxiang::yaw_trajectory_generation(uint8_t leg_index)
     }
 }
 
-Vector3f AP_QuadRuped_shuxiang::leg_inverse_kinematics(Vector3f posxyz)
+Vector3f AP_QuadRuped_ZongXiang::leg_inverse_kinematics(Vector3f posxyz)
 {
     const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
 
@@ -171,7 +171,7 @@ Vector3f AP_QuadRuped_shuxiang::leg_inverse_kinematics(Vector3f posxyz)
 }
 
 // 主逆运动学计算 - 计算所有腿的关节角度
-void AP_QuadRuped_shuxiang::main_inverse_kinematics(void)
+void AP_QuadRuped_ZongXiang::main_inverse_kinematics(void)
 {
     Vector3f ansxyz = { 0, 0, 0 }; // 临时变量，存储腿部末端位置
 
@@ -205,7 +205,7 @@ void AP_QuadRuped_shuxiang::main_inverse_kinematics(void)
 }
 
 // 更新腿部运动
-void AP_QuadRuped_shuxiang::update_leg()
+void AP_QuadRuped_ZongXiang::update_leg()
 {
     // 更新步态计数器
     gait_step_now++;
@@ -224,7 +224,7 @@ void AP_QuadRuped_shuxiang::update_leg()
 }
 
 // 主更新函数，按顺序执行控制流程
-void AP_QuadRuped_shuxiang::update()
+void AP_QuadRuped_ZongXiang::update()
 {
     // 执行主控制器
     main_radio_controller();
@@ -243,7 +243,7 @@ void AP_QuadRuped_shuxiang::update()
 }
 
 // 平衡控制器 - 简单的平衡控制实现
-void AP_QuadRuped_shuxiang::balance_controller()
+void AP_QuadRuped_ZongXiang::balance_controller()
 {
     // 简单的平衡控制实现
     // 这里可以根据IMU数据调整重心偏移以保持平衡
@@ -264,7 +264,7 @@ void AP_QuadRuped_shuxiang::balance_controller()
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
 // 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
 // 末段时间缩放函数：C2 连续，末端 v=a=0
-float AP_QuadRuped_shuxiang::slow_phi(float s, float s0)
+float AP_QuadRuped_ZongXiang::slow_phi(float s, float s0)
 {
     if (s <= s0) return s;
     float sigma = (s - s0) / (1.0f - s0); // 0..1

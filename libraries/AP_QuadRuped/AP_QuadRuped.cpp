@@ -7,21 +7,17 @@
 #if AP_QUADRUPED_WAVE_ENABLE
 # include "AP_QuadRuped_WAVE_New.h"
 #endif
-#if AP_QUADRUPED_shuxiang_ENABLE
-# include "AP_QuadRuped_shuxiang.h"
+#if AP_QUADRUPED_ZongXiang_ENABLE
+# include "AP_QuadRuped_ZongXiang.h"
 #endif
-#if AP_QUADRUPED_hengxiang_ENABLE
-# include "AP_QuadRuped_hengxiang.h"
+#if AP_QuadRuped_HengXiang_ENABLE
+# include "AP_QuadRuped_HengXiang.h"
 #endif
-
-extern const AP_HAL::HAL& hal;
 
 // 参数定义
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     // 基础参数组 (1-10)
     AP_GROUPINFO("ENABLE", 1, AP_QuadRuped, _enabled, 1),
-
-    AP_GROUPINFO("GTYPE", 2, AP_QuadRuped, _gait_type, (int8_t)AP_QUADRUPED_GAIT_DIAGONAL),
 
     AP_GROUPINFO("CLASS", 3, AP_QuadRuped, _quadruped_class, (int8_t)AP_QUADRUPED_NORMAL),
 
@@ -43,13 +39,11 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 #if AP_QUADRUPED_WAVE_ENABLE
     AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_WAVE], "WAVE_", 42, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_WAVE]),
 #endif
-
-#if AP_QUADRUPED_shuxiang_ENABLE
-    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_shuxiang], "shuxiang_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_shuxiang]),
+#if AP_QUADRUPED_ZongXiang_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_ZongXiang], "SHU_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_ZongXiang]),
 #endif
-
-#if AP_QUADRUPED_hengxiang_ENABLE
-    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_hengxiang], "hengxiang_", 44, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_hengxiang]),
+#if AP_QuadRuped_HengXiang_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_HengXiang], "HEN_", 44, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_HengXiang]),
 #endif
 
     AP_GROUPEND
@@ -79,12 +73,6 @@ AP_QuadRuped::AP_QuadRuped()
     AP_Param::setup_object_defaults(this, var_info);
 }
 
-// 析构函数
-AP_QuadRuped::~AP_QuadRuped()
-{
-    destroy_backends();
-}
-
 // 销毁后端实例
 void AP_QuadRuped::destroy_backends()
 {
@@ -107,7 +95,7 @@ bool AP_QuadRuped::init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rang
     create_backends();
 
     // 设置初始步态
-    set_gait_type(get_gait_type());
+    set_gait_type(AP_QUADRUPED_GAIT_DIAGONAL);
 
     return _backend != nullptr;
 }
@@ -129,18 +117,18 @@ void AP_QuadRuped::create_backends()
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
 #endif
     // 创建工字步态后端
-#if AP_QUADRUPED_shuxiang_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_shuxiang]   = NEW_NOTHROW AP_QuadRuped_shuxiang(*this, _state[AP_QUADRUPED_GAIT_shuxiang], *_ahrs, *_motors);
-    backend_var_info[AP_QUADRUPED_GAIT_shuxiang] = _state[AP_QUADRUPED_GAIT_shuxiang].var_info;
-    _state[AP_QUADRUPED_GAIT_shuxiang].instance  = AP_QUADRUPED_GAIT_shuxiang;
-    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_shuxiang], backend_var_info[AP_QUADRUPED_GAIT_shuxiang]);
+#if AP_QUADRUPED_ZongXiang_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_ZongXiang]   = NEW_NOTHROW AP_QuadRuped_ZongXiang(*this, _state[AP_QUADRUPED_GAIT_ZongXiang], *_ahrs, *_motors);
+    backend_var_info[AP_QUADRUPED_GAIT_ZongXiang] = _state[AP_QUADRUPED_GAIT_ZongXiang].var_info;
+    _state[AP_QUADRUPED_GAIT_ZongXiang].instance  = AP_QUADRUPED_GAIT_ZongXiang;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_ZongXiang], backend_var_info[AP_QUADRUPED_GAIT_ZongXiang]);
 #endif
 
-#if AP_QUADRUPED_hengxiang_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_hengxiang]   = NEW_NOTHROW AP_QuadRuped_hengxiang(*this, _state[AP_QUADRUPED_GAIT_hengxiang], *_ahrs, *_motors);
-    backend_var_info[AP_QUADRUPED_GAIT_hengxiang] = _state[AP_QUADRUPED_GAIT_hengxiang].var_info;
-    _state[AP_QUADRUPED_GAIT_hengxiang].instance  = AP_QUADRUPED_GAIT_hengxiang;
-    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_hengxiang], backend_var_info[AP_QUADRUPED_GAIT_hengxiang]);
+#if AP_QuadRuped_HengXiang_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_HengXiang]   = NEW_NOTHROW AP_QuadRuped_HengXiang(*this, _state[AP_QUADRUPED_GAIT_HengXiang], *_ahrs, *_motors);
+    backend_var_info[AP_QUADRUPED_GAIT_HengXiang] = _state[AP_QUADRUPED_GAIT_HengXiang].var_info;
+    _state[AP_QUADRUPED_GAIT_HengXiang].instance  = AP_QUADRUPED_GAIT_HengXiang;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_HengXiang], backend_var_info[AP_QUADRUPED_GAIT_HengXiang]);
 #endif
 }
 
@@ -151,9 +139,6 @@ void AP_QuadRuped::update()
     if (!_enabled) {
         return;
     }
-
-    // 如果更新则设置步态
-    set_gait_type(get_gait_type());
 
     // 调用后端更新
     if (_backend == nullptr) {
@@ -170,19 +155,39 @@ void AP_QuadRuped::update()
     // 读取遥控器输入
     read_radio_input();
 
-    const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
+    // 设置模式
+    switch (fly_walk_mode.master_mode) {
+        default:
+        case Walking_Mode:
+            set_gait_type((GaitType)fly_walk_mode.walk_mode);
+            _backend->update();
+            break;
 
-    if (get_mode_channel() > 1800 && !_motors->armed()) {
-        _backend->update();
-    } else {
-        // 检测测距cm
-        uint16_t sonar_cm = sensor->distance_cm();
+        case Flying_Mode:
+            switch (fly_walk_mode.fly_mode) {
+                default:
+                case Fly_Mode_Flying: {
+                    const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
+                    if (sensor) {
+                        // 检测测距cm
+                        uint16_t sonar_cm = sensor->distance_cm();
+                        if (sonar_cm > 40) {
+                            _backend->x_up_sleep_leg();
+                            break;
+                        }
+                    }
+                    _backend->x_sleep_leg();
+                } break;
 
-        if (sonar_cm > 30) {
-            _backend->hengxiang_up_sleep_leg();
-        } else {
-            _backend->x_sleep_leg();
-        }
+                case Fly_Mode_Zhong_Claw:
+                    _backend->zhongxiang_claw_leg(get_claw_angle());
+                    break;
+
+                case Fly_Mode_Heng_Claw:
+                    _backend->hengxiang_claw_leg(get_claw_angle());
+                    break;
+            }
+            break;
     }
 }
 
@@ -202,18 +207,6 @@ void AP_QuadRuped::set_gait_type(GaitType type)
 
         _gait_last_type = type;
     }
-}
-
-// 设置油门输入
-void AP_QuadRuped::set_throttle(float throttle_x, float throttle_y)
-{
-    _throttle_xyz.xy() = { throttle_x, throttle_y };
-}
-
-// 设置偏航角速度
-void AP_QuadRuped::set_yaw_rate(float yaw_rate)
-{
-    _throttle_xyz.z = yaw_rate;
 }
 
 // 获取腿部参数
@@ -251,14 +244,41 @@ void AP_QuadRuped::read_radio_input()
         _throttle_xyz[i] = constrain_float(_throttle_xyz[i], -1, 1);
     }
 
+    uint16_t mode_value = hal.rcin->read(_channel_params.mode_channel - 1);
+    if (_channel_params.mode_channel == -1) mode_value = 1000;
+    if (mode_value > 1800) {
+        set_master_mode(Flying_Mode);
+    } else {
+        set_master_mode(Walking_Mode);
+    }
+
+    uint16_t walk_value = hal.rcin->read(_channel_params.walk_mode_channel - 1);
+    if (_channel_params.walk_mode_channel == -1) walk_value = 1000;
+    if (walk_value > 1800 && walk_value < 2100) {
+        set_walk_mode(AP_QUADRUPED_GAIT_HengXiang);
+    } else if (walk_value > 1400 && walk_value < 1600) {
+        set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);
+    } else if (walk_value > 900 && walk_value < 1100) {
+        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
+    }
+
+    uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);
+    if (_channel_params.fly_mode_channel == -1) flying_value = 1000;
+    if (flying_value > 1800 && flying_value < 2100) {
+        set_fly_mode(Fly_Mode_Heng_Claw);
+    } else if (flying_value > 1400 && flying_value < 1600) {
+        set_fly_mode(Fly_Mode_Zhong_Claw);
+    } else if (flying_value > 900 && flying_value < 1100) {
+        set_fly_mode(Fly_Mode_Flying);
+    }
+
+    uint16_t claw_value = hal.rcin->read(_channel_params.claw_channel - 1);
+    if (_channel_params.claw_channel == -1) flying_value = 1500;
+    _claw_angle = ((float)claw_value - 1500) / 500 * 90.f;
+
     // static uint32_t lasttime = 0;
     // if (AP_HAL::millis() - lasttime > 1000) {
     //     lasttime = AP_HAL::millis();
     //     gcs().send_text(MAV_SEVERITY_NOTICE, "_throttle_x, y,z:%f, %f,%f", _throttle_x, _throttle_y, _yaw_rate);
     // }
-}
-
-uint16_t AP_QuadRuped::get_mode_channel()
-{
-    return hal.rcin->read(_channel_params.mode_channel - 1);
 }

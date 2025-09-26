@@ -13,13 +13,13 @@
 class AP_QuadRuped;
 
 // 对角步态后端实现
-class AP_QuadRuped_hengxiang : public AP_QuadRuped_Backend {
+class AP_QuadRuped_ZongXiang : public AP_QuadRuped_Backend {
 public:
     // 构造函数
-    AP_QuadRuped_hengxiang(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
+    AP_QuadRuped_ZongXiang(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
 
     // 析构函数
-    virtual ~AP_QuadRuped_hengxiang() { }
+    virtual ~AP_QuadRuped_ZongXiang() { }
 
     // 后端接口实现
     void update() override;

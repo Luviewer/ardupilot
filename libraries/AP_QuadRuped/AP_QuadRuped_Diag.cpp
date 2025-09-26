@@ -143,7 +143,7 @@ void AP_QuadRuped_Diag::update()
     //     // 输出腿部关节角度
     //     output_leg_angle();
     // } else {
-    //     hengxiang_up_sleep_leg();
+    //     hengxiang_claw_leg();
     // }
 
     main_radio_controller();

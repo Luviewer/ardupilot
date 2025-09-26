@@ -91,13 +91,11 @@ void AP_QuadRuped_Backend::x_up_sleep_leg()
 }
 
 // 横向抬升睡眠姿态 - 将机器人调整为横向展开且抬高的姿态
-void AP_QuadRuped_Backend::hengxiang_up_sleep_leg()
+void AP_QuadRuped_Backend::hengxiang_claw_leg(float angle_value)
 {
     uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE; // 髋关节PWM值
     uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE; // 股关节PWM值
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
-
-    float angle_value = (float)(hal.rcin->read(CH_7) - 1500) / 500.0f * 90.0f;
 
     // 遍历所有腿，设置横向抬升姿态
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
@@ -124,13 +122,11 @@ void AP_QuadRuped_Backend::hengxiang_up_sleep_leg()
 }
 
 // 纵向抬升睡眠姿态 - 将机器人调整为纵向展开且抬高的姿态
-void AP_QuadRuped_Backend::zongxiang_up_sleep_leg()
+void AP_QuadRuped_Backend::zhongxiang_claw_leg(float angle_value)
 {
     uint16_t pwm_coxa  = LEG_MOTOR_PWM_MIDDLE; // 髋关节PWM值
     uint16_t pwm_femur = LEG_MOTOR_PWM_MIDDLE; // 股关节PWM值
     uint16_t pwm_tibia = LEG_MOTOR_PWM_MIDDLE; // 胫关节PWM值
-
-    float angle_value = (float)(hal.rcin->read(CH_7) - 1500) / 500.0f * 90.0f;
 
     // 遍历所有腿，设置横向抬升姿态
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
