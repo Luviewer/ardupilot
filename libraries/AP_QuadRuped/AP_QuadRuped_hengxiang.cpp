@@ -1,4 +1,4 @@
-#include "AP_QuadRuped_Crab.h"
+#include "AP_QuadRuped_hengxiang.h"
 #include "AP_QuadRuped.h"
 #include <AP_HAL/AP_HAL.h>
 
@@ -9,17 +9,17 @@
 extern const AP_HAL::HAL& hal;
 
 // 参数表定义
-const AP_Param::GroupInfo AP_QuadRuped_Crab::var_info[] = {
+const AP_Param::GroupInfo AP_QuadRuped_hengxiang::var_info[] = {
     // 步态参数 (1-10)
-    AP_GROUPINFO("Hz", 1, AP_QuadRuped_Crab, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
+    AP_GROUPINFO("Hz", 1, AP_QuadRuped_hengxiang, gait_hz, SPEED_HZ_DEFAULT), // 步态频率
     // 步长
-    AP_GROUPINFO("STEP", 2, AP_QuadRuped_Crab, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
+    AP_GROUPINFO("STEP", 2, AP_QuadRuped_hengxiang, gait_step_total, GAIT_STEP_TOTAL_DEFAULT), // 步态总步数
 
     AP_GROUPEND
 };
 
 // 构造函数
-AP_QuadRuped_Crab::AP_QuadRuped_Crab(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
+AP_QuadRuped_hengxiang::AP_QuadRuped_hengxiang(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
     : AP_QuadRuped_Backend(frontend, state, ahrs, motors)
 {
     // 设置参数默认值
@@ -27,7 +27,7 @@ AP_QuadRuped_Crab::AP_QuadRuped_Crab(AP_QuadRuped& frontend, AP_QuadRuped::QuadR
     _state.var_info = var_info;
 }
 
-bool AP_QuadRuped_Crab::init()
+bool AP_QuadRuped_hengxiang::init()
 {
     const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
 
@@ -35,11 +35,11 @@ bool AP_QuadRuped_Crab::init()
     // 每条腿按90度间隔分布 (Each leg is spaced 90 degrees apart)
     // 计算腿部末端执行器在机体坐标系中的位置 (Calculate end effector position in body frame)
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
-        const float hx = (leg_index == AP_QUADRUPED_LEG_RF || leg_index == AP_QUADRUPED_LEG_LF)
+        const float hy = (leg_index == AP_QUADRUPED_LEG_RF || leg_index == AP_QUADRUPED_LEG_RB)
             ? (Sys_Param.FEMUR_LEN + Sys_Param.COXA_LEN)
             : -(Sys_Param.FEMUR_LEN + Sys_Param.COXA_LEN);
 
-        endpoint_leg_pos[leg_index] = Vector3f(hx, 0.0f, Sys_Param.TIBIA_LEN);
+        endpoint_leg_pos[leg_index] = Vector3f(0.0f, hy, Sys_Param.TIBIA_LEN);
     }
 
     // 初始化腿部框架位置 (Initialize leg frame positions)
@@ -60,9 +60,9 @@ bool AP_QuadRuped_Crab::init()
 }
 
 // 步态初始化
-void AP_QuadRuped_Crab::gait_init()
+void AP_QuadRuped_hengxiang::gait_init()
 {
-    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Crab init");
+    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_hengxiang init");
 
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
@@ -77,7 +77,7 @@ void AP_QuadRuped_Crab::gait_init()
 }
 
 // 轨迹生成
-void AP_QuadRuped_Crab::trajectory_generation(uint8_t leg_index)
+void AP_QuadRuped_hengxiang::trajectory_generation(uint8_t leg_index)
 {
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
     if (delta_step < 0) delta_step += gait_step_total;
@@ -96,23 +96,22 @@ void AP_QuadRuped_Crab::trajectory_generation(uint8_t leg_index)
 
         // 2D 摆线：对 v 的两个分量都按同一标量函数变换
         const float S   = (delta - sinf(delta)) / M_2PI * 2.0f; // 0..2
-        leg_xy_target.x = throttle_x_travel * S - throttle_x_travel;
-        leg_xy_target.y = 0;
+        leg_xy_target.y = throttle_y_travel * S - throttle_y_travel;
         leg_z_target    = -leg_lift_height * (1.0f - cosf(delta));
     } else { // 支撑相
         const float phase = (p - 0.5f) * 2.0f;
         const float delta = M_2PI * phase;
 
         const float S   = (delta - sinf(delta)) / M_2PI * 2.0f;
-        leg_xy_target.x = -throttle_x_travel * S + throttle_x_travel;
+        leg_xy_target.y = -throttle_x_travel * S + throttle_x_travel;
         leg_z_target    = 0.0f;
     }
-    leg_xy_target.y         = 0;
+    leg_xy_target.x         = 0;
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
 }
 
 // 生成偏航（旋转）轨迹
-void AP_QuadRuped_Crab::yaw_trajectory_generation(uint8_t leg_index)
+void AP_QuadRuped_hengxiang::yaw_trajectory_generation(uint8_t leg_index)
 {
     // 计算当前腿的步数偏移
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
@@ -132,7 +131,7 @@ void AP_QuadRuped_Crab::yaw_trajectory_generation(uint8_t leg_index)
     }
 }
 
-Vector3f AP_QuadRuped_Crab::leg_inverse_kinematics(Vector3f posxyz)
+Vector3f AP_QuadRuped_hengxiang::leg_inverse_kinematics(Vector3f posxyz)
 {
     const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
 
@@ -140,10 +139,10 @@ Vector3f AP_QuadRuped_Crab::leg_inverse_kinematics(Vector3f posxyz)
     Vector3f leg_deg = { 0, 0, 0 };
 
     // 1. 计算髋关节角度（绕Z轴旋转）
-    leg_deg.x = -degrees(atan2f(posxyz.x, 0.0f)); // 使用atan2计算XY平面内的角度
+    leg_deg.x = -degrees(atan2f(0.0f, posxyz.y)); // 使用atan2计算XY平面内的角度
 
     // 2. 计算从髋关节到末端在XY平面的投影距离
-    float trueX = fabsf(posxyz.x) - Sys_Param.COXA_LEN; // 减去髋关节长度
+    float trueX = fabsf(posxyz.y) - Sys_Param.COXA_LEN; // 减去髋关节长度
 
     // 3. 计算从股关节到末端的空间距离
     float im = sqrtf(trueX * trueX + posxyz.z * posxyz.z);
@@ -172,7 +171,7 @@ Vector3f AP_QuadRuped_Crab::leg_inverse_kinematics(Vector3f posxyz)
 }
 
 // 主逆运动学计算 - 计算所有腿的关节角度
-void AP_QuadRuped_Crab::main_inverse_kinematics(void)
+void AP_QuadRuped_hengxiang::main_inverse_kinematics(void)
 {
     Vector3f ansxyz = { 0, 0, 0 }; // 临时变量，存储腿部末端位置
 
@@ -206,7 +205,7 @@ void AP_QuadRuped_Crab::main_inverse_kinematics(void)
 }
 
 // 更新腿部运动
-void AP_QuadRuped_Crab::update_leg()
+void AP_QuadRuped_hengxiang::update_leg()
 {
     // 更新步态计数器
     gait_step_now++;
@@ -225,7 +224,7 @@ void AP_QuadRuped_Crab::update_leg()
 }
 
 // 主更新函数，按顺序执行控制流程
-void AP_QuadRuped_Crab::update()
+void AP_QuadRuped_hengxiang::update()
 {
     // 执行主控制器
     main_radio_controller();
@@ -244,7 +243,7 @@ void AP_QuadRuped_Crab::update()
 }
 
 // 平衡控制器 - 简单的平衡控制实现
-void AP_QuadRuped_Crab::balance_controller()
+void AP_QuadRuped_hengxiang::balance_controller()
 {
     // 简单的平衡控制实现
     // 这里可以根据IMU数据调整重心偏移以保持平衡
@@ -265,7 +264,7 @@ void AP_QuadRuped_Crab::balance_controller()
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
 // 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
 // 末段时间缩放函数：C2 连续，末端 v=a=0
-float AP_QuadRuped_Crab::slow_phi(float s, float s0)
+float AP_QuadRuped_hengxiang::slow_phi(float s, float s0)
 {
     if (s <= s0) return s;
     float sigma = (s - s0) / (1.0f - s0); // 0..1

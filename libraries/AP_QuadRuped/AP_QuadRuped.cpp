@@ -7,8 +7,11 @@
 #if AP_QUADRUPED_WAVE_ENABLE
 # include "AP_QuadRuped_WAVE_New.h"
 #endif
-#if AP_QUADRUPED_CRAB_ENABLE
-# include "AP_QuadRuped_Crab.h"
+#if AP_QUADRUPED_shuxiang_ENABLE
+# include "AP_QuadRuped_shuxiang.h"
+#endif
+#if AP_QUADRUPED_hengxiang_ENABLE
+# include "AP_QuadRuped_hengxiang.h"
 #endif
 
 extern const AP_HAL::HAL& hal;
@@ -41,8 +44,12 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_WAVE], "WAVE_", 42, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_WAVE]),
 #endif
 
-#if AP_QUADRUPED_CRAB_ENABLE
-    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_CRAB], "CRAB_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_CRAB]),
+#if AP_QUADRUPED_shuxiang_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_shuxiang], "shuxiang_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_shuxiang]),
+#endif
+
+#if AP_QUADRUPED_hengxiang_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_hengxiang], "hengxiang_", 44, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_hengxiang]),
 #endif
 
     AP_GROUPEND
@@ -122,11 +129,18 @@ void AP_QuadRuped::create_backends()
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
 #endif
     // 创建工字步态后端
-#if AP_QUADRUPED_CRAB_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_CRAB]   = NEW_NOTHROW AP_QuadRuped_Crab(*this, _state[AP_QUADRUPED_GAIT_CRAB], *_ahrs, *_motors);
-    backend_var_info[AP_QUADRUPED_GAIT_CRAB] = _state[AP_QUADRUPED_GAIT_CRAB].var_info;
-    _state[AP_QUADRUPED_GAIT_CRAB].instance  = AP_QUADRUPED_GAIT_CRAB;
-    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_CRAB], backend_var_info[AP_QUADRUPED_GAIT_CRAB]);
+#if AP_QUADRUPED_shuxiang_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_shuxiang]   = NEW_NOTHROW AP_QuadRuped_shuxiang(*this, _state[AP_QUADRUPED_GAIT_shuxiang], *_ahrs, *_motors);
+    backend_var_info[AP_QUADRUPED_GAIT_shuxiang] = _state[AP_QUADRUPED_GAIT_shuxiang].var_info;
+    _state[AP_QUADRUPED_GAIT_shuxiang].instance  = AP_QUADRUPED_GAIT_shuxiang;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_shuxiang], backend_var_info[AP_QUADRUPED_GAIT_shuxiang]);
+#endif
+
+#if AP_QUADRUPED_hengxiang_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_hengxiang]   = NEW_NOTHROW AP_QuadRuped_hengxiang(*this, _state[AP_QUADRUPED_GAIT_hengxiang], *_ahrs, *_motors);
+    backend_var_info[AP_QUADRUPED_GAIT_hengxiang] = _state[AP_QUADRUPED_GAIT_hengxiang].var_info;
+    _state[AP_QUADRUPED_GAIT_hengxiang].instance  = AP_QUADRUPED_GAIT_hengxiang;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_hengxiang], backend_var_info[AP_QUADRUPED_GAIT_hengxiang]);
 #endif
 }
 

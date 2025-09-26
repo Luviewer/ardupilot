@@ -2,7 +2,8 @@
 #include "AP_QuadRuped_Backend.h"
 #include "AP_QuadRuped_Diag_New.h"
 #include "AP_QuadRuped_WAVE_New.h"
-#include "AP_QuadRuped_Crab.h"
+#include "AP_QuadRuped_shuxiang.h"
+#include "AP_QuadRuped_hengxiang.h"
 #include <AP_HAL/AP_HAL.h>
 #include <AP_AHRS/AP_AHRS_DCM.h>
 #include <AP_Motors/AP_MotorsMatrix.h>

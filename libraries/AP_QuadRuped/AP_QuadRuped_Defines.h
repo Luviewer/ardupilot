@@ -11,10 +11,11 @@ enum AP_QuadRuped_LegIndex {
 
 // 步态类型枚举
 enum AP_QuadRuped_GaitType {
-    AP_QUADRUPED_GAIT_DIAGONAL = 0, // 对角步态（trot步态）
-    AP_QUADRUPED_GAIT_WAVE     = 1, // 波浪步态（crawl步态）
-    AP_QUADRUPED_GAIT_CRAB     = 2, // 工字步态
-    AP_QUADRUPED_GAIT_COUNT,        // 步态总数
+    AP_QUADRUPED_GAIT_DIAGONAL  = 0, // 对角步态（trot步态）
+    AP_QUADRUPED_GAIT_WAVE      = 1, // 波浪步态（crawl步态）
+    AP_QUADRUPED_GAIT_shuxiang  = 2, // 工字步态
+    AP_QUADRUPED_GAIT_hengxiang = 3, // 工字步态
+    AP_QUADRUPED_GAIT_COUNT,         // 步态总数
 };
 
 // 蜘蛛类型枚举

@@ -28,7 +28,7 @@
           ┌─────────────────┼─────────────────┐
           ▼                 ▼                 ▼
 ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│AP_QuadRuped_Diag│ │AP_QuadRuped_WAVE│ │AP_QuadRuped_Crab │
+│AP_QuadRuped_Diag│ │AP_QuadRuped_WAVE│ │AP_QuadRuped_shuxiang │
 │   (对角步态)    │ │   (波浪步态)    │ │   (工字步态)    │
 └─────────────────┘ └─────────────────┘ └─────────────────┘
 ```
@@ -41,7 +41,8 @@
 2. **AP_QuadRuped_New.h/.cpp** - 重构后的前端控制器
 3. **AP_QuadRuped_Diag_New.h/.cpp** - 对角步态后端实现
 4. **AP_QuadRuped_WAVE_New.h/.cpp** - 波浪步态后端实现
-5. **AP_QuadRuped_Crab.h/.cpp** - 工字步态后端实现
+5. **AP_QuadRuped_shuxiang.h/.cpp** - 工字步态后端实现
+5. **AP_QuadRuped_hengxiang.h/.cpp** - 工字步态后端实现
 
 ### 原有文件
 
@@ -71,7 +72,8 @@
 // 支持运行时动态切换步态
 quadru.set_gait_type(AP_QuadRuped::GAIT_DIAGONAL);
 quadru.set_gait_type(AP_QuadRuped::GAIT_WAVE);
-quadru.set_gait_type(AP_QuadRuped::GAIT_CRAB);
+quadru.set_gait_type(AP_QuadRuped::GAIT_shuxiang);
+quadru.set_gait_type(AP_QuadRuped::GAIT_hengxiang);
 ```
 
 ### 3. 参数系统
@@ -89,9 +91,13 @@ QRUD_WAVE_STEP_H    # 波浪步态抬腿高度
 QRUD_WAVE_STEP_L    # 波浪步态步长
 QRUD_WAVE_STEP_F    # 波浪步态步频
 
-QRUD_CRAB_STEP_H    # 工字步态抬腿高度
-QRUD_CRAB_STEP_L    # 工字步态步长
-QRUD_CRAB_STEP_F    # 工字步态步频
+QRUD_shuxiang_STEP_H    # 竖向工字步态抬腿高度
+QRUD_shuxiang_STEP_L    # 竖向工字步态步长
+QRUD_shuxiang_STEP_F    # 竖向工字步态步频
+
+QRUD_hengxiang_STEP_H    # 横向工字步态抬腿高度
+QRUD_hengxiang_STEP_L    # 横向工字步态步长
+QRUD_hengxiang_STEP_F    # 横向工字步态步频
 ```
 
 ### 4. 健康监控
@@ -132,8 +138,10 @@ if (need_speed) {
     quadru.set_gait_type(AP_QuadRuped::GAIT_DIAGONAL);
 } else if (need_stability) {
     quadru.set_gait_type(AP_QuadRuped::GAIT_WAVE);
-} else if (need_maneuverability) {
-    quadru.set_gait_type(AP_QuadRuped::GAIT_CRAB);
+} else if (need_shuxiang_maneuverability) {
+    quadru.set_gait_type(AP_QuadRuped::GAIT_shuxiang);
+} else if (need_hengxiang_maneuverability) {
+    quadru.set_gait_type(AP_QuadRuped::GAIT_hengxiang);
 }
 ```
 
@@ -149,7 +157,12 @@ if (need_speed) {
 - **优势**：稳定性最高，适应性强
 - **适用**：复杂地形，慢速行走
 
-### 工字步态 (Crab Gait)
+### 工字步态 (shuxiang Gait)
+- **特点**：同侧腿部同步运动
+- **优势**：竖向移动灵活
+- **适用**：狭窄空间，竖向移动
+
+### 工字步态 (hengxiang Gait)
 - **特点**：同侧腿部同步运动
 - **优势**：横向移动灵活
 - **适用**：狭窄空间，横向移动

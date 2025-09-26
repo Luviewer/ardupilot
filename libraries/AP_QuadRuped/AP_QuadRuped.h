@@ -18,14 +18,18 @@ class AP_QuadRuped_Diag;
 #if AP_QUADRUPED_WAVE_ENABLE
 class AP_QuadRuped_WAVE;
 #endif
-#if AP_QUADRUPED_CRAB_ENABLE
-class AP_QuadRuped_Crab;
+#if AP_QUADRUPED_shuxiang_ENABLE
+class AP_QuadRuped_shuxiang;
+#endif
+#if AP_QUADRUPED_hengxiang_ENABLE
+class AP_QuadRuped_hengxiang;
 #endif
 
 class AP_QuadRuped {
     friend class AP_QuadRuped_Backend;
     friend class AP_QuadRuped_Diag;
-    friend class AP_QuadRuped_Crab;
+    friend class AP_QuadRuped_shuxiang;
+    friend class AP_QuadRuped_hengxiang;
 
 public:
     // 默认构造函数
