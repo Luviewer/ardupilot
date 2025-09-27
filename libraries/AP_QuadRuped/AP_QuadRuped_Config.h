@@ -1,6 +1,6 @@
 #pragma once
 
-#define AP_QUADRUPED_WAVE_ENABLE 0
+#define AP_QUADRUPED_WAVE_ENABLE 1
 #ifndef AP_QUADRUPED_WAVE_ENABLE
 # define AP_QUADRUPED_WAVE_ENABLE 0
 #endif

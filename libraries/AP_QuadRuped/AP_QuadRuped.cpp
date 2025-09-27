@@ -5,7 +5,7 @@
 #include <RC_Channel/RC_Channel.h>
 
 #if AP_QUADRUPED_WAVE_ENABLE
-# include "AP_QuadRuped_WAVE_New.h"
+# include "AP_QuadRuped_Wave.h"
 #endif
 #if AP_QUADRUPED_ZongXiang_ENABLE
 # include "AP_QuadRuped_ZongXiang.h"
@@ -111,7 +111,7 @@ void AP_QuadRuped::create_backends()
 
     // 创建波浪步态后端
 #if AP_QUADRUPED_WAVE_ENABLE
-    _gait_backends[AP_QUADRUPED_GAIT_WAVE]   = NEW_NOTHROW AP_QuadRuped_WAVE(*this, _state[AP_QUADRUPED_GAIT_WAVE], *_ahrs, *_motors);
+    _gait_backends[AP_QUADRUPED_GAIT_WAVE]   = NEW_NOTHROW AP_QuadRuped_Wave(*this, _state[AP_QUADRUPED_GAIT_WAVE], *_ahrs, *_motors);
     backend_var_info[AP_QUADRUPED_GAIT_WAVE] = _state[AP_QUADRUPED_GAIT_WAVE].var_info;
     _state[AP_QUADRUPED_GAIT_WAVE].instance  = AP_QUADRUPED_GAIT_WAVE;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
@@ -263,10 +263,12 @@ void AP_QuadRuped::read_radio_input()
     if (_channel_params.walk_mode_channel == -1) walk_value = 1000;
     if (walk_value > 1800 && walk_value < 2100) {
         set_walk_mode(AP_QUADRUPED_GAIT_HengXiang);
-    } else if (walk_value > 1400 && walk_value < 1600) {
+    } else if (walk_value > 1500 && walk_value < 1800) {
         set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);
-    } else if (walk_value > 900 && walk_value < 1100) {
+    } else if (walk_value > 1200 && walk_value < 1500) {
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
+    }else if (walk_value > 900 && walk_value < 1200) {
+        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);
     }
 
     uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);

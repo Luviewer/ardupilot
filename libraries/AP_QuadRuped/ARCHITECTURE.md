@@ -40,9 +40,9 @@
 1. **AP_QuadRuped_Backend.h/.cpp** - 后端接口定义和基础实现
 2. **AP_QuadRuped_New.h/.cpp** - 重构后的前端控制器
 3. **AP_QuadRuped_Diag_New.h/.cpp** - 对角步态后端实现
-4. **AP_QuadRuped_WAVE_New.h/.cpp** - 波浪步态后端实现
-5. **AP_QuadRuped_ZongXiang.h/.cpp** - 工字步态后端实现
-5. **AP_QuadRuped_HengXiang.h/.cpp** - 工字步态后端实现
+4. **AP_QuadRuped_Wave_New.h/.cpp** - 波浪步态后端实现
+5. **AP_QuadRuped_shuxiang.h/.cpp** - 工字步态后端实现
+5. **AP_QuadRuped_hengxiang.h/.cpp** - 工字步态后端实现
 
 ### 原有文件
 

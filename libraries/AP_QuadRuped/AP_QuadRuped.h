@@ -18,7 +18,7 @@ class AP_QuadRuped_Backend;
 class AP_QuadRuped_Diag;
 
 #if AP_QUADRUPED_WAVE_ENABLE
-class AP_QuadRuped_WAVE;
+class AP_QuadRuped_Wave;
 #endif
 #if AP_QUADRUPED_ZongXiang_ENABLE
 class AP_QuadRuped_ZongXiang;
@@ -32,6 +32,7 @@ class AP_QuadRuped {
     friend class AP_QuadRuped_Diag;
     friend class AP_QuadRuped_ZongXiang;
     friend class AP_QuadRuped_HengXiang;
+    friend class AP_QuadRuped_Wave;
 
 public:
     // 默认构造函数
