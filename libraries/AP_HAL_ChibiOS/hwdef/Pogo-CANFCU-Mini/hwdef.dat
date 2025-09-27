@@ -1,0 +1,138 @@
+# hw definition file for processing by chibios_pins.py
+# for Matek H743-WING
+
+# MCU class and specific type
+MCU STM32H7xx STM32H743xx
+
+# board ID. See Tools/AP_Bootloader/board_types.txt
+APJ_BOARD_ID AP_HW_MATEKH743
+
+# crystal frequency, setup to use external oscillator
+OSCILLATOR_HZ 8000000
+
+FLASH_SIZE_KB 2048
+
+# bootloader takes first sector
+FLASH_RESERVE_START_KB 128
+
+# ChibiOS system timer
+STM32_ST_USE_TIMER 12
+define CH_CFG_ST_RESOLUTION 16
+
+# this is the pin that senses USB being connected. It is an input pin
+# setup as OPENDRAIN
+PA9 VBUS INPUT OPENDRAIN
+
+# USB
+PA11 OTG_FS_DM OTG1
+PA12 OTG_FS_DP OTG1
+
+# these are the pins for SWD debugging with a STlinkv2 or black-magic probe
+PA13 JTMS-SWDIO SWD
+PA14 JTCK-SWCLK SWD
+
+# SPI3 - external
+PB3 SPI3_SCK  SPI3
+PB4 SPI3_MISO SPI3
+PB5 SPI3_MOSI SPI3
+
+# SPI4 - external
+PE2 SPI4_SCK  SPI4
+PE5 SPI4_MISO SPI4
+PE6 SPI4_MOSI SPI4
+
+PA15 ICM CS
+PB11 FM25 CS
+
+# BATT
+define HAL_USE_ADC FALSE
+define STM32_ADC_USE_ADC1 FALSE
+define HAL_DISABLE_ADC_DRIVER TRUE
+define HAL_BATT_MONITOR_DEFAULT 8
+define HAL_BATT_VOLT_PIN -1
+define HAL_BATT_VOLT_SCALE -1
+define HAL_BATT_CURR_PIN -1
+define HAL_BATT_CURR_SCALE -1
+
+# order of UARTs (and USB)
+SERIAL_ORDER OTG1 UART4 UART8 UART7 USART6 USART1 OTG2
+
+# UART4 (spare)
+PB9 UART4_TX UART4
+PB8 UART4_RX UART4
+
+# UART8 (spare)
+PE1 UART8_TX UART8
+PE0 UART8_RX UART8
+
+# UART7 
+PE8 UART7_TX UART7
+PE7 UART7_RX UART7
+
+# UART6
+PC6 USART6_TX USART6
+PC7 USART6_RX USART6
+
+
+# as an alternative config setup the RX6 pin as a uart. This allows
+# for bi-directional UART based receiver protocols such as FPort
+# without any extra hardware
+PB15 USART1_RX USART1 NODMA ALT(1)
+PB14 USART1_TX USART1 NODMA
+
+# SBUS
+PD15 TIM4_CH4 TIM4 RCININT PULLDOWN LOW
+
+# CAN bus
+PD0 CAN1_RX CAN1
+PD1 CAN1_TX CAN1
+
+# CAN bus
+PB12 CAN2_RX CAN2
+PB13 CAN2_TX CAN2
+
+# Motors
+PA0  TIM2_CH1  TIM2  PWM(1)  GPIO(52)
+PA1  TIM2_CH2  TIM2  PWM(2)  GPIO(53)
+PA2  TIM2_CH3  TIM2  PWM(3)  GPIO(54)
+PA3  TIM2_CH4  TIM2  PWM(4)  GPIO(55)
+PE9  TIM1_CH1  TIM1  PWM(5)  GPIO(56)
+PE11 TIM1_CH2  TIM1  PWM(6)  GPIO(57)
+PE13 TIM1_CH3  TIM1  PWM(7)  GPIO(58)
+PE14 TIM1_CH4  TIM1  PWM(8)  GPIO(59)
+
+
+# microSD support
+PC8 SDMMC1_D0 SDMMC1
+PC9 SDMMC1_D1 SDMMC1
+PC10 SDMMC1_D2 SDMMC1
+PC11 SDMMC1_D3 SDMMC1
+PC12 SDMMC1_CK SDMMC1
+PD2 SDMMC1_CMD SDMMC1
+# enable FAT filesystem support
+define HAL_OS_FATFS_IO 1
+define HAL_BOARD_LOG_DIRECTORY "/APM/LOGS"
+define HAL_BOARD_TERRAIN_DIRECTORY "/APM/TERRAIN"
+
+# enable RAMTROM parameter storage
+define HAL_STORAGE_SIZE 32768
+define HAL_WITH_RAMTRON 1
+
+# spi devices
+SPIDEV icm42688 SPI4 DEVID1 ICM   MODE3  2*MHZ 16*MHZ   # Clock is 100Mhz so highest clock <= 24Mhz is 100Mhz/8
+SPIDEV ramtron  SPI3 DEVID1 FM25  MODE3  8*MHZ 8*MHZ 
+
+define AP_NOTIFY_GPIO_LED_RGB_ENABLED 0
+define HAL_BARO_ALLOW_INIT_NO_BARO 1
+
+# no built-in compass, but probe the i2c bus for all possible
+# external compass types
+define ALLOW_ARM_NO_COMPASS
+define HAL_PROBE_EXTERNAL_I2C_COMPASSES
+define HAL_I2C_INTERNAL_MASK 0
+define HAL_COMPASS_AUTO_ROT_DEFAULT 2
+
+
+IMU Invensensev3 SPI:icm42688 ROTATION_YAW_180
+define HAL_DEFAULT_INS_FAST_SAMPLE 1
+
