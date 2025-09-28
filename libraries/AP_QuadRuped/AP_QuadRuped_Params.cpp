@@ -39,6 +39,9 @@ const AP_Param::GroupInfo AP_QuadRuped_CHANNEL_Params::var_info[] = {
     AP_GROUPINFO("WAK", 14, AP_QuadRuped_CHANNEL_Params, walk_mode_channel, -1),
     AP_GROUPINFO("CLAW", 15, AP_QuadRuped_CHANNEL_Params, claw_channel, -1),
 
+    AP_GROUPINFO("RLL_MX", 16, AP_QuadRuped_CHANNEL_Params, throttle_roll_max, 40),
+    AP_GROUPINFO("PIT_MX", 17, AP_QuadRuped_CHANNEL_Params, throttle_pitch_max, 40),
+
     AP_GROUPEND
 };
 

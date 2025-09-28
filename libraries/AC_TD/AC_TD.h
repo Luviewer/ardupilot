@@ -18,6 +18,7 @@ public:
 
     float update(float in);
     void  init(float _h, float _r, float _v1);
+    void  set_r(float _r) { r = _r; };
 
 private:
     float fhan(float x1, float x2);

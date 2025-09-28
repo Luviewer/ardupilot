@@ -187,6 +187,7 @@ void AP_QuadRuped_Backend::main_radio_controller()
 {
     const AP_QuadRuped_CHANNEL_Params& channel = _frontend.get_channel_params();
 
+    //////////////////////////////////////////////////////////////////////////////////
     // 处理油门通道（前进/后退）
     if (channel.throttle_x_channel != -1) {
         // 将遥控器输入转换为前进/后退行程
@@ -195,11 +196,28 @@ void AP_QuadRuped_Backend::main_radio_controller()
         throttle_x_travel = 0; // 无通道配置时保持静止
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
     // 处理横移通道（向右为正，向左为负）
     if (channel.throttle_y_channel != -1) {
         throttle_y_travel = _frontend.get_throttle_y() * channel.throttle_y_max;
     } else {
         throttle_y_travel = 0.0f;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // 处理滚转通道（向右为正，向左为负）
+    if (channel.roll_channel != -1) {
+        roll_travel = _frontend.get_throttle_roll() * channel.throttle_roll_max;
+    } else {
+        roll_travel = 0.0f;
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+    // 处理俯仰通道
+    if (channel.pitch_channel != -1) {
+        pitch_travel = _frontend.get_throttle_pitch() * channel.throttle_pitch_max;
+    } else {
+        pitch_travel = 0.0f;
     }
 
     z_travel        = channel.body_height; // 默认高度

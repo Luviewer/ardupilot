@@ -10,6 +10,7 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
 #include <stdio.h>
+#include <AC_TD/AC_TD.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -65,6 +66,8 @@ public:
     float get_throttle_x() const { return _throttle_xyz.x; }
     float get_throttle_y() const { return _throttle_xyz.y; }
     float get_yaw_rate() const { return _throttle_xyz.z; }
+    float get_throttle_roll() const { return _throttle_roll_pitch.x; }
+    float get_throttle_pitch() const { return _throttle_roll_pitch.y; }
 
     uint16_t get_mode_channel() { return hal.rcin->read(_channel_params.mode_channel - 1); }
     uint16_t get_fly_mode_channel() { return hal.rcin->read(_channel_params.fly_mode_channel - 1); }
@@ -119,7 +122,10 @@ private:
     AP_Int8 _quadruped_class;
 
     // 控制输入
-    Vector3f _throttle_xyz; // Xyz轴油门输入
+    Vector3f _throttle_xyz;        // Xyz轴油门输入
+    Vector2f _throttle_roll_pitch; // 俯仰滚转油门输入
+    AC_TD _roll_pitch_td[2];
+    AP_Float _roll_pitch_td_r;
 
     // 抓取角度
     float _claw_angle;

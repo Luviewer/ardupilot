@@ -21,6 +21,8 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 
     AP_GROUPINFO("CLASS", 3, AP_QuadRuped, _quadruped_class, (int8_t)AP_QUADRUPED_NORMAL),
 
+    AP_GROUPINFO("RPTD", 4, AP_QuadRuped, _roll_pitch_td_r, (float)1000),
+
     // 系统参数组 (11-20)
     AP_SUBGROUPINFO(_sys_params, "SYS_", 11, AP_QuadRuped, AP_QuadRuped_SYS_Params),
 
@@ -93,6 +95,9 @@ bool AP_QuadRuped::init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rang
 
     // 创建后端实例
     create_backends();
+
+    _roll_pitch_td[0].init(0.001, _roll_pitch_td_r, 0);
+    _roll_pitch_td[1].init(0.001, _roll_pitch_td_r, 0);
 
     // 设置初始步态
     set_gait_type(AP_QUADRUPED_GAIT_DIAGONAL);
@@ -224,12 +229,15 @@ const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
 void AP_QuadRuped::read_radio_input()
 {
     if (rc().in_rc_failsafe()) {
-        _throttle_xyz = Vector3f(0, 0, 0);
+        _throttle_xyz        = Vector3f(0, 0, 0);
+        _throttle_roll_pitch = Vector2f(0, 0);
         set_master_mode(Walking_Mode);
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
         return;
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
     // 读取各通道输入
     Vector3ui throttle_chan = {
         hal.rcin->read(_channel_params.throttle_x_channel - 1),
@@ -253,6 +261,32 @@ void AP_QuadRuped::read_radio_input()
         _throttle_xyz[i] = constrain_float(_throttle_xyz[i], -1, 1);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
+    // 读取各通道输入
+    Vector2ui rollpitch_chan = {
+        hal.rcin->read(_channel_params.roll_channel - 1),
+        hal.rcin->read(_channel_params.pitch_channel - 1),
+    };
+    if (_channel_params.roll_channel == -1) rollpitch_chan[0] = 1500;
+    if (_channel_params.pitch_channel == -1) rollpitch_chan[1] = 1500;
+
+    for (uint8_t i = 0; i < 2; i++) {
+        if (rollpitch_chan[i] > 1450 && rollpitch_chan[i] < 1550) {
+            rollpitch_chan[i] = 1500;
+        }
+    }
+
+    // 获取输入值并归一化
+    for (uint8_t i = 0; i < 2; i++) {
+        _roll_pitch_td[i].set_r(_roll_pitch_td_r);
+
+        _throttle_roll_pitch[i] = _roll_pitch_td[i].update(((float)(rollpitch_chan[i]) - 1500.0f) / 500.0f);
+        _throttle_roll_pitch[i] = constrain_float(_throttle_roll_pitch[i], -1, 1);
+    }
+
+    //////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
     uint16_t mode_value = hal.rcin->read(_channel_params.mode_channel - 1);
     if (_channel_params.mode_channel == -1) mode_value = 1000;
     if (mode_value > 1800) {
@@ -261,6 +295,8 @@ void AP_QuadRuped::read_radio_input()
         set_master_mode(Walking_Mode);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
     uint16_t walk_value = hal.rcin->read(_channel_params.walk_mode_channel - 1);
     if (_channel_params.walk_mode_channel == -1) walk_value = 1000;
     if (walk_value > 1800 && walk_value < 2100) {
@@ -273,6 +309,8 @@ void AP_QuadRuped::read_radio_input()
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
     }
 
+    //////////////////////////////////////////////////////////////////////////////////
+    //////////////////////////////////////////////////////////////////////////////////
     uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);
     if (_channel_params.fly_mode_channel == -1) flying_value = 1000;
     if (flying_value > 1800 && flying_value < 2100) {
