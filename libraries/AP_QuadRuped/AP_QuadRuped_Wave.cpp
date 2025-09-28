@@ -32,6 +32,10 @@ void AP_QuadRuped_Wave::gait_init()
 {
     gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Wave init");
 
+    td_smooth[0].init(1000 / gait_hz, 100, 0);
+    td_smooth[1].init(1000 / gait_hz, 100, 0);
+    td_smooth[2].init(1000 / gait_hz, 100, 0);
+
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
     gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                       // 右前腿 - 0度相位
@@ -170,11 +174,6 @@ void AP_QuadRuped_Wave::handle_support_phase(float support_s, Vector2f& leg_xy_t
     leg_z_target    = 0.0f; // 地面接触
 }
 
-void AP_QuadRuped_Wave::set_centre_offset(float x, float y, float z)
-{
-    set_centre_offset_target(x, y, z);
-}
-
 // 更新腿部运动
 void AP_QuadRuped_Wave::update_leg()
 {
@@ -192,6 +191,22 @@ void AP_QuadRuped_Wave::update_leg()
         trajectory_generation(leg_index);
         yaw_trajectory_generation(leg_index);
     }
+}
+
+void AP_QuadRuped_Wave::smooth_target()
+{
+    // 平滑跟随（不清零，不回中位）
+    centre_offset.x = td_smooth[0].update(centre_offset_target.x);
+    centre_offset.y = td_smooth[1].update(centre_offset_target.y);
+    centre_offset.z = td_smooth[2].update(centre_offset_target.z);
+
+    // centre_offset += (centre_offset_target - centre_offset) * alpha;
+}
+
+void AP_QuadRuped_Wave::main_inverse_kinematics()
+{
+    smooth_target();
+    AP_QuadRuped_Backend::main_inverse_kinematics();
 }
 
 // 主更新函数，按顺序执行控制流程

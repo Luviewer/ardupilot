@@ -148,26 +148,9 @@ Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
     return (totaldist_xyz_rot - endpoint_leg_frame[leg_index]);
 }
 
-void AP_QuadRuped_Backend::com_follow_target()
-{
-    const uint32_t now = AP_HAL::millis();
-    float          dt  = (_com_last_ms == 0) ? 0.02f : (now - _com_last_ms) * 0.001f; // 初次默认 20ms
-    _com_last_ms       = now;
-
-    // 防止异常 dt 带来的过冲或卡死
-    dt = constrain_value(dt, 0.0005f, 0.05f); // 0.5ms..50ms
-
-    // 一阶指数低通：alpha = 1 - exp(-2π f_c dt)
-    const float alpha = 1.0f - expf(-2.0f * M_PI * _com_fc * dt);
-
-    // 平滑跟随（不清零，不回中位）
-    centre_offset += (centre_offset_target - centre_offset) * alpha;
-}
-
 // 主逆运动学计算 - 计算所有腿的关节角度
 void AP_QuadRuped_Backend::main_inverse_kinematics(void)
 {
-    com_follow_target();
     Vector3f ansxyz = { 0, 0, 0 }; // 临时变量，存储腿部末端位置
 
     // 腿部角度偏移补偿 - 由于机械安装误差，每条腿需要不同的角度补偿

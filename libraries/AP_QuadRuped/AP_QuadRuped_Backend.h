@@ -32,7 +32,10 @@ class AP_QuadRuped;
 class AP_QuadRuped_Backend {
 public:
     // 构造函数
-    AP_QuadRuped_Backend(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
+    AP_QuadRuped_Backend(AP_QuadRuped&                  frontend,
+                         AP_QuadRuped::QuadRuped_State& state,
+                         AP_AHRS_View&                  ahrs,
+                         AP_Motors&                     motors);
 
     // 虚析构函数
     virtual ~AP_QuadRuped_Backend() { }
@@ -46,7 +49,6 @@ public:
     // 可选重写的虚函数
     virtual bool init();
     virtual void yaw_trajectory_generation(uint8_t leg_index) { }
-    virtual void set_centre_offset(float x, float y, float z) { }
     virtual void update_leg() { }
 
     // 通用工具函数
@@ -60,6 +62,8 @@ public:
     // 输出函数
     virtual void output_leg_angle();
     virtual bool send_servo_cmd();
+
+    void set_centre_offset(float x, float y, float z = 0) { centre_offset_target = Vector3f(x, y, z); }
 
     // 辅助函数
     void right_sleep_leg();
@@ -131,12 +135,8 @@ protected:
     uint32_t _com_last_ms { 0 };
     float    _com_fc = 2.0f; // 低通截止频率(Hz)：1~3Hz 可调
 
-    inline void set_centre_offset_target(float x, float y, float z)
-    {
-        centre_offset_target = Vector3f(x, y, z);
-    }
     // 每帧把 centre_offset 向 target 平滑贴近
-    void com_follow_target();
+    // void com_follow_target();
 
     //    AC_PID roll_pid {
     //     AC_PID::Defaults {

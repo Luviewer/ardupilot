@@ -224,7 +224,9 @@ const AP_QuadRuped_Params& AP_QuadRuped::get_leg_params(uint8_t leg_index) const
 void AP_QuadRuped::read_radio_input()
 {
     if (rc().in_rc_failsafe()) {
-        _throttle_xyz = Vector3f(0,0,0);
+        _throttle_xyz = Vector3f(0, 0, 0);
+        set_master_mode(Walking_Mode);
+        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
         return;
     }
 
@@ -266,9 +268,9 @@ void AP_QuadRuped::read_radio_input()
     } else if (walk_value > 1500 && walk_value < 1800) {
         set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);
     } else if (walk_value > 1200 && walk_value < 1500) {
-        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
-    }else if (walk_value > 900 && walk_value < 1200) {
         set_walk_mode(AP_QUADRUPED_GAIT_WAVE);
+    } else if (walk_value > 900 && walk_value < 1200) {
+        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
     }
 
     uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);
