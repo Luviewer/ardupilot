@@ -13,6 +13,9 @@
 #if AP_QuadRuped_HengXiang_ENABLE
 # include "AP_QuadRuped_HengXiang.h"
 #endif
+#if AP_QuadRuped_CONTINUOUSGAIT_ENABLE
+# include "AP_QuadRuped_ContinuousGait.h"
+#endif
 
 // 参数定义
 const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
@@ -47,7 +50,9 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 #if AP_QuadRuped_HengXiang_ENABLE
     AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_HengXiang], "HEN_", 44, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_HengXiang]),
 #endif
-
+#if AP_QuadRuped_CONTINUOUSGAIT_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_Continuous], "CON_", 45, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_Continuous]),
+#endif
     AP_GROUPEND
 };
 
@@ -128,12 +133,17 @@ void AP_QuadRuped::create_backends()
     _state[AP_QUADRUPED_GAIT_ZongXiang].instance  = AP_QUADRUPED_GAIT_ZongXiang;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_ZongXiang], backend_var_info[AP_QUADRUPED_GAIT_ZongXiang]);
 #endif
-
 #if AP_QuadRuped_HengXiang_ENABLE
     _gait_backends[AP_QUADRUPED_GAIT_HengXiang]   = NEW_NOTHROW AP_QuadRuped_HengXiang(*this, _state[AP_QUADRUPED_GAIT_HengXiang], *_ahrs, *_motors);
     backend_var_info[AP_QUADRUPED_GAIT_HengXiang] = _state[AP_QUADRUPED_GAIT_HengXiang].var_info;
     _state[AP_QUADRUPED_GAIT_HengXiang].instance  = AP_QUADRUPED_GAIT_HengXiang;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_HengXiang], backend_var_info[AP_QUADRUPED_GAIT_HengXiang]);
+#endif
+#if AP_QuadRuped_CONTINUOUSGAIT_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_Continuous]   = NEW_NOTHROW AP_QuadRuped_ContinuousGait(*this, _state[AP_QUADRUPED_GAIT_Continuous], *_ahrs, *_motors);
+    backend_var_info[AP_QUADRUPED_GAIT_Continuous] = _state[AP_QUADRUPED_GAIT_Continuous].var_info;
+    _state[AP_QUADRUPED_GAIT_Continuous].instance  = AP_QUADRUPED_GAIT_Continuous;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_Continuous], backend_var_info[AP_QUADRUPED_GAIT_Continuous]);
 #endif
 }
 
@@ -304,7 +314,7 @@ void AP_QuadRuped::read_radio_input()
     } else if (walk_value > 1500 && walk_value < 1800) {
         set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);
     } else if (walk_value > 1200 && walk_value < 1500) {
-        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);
+        set_walk_mode(AP_QUADRUPED_GAIT_Continuous);
     } else if (walk_value > 900 && walk_value < 1200) {
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
     }

@@ -96,7 +96,7 @@ protected:
     Vector3ui servo_output_cmd[AP_QUADRUPED_LEG_ALL]; // 存储每条腿三个关节的PWM值
 
     // 运动参数
-    uint16_t gait_step_now; // 当前步态计数 - 当前步态周期中的步数
+    int32_t gait_step_now; // 当前步态计数 - 当前步态周期中的步数
 
     // 腿部位置和角度
     Vector3f endpoint_leg_pos[AP_QUADRUPED_LEG_ALL];        // 腿部末端初始位置（相对于髋关节）

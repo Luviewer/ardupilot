@@ -14,3 +14,8 @@
 #ifndef AP_QuadRuped_HengXiang_ENABLE
 # define AP_QuadRuped_HengXiang_ENABLE 0
 #endif
+
+#define AP_QuadRuped_CONTINUOUSGAIT_ENABLE 1
+#ifndef AP_QuadRuped_CONTINUOUSGAIT_ENABLE
+# define AP_QuadRuped_CONTINUOUSGAIT_ENABLE 0
+#endif

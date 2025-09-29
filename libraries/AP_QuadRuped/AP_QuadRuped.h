@@ -3,6 +3,7 @@
 #include "AP_QuadRuped_Config.h"
 #include "AP_QuadRuped_Defines.h"
 #include "AP_QuadRuped_Params.h"
+#include <AC_TD/AC_TD.h>
 #include <AP_AHRS/AP_AHRS_View.h>
 #include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Math/AP_Math.h>
@@ -10,7 +11,6 @@
 #include <AP_Param/AP_Param.h>
 #include <AP_RangeFinder/AP_RangeFinder.h>
 #include <stdio.h>
-#include <AC_TD/AC_TD.h>
 
 extern const AP_HAL::HAL& hal;
 
@@ -27,6 +27,9 @@ class AP_QuadRuped_ZongXiang;
 #if AP_QuadRuped_HengXiang_ENABLE
 class AP_QuadRuped_HengXiang;
 #endif
+#if AP_QuadRuped_CONTINUOUSGAIT_ENABLE
+class AP_QuadRuped_ContinuousGait;
+#endif
 
 class AP_QuadRuped {
     friend class AP_QuadRuped_Backend;
@@ -34,6 +37,7 @@ class AP_QuadRuped {
     friend class AP_QuadRuped_ZongXiang;
     friend class AP_QuadRuped_HengXiang;
     friend class AP_QuadRuped_Wave;
+    friend class AP_QuadRuped_ContinuousGait;
 
 public:
     // 默认构造函数
@@ -124,7 +128,7 @@ private:
     // 控制输入
     Vector3f _throttle_xyz;        // Xyz轴油门输入
     Vector2f _throttle_roll_pitch; // 俯仰滚转油门输入
-    AC_TD _roll_pitch_td[2];
+    AC_TD    _roll_pitch_td[2];
     AP_Float _roll_pitch_td_r;
 
     // 抓取角度
