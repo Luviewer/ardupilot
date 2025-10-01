@@ -314,7 +314,7 @@ void AP_QuadRuped::read_radio_input()
     } else if (walk_value > 1500 && walk_value < 1800) {
         set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);
     } else if (walk_value > 1200 && walk_value < 1500) {
-        set_walk_mode(AP_QUADRUPED_GAIT_Continuous);
+        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);
     } else if (walk_value > 900 && walk_value < 1200) {
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
     }
