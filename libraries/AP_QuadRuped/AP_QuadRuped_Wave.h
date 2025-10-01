@@ -57,10 +57,9 @@ private:
     void generate_cycloid_trajectory(uint8_t leg_index);   // 正弦轨迹生成器：Wave步态经典实现
     void generate_bezier_trajectory(uint8_t leg_index);    // 贝塞尔曲线轨迹生成器：提供灵活的轨迹形状控制
     Vector3f cubic_bezier_trajectory(float t, const Vector3f& p0, const Vector3f& p1, const Vector3f& p2, const Vector3f& p3); // 三次贝塞尔曲线计算核心函数
-    void get_phase_ratios(uint8_t leg_index, float& prepare_ratio, float& lift_ratio, float& support_ratio) const;
 
-    float slow_phi(float s, float s0);
     void  balance_controller();
+    void  refresh_phase_offsets(); // 运行时刷新步态步数相关的相位偏移
 
     // 重心步态管理
     void calculate_support_polygon_centre_offset(uint8_t swing_leg); // 支撑多边形重心计算
@@ -79,4 +78,6 @@ private:
     float get_cached_sin(float angle, uint8_t leg_index);
     float get_cached_cos(float angle, uint8_t leg_index);
     void update_phase_cache(float angle, uint8_t leg_index);
+
+    int16_t gait_step_total_cached {-1};
 };

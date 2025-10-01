@@ -49,17 +49,7 @@ void AP_QuadRuped_Wave::gait_init()
 {
     gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Wave init - Single Leg Swing");
 
-    // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
-    // RF → LF → LB → RB 依次抬起，摆动相占25%，支撑相占75%，保证稳定性
-    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                           // 右前腿从第0步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 4;         // 左前腿从1/4周期后开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 2;         // 左后腿从1/2周期后开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total * 3 / 4;     // 右后腿从3/4周期后开始
-
-    // 设置步态参数 - 适配25%摆动相设计
-    gait_travel_divisor = gait_step_total / 2; // 行程除数
-    // 采用3让现有yaw与lift计算与1/3占比一致，避免后续比例再额外换算
-    gait_lift_divisor   = 3;                   // 抬腿除数：3约等于摆动相占1/3 (33%)
+    refresh_phase_offsets();
 }
 
 // 获取活跃腿索引
@@ -87,22 +77,16 @@ void AP_QuadRuped_Wave::update_leg()
     // 使用大整数范围避免频繁循环，减少相位跳跃
     // 只有当步数超过很大值时才重置，避免边界问题
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
-        gait_step_now = 0;
-        // 重置时同步调整所有腿的起始步数，保持相位关系
-        for (uint8_t i = 0; i < AP_QUADRUPED_LEG_ALL; i++) {
-            gait_step_leg_start[i] = 0;
-        }
-        // 重新设置波浪步态相位
-        gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 4;
-        gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 2;
-        gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total * 3 / 4;
+        gait_step_now          = 0;
+        gait_step_total_cached = -1;
+        refresh_phase_offsets();
     }
 
-    // 首先计算当前活跃腿（摆动腿）
-    uint8_t swing_leg = get_active_leg_index();
+    refresh_phase_offsets();
 
-    // 基于支撑多边形计算全局重心偏移
-    calculate_support_polygon_centre_offset(swing_leg);
+    // 波浪步态当前版本不处理重心偏移
+    centre_offset.zero();
+    centre_offset_target.zero();
 
     // 遍历所有腿，生成轨迹
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
@@ -148,80 +132,30 @@ void AP_QuadRuped_Wave::trajectory_generation(uint8_t leg_index)
     // 4. 扩展性：可以轻松添加新的else if分支来支持更多轨迹类型
 }
 
-void AP_QuadRuped_Wave::get_phase_ratios(uint8_t leg_index, float& prepare_ratio, float& lift_ratio, float& support_ratio) const
+void AP_QuadRuped_Wave::refresh_phase_offsets()
 {
-    // 以研发笔记中的1/6准备、1/3抬腿作为基准，确保时间分配满足设计目标
-    const float base_prepare = 1.0f / 6.0f;
-    const float base_lift    = 1.0f / 3.0f;
-
-    // 使用可调变量存储计算结果，便于后续根据相位偏移动态调整
-    float prepare = base_prepare;
-    float lift    = base_lift;
-
-    if (leg_index < AP_QUADRUPED_LEG_ALL && gait_step_total.get() > 0) {
-        // 通过腿的起始步数估算相位偏移，保持四条腿的波浪顺序
-        const float leg_phase_offset    = (float)gait_step_leg_start[leg_index] / (float)gait_step_total.get();
-        // 将腿相位映射为重心相位的一部分，实现“波浪式”重心传递
-        const float centre_phase_offset = leg_phase_offset * 0.25f;
-
-        // 小幅正弦调制准备阶段时长，以改善对角腿支撑能力
-        prepare += 0.025f * sinf(centre_phase_offset * M_2PI);
-        // 余弦调制抬腿阶段时长，从而在不同相位保持摆动时刻的柔性
-        lift    += 0.020f * cosf(centre_phase_offset * M_2PI);
+    const int16_t step_total = gait_step_total.get();
+    if (step_total <= 0) {
+        return;
     }
 
-    // 夹紧准备阶段时间，避免时间过短导致重心尚未移稳
-    prepare = constrain_float(prepare, 0.12f, 0.22f);
-    // 夹紧抬腿阶段时间，防止过长影响支撑时间
-    lift    = constrain_float(lift,    0.30f, 0.36f);
-
-    // 支撑阶段由剩余时间得到，保证三个阶段总和为1
-    float support = 1.0f - prepare - lift;
-
-    if (support < 0.38f) {
-        // 支撑时间过短会削弱稳定性，这里提至安全下限
-        support = 0.38f;
-        const float remain = 1.0f - support;
-        const float sum    = prepare + lift;
-        if (sum <= 0.0f) {
-            // 极端情况下平均分配剩余时间，防止除零
-            prepare = remain * 0.5f;
-            lift    = remain * 0.5f;
-        } else {
-            // 正常情况下按原始比例缩放，保持相对关系
-            const float scale = remain / sum;
-            prepare *= scale;
-            lift    *= scale;
-        }
-    } else if (support > 0.60f) {
-        // 支撑阶段也不宜过长，避免动作显得拖沓
-        support = 0.60f;
-        const float remain = 1.0f - support;
-        const float sum    = prepare + lift;
-        if (sum <= 0.0f) {
-            // 同上，防御性处理
-            prepare = remain * 0.5f;
-            lift    = remain * 0.5f;
-        } else {
-            // 按比例缩放，使准备/抬腿保持原有占比
-            const float scale = remain / sum;
-            prepare *= scale;
-            lift    *= scale;
-        }
+    if (step_total == gait_step_total_cached) {
+        return;
     }
 
-    // 归一化处理，保证三个阶段的权重之和为1
-    const float sum = prepare + lift + support;
-    if (sum > 0.0f) {
-        // 除法前先检查，防止数值异常
-        prepare /= sum;
-        lift    /= sum;
-        support /= sum;
-    }
+    gait_step_total_cached = step_total;
 
-    prepare_ratio = prepare;
-    lift_ratio    = lift;
-    support_ratio = support;
+    // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(0, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / 4, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / 2, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16((step_total * 3) / 4, 0, 255));
+
+    int16_t travel      = step_total / 2;
+    travel              = constrain_int16(travel, 1, 255);
+    gait_travel_divisor = static_cast<uint8_t>(travel);
+
+    gait_lift_divisor = 4; // 维持25%摆动相
 }
 
 // 偏航轨迹生成
@@ -230,46 +164,17 @@ void AP_QuadRuped_Wave::yaw_trajectory_generation(uint8_t leg_index)
     int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
     if (delta_step < 0) delta_step += gait_step_total;
 
-    // 将当前步数转为0-1相位，便于和阶段比例统一处理
     const float p    = (float)delta_step / (float)gait_step_total;
-    // yaw_travel 与 gait_lift_divisor 的比值用于保持既有幅度设置
     const float peak = yaw_travel / (float)gait_lift_divisor;
 
-    float prepare_ratio = 0.0f;
-    float lift_ratio    = 0.0f;
-    float support_ratio = 1.0f;
-    get_phase_ratios(leg_index, prepare_ratio, lift_ratio, support_ratio);
-
-    // 在准备阶段前半段禁止偏航，防止未移稳即扭转机体
-    const float prepare_mid = prepare_ratio * 0.5f;
-    // 抬腿末端用于判断支撑阶段起点
-    const float lift_end    = prepare_ratio + lift_ratio;
-
-    if (p < prepare_mid) {
-        // 前半准备阶段保持0偏航，保障重心移动不被扰动
+    if (p < (1.0f / 12.0f)) {
         gait_rot_z[leg_index] = 0.0f;
-        return;
-    }
-
-    if (p < prepare_ratio) {
-        // 准备阶段末端采用余弦缓入，避免扭矩突变
-        const float denom = fmaxf(prepare_ratio - prepare_mid, 1e-3f);
-        const float stage = (p - prepare_mid) / denom;
-        gait_rot_z[leg_index] = peak * 0.5f * (1.0f - cosf(constrain_float(stage, 0.0f, 1.0f) * M_PI));
-        return;
-    }
-
-    if (p < lift_end) {
-        // 抬腿阶段保持峰值偏航，便于空中对齐方向
+    } else if (p < (1.0f / 6.0f)) {
         gait_rot_z[leg_index] = peak;
-        return;
+    } else {
+        const float t         = (p - (1.0f / 6.0f)) / (5.0f / 6.0f);
+        gait_rot_z[leg_index] = peak * (1.0f - t);
     }
-
-    const float support_denom = fmaxf(support_ratio, 1e-3f);
-    float support_phase       = (p - lift_end) / support_denom;
-    support_phase             = constrain_float(support_phase, 0.0f, 1.0f);
-    // 支撑阶段线性回零，使机体逐渐回正
-    gait_rot_z[leg_index]     = peak * (1.0f - support_phase);
 }
 
 // 摆线轨迹生成器（波浪步态版本）
@@ -297,49 +202,24 @@ void AP_QuadRuped_Wave::generate_cycloid_trajectory(uint8_t leg_index)
     const Vector2f throttle_travel(throttle_x_travel, throttle_y_travel);
 
     // 临时变量：存储计算得到的腿部目标位置（XY平面和Z轴高度）
-    Vector2f leg_xy_target;  // XY平面的目标位置
+    Vector2f leg_xy_target;       // XY平面的目标位置
     float    leg_z_target = 0.0f; // Z轴高度，默认为0（地面）
 
     // 重心偏移已在update_leg()中统一计算，此处无需重复调用
 
-    float prepare_ratio = 0.0f;
-    float lift_ratio    = 0.0f;
-    float support_ratio = 1.0f;
-    // 通过统一函数获取阶段比例，保证重心、姿态、腿部动作一致
-    get_phase_ratios(leg_index, prepare_ratio, lift_ratio, support_ratio);
+    const float swing_ratio = 0.25f; // 单腿摆动占 1/4 周期
 
-    const float prepare_end = prepare_ratio;
-    const float lift_end    = prepare_ratio + lift_ratio;
-
-    const Vector2f stance_start(-throttle_travel.x, -throttle_travel.y);
-    const Vector2f stance_end(throttle_travel.x, throttle_travel.y);
-
-    if (p < prepare_end) {
-        // 重心调整阶段：保持腿部着地，允许轻微的顺应调整
-        const float settle_phase = (prepare_end > 1e-3f) ? (p / prepare_end) : 0.0f;
-        // 余弦插值保证起步加速度平顺，0.1系数限制脚尖滑动幅度
-        const float micro_blend  = 0.1f * (1.0f - cosf(constrain_float(settle_phase, 0.0f, 1.0f) * M_PI)) * 0.5f;
-        leg_xy_target            = stance_start + (stance_end - stance_start) * micro_blend;
-        leg_z_target             = 0.0f;
-
-    } else if (p < lift_end) {
-        // 抬腿阶段：按照摆线轨迹抬腿
-        // 相位归一化后可复用摆线公式，避免硬编码时间比例
-        const float phase      = (p - prepare_end) / fmaxf(lift_ratio, 1e-3f);
-        const float phase_slow = slow_phi(constrain_float(phase, 0.0f, 1.0f), 0.80f);
-        const float delta      = M_2PI * phase_slow;
-        // 按照摆线推导计算XY位移，使起落速度为零
-        const float S          = (delta - sinf(delta)) / M_2PI * 2.0f;
+    if (p < swing_ratio) {
+        const float phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
+        const float delta = M_2PI * phase;
+        const float S     = (delta - sinf(delta)) / M_2PI * 2.0f;
 
         leg_xy_target = throttle_travel * S - throttle_travel;
-        // 采用余弦抬升，确保最高点速度为零、落地柔和
         leg_z_target  = -leg_lift_height * (1.0f - cosf(delta));
 
     } else {
-        // 支撑阶段：保持地面接触并提供推进
-        const float phase = (p - lift_end) / fmaxf(support_ratio, 1e-3f);
-        const float delta = M_2PI * constrain_float(phase, 0.0f, 1.0f);
-        // 继续使用摆线使支撑期运动与摆动期镜像，保证连续性
+        const float phase = constrain_float((p - swing_ratio) / (1.0f - swing_ratio), 0.0f, 1.0f);
+        const float delta = M_2PI * phase;
         const float S     = (delta - sinf(delta)) / M_2PI * 2.0f;
 
         leg_xy_target = -throttle_travel * S + throttle_travel;
@@ -381,27 +261,12 @@ void AP_QuadRuped_Wave::generate_bezier_trajectory(uint8_t leg_index)
 
     // 重心偏移已在update_leg()中统一计算，此处无需重复调用
 
-    float prepare_ratio = 0.0f;
-    float lift_ratio    = 0.0f;
-    float support_ratio = 1.0f;
-    // 调用共享函数，确保与偏航、重心的阶段划分一致
-    get_phase_ratios(leg_index, prepare_ratio, lift_ratio, support_ratio);
-
-    const float prepare_end = prepare_ratio;
-    const float lift_end    = prepare_ratio + lift_ratio;
-
+    const float    swing_ratio = 0.25f;
     const Vector3f stance_start(-throttle_travel.x, -throttle_travel.y, 0.0f);
     const Vector3f stance_end(throttle_travel.x, throttle_travel.y, 0.0f);
 
-    // 步态相位判断：先调整重心，再抬腿，最后支撑推行
-    if (p < prepare_end) {
-        const float settle_phase = (prepare_end > 1e-3f) ? (p / prepare_end) : 0.0f;
-        // 以小幅余弦混合限制脚部滑动，避免准备阶段出现大位移
-        const float micro_blend  = 0.1f * (1.0f - cosf(constrain_float(settle_phase, 0.0f, 1.0f) * M_PI)) * 0.5f;
-        leg_target               = stance_start + (stance_end - stance_start) * micro_blend;
-
-    } else if (p < lift_end) { // 摆动相：腿部离地，在空中移动
-        const float phase = (p - prepare_end) / fmaxf(lift_ratio, 1e-3f); // 将抬腿阶段映射到[0,1]
+    if (p < swing_ratio) {                                                // 摆动相：腿部离地，在空中移动
+        const float phase = constrain_float(p / swing_ratio, 0.0f, 1.0f); // 将摆动阶段映射到[0,1]
 
         // ==================== 贝塞尔曲线控制点定义 ====================
         // 四个控制点设计原则：
@@ -439,18 +304,11 @@ void AP_QuadRuped_Wave::generate_bezier_trajectory(uint8_t leg_index)
         // 正值表示相对于机器人中心向前的位置
         Vector3f p3 = Vector3f(throttle_travel.x, throttle_travel.y, 0.0f);
 
-        // 运动平滑处理：使用slow_phi函数实现末端减速
-        // 0.85f参数表示在85%的摆动相行程开始减速，确保轻柔落地
-        // 这种设计可以减少冲击力，保护机械结构，提高运动平稳性
-        const float phase_smooth = slow_phi(constrain_float(phase, 0.0f, 1.0f), 0.85f);
-
-        // 轨迹生成：调用贝塞尔曲线函数计算实际位置
-        // phase_smooth是经过时间缩放的参数，确保运动学特性符合要求
-        leg_target = cubic_bezier_trajectory(phase_smooth, p0, p1, p2, p3);
+        // 直接使用归一化参数生成贝塞尔轨迹
+        leg_target = cubic_bezier_trajectory(phase, p0, p1, p2, p3);
 
     } else { // 支撑相：腿部着地，推动机器人前进
-        const float phase = (p - lift_end) / fmaxf(support_ratio, 1e-3f); // 将支撑阶段映射到[0,1]
-        const float phase_clamped = constrain_float(phase, 0.0f, 1.0f);
+        const float phase_clamped = constrain_float((p - swing_ratio) / (1.0f - swing_ratio), 0.0f, 1.0f);
 
         // 支撑相采用线性轨迹设计
         // 线性轨迹的优势：计算简单，确保地面接触的稳定性
@@ -490,93 +348,12 @@ Vector3f AP_QuadRuped_Wave::cubic_bezier_trajectory(float t, const Vector3f& p0,
     return p0 * mt3 + p1 * _3mt2t + p2 * _3mtt2 + p3 * t3;
 }
 
-// 支撑多边形重心计算（改进版：先调重心，后摆腿）
-// 提前计算重心偏移，确保在摆动开始前重心已经调整到位
+// 支撑多边形重心计算（波浪步态暂未使用重心偏移）
 void AP_QuadRuped_Wave::calculate_support_polygon_centre_offset(uint8_t swing_leg)
 {
-    // 获取用户设定的重心偏移比例（0.0-1.0）
-    float offset_ratio = centre_offset_ratio.get();
-
-    // 定义四条腿在机器人坐标系中的理想位置
-    Vector3f leg_positions[AP_QUADRUPED_LEG_ALL] = {
-        Vector3f(-30.0f, -20.0f, 0.0f), // RF: 右前腿 (后右)
-        Vector3f(-30.0f,  20.0f, 0.0f), // LF: 左前腿 (后左)
-        Vector3f( 30.0f,  20.0f, 0.0f), // LB: 左后腿 (前左)
-        Vector3f( 30.0f, -20.0f, 0.0f)  // RB: 右后腿 (前右)
-    };
-
-    // 计算支撑三角形的几何重心（即将支撑的三条腿）
-    Vector3f support_centre(0.0f, 0.0f, 0.0f);
-    uint8_t support_leg_count = 0;
-
-    // 遍历所有腿，累加支撑腿的位置
-    for (uint8_t i = 0; i < AP_QUADRUPED_LEG_ALL; i++) {
-        if (i != swing_leg) { // 如果不是摆动腿，则为支撑腿
-            support_centre += leg_positions[i];
-            support_leg_count++;
-        }
-    }
-
-    // 计算支撑三角形的几何中心
-    if (support_leg_count > 0) {
-        support_centre /= support_leg_count;
-    }
-
-    // 计算从机器人中心到支撑中心的偏移向量
-    Vector3f desired_offset = support_centre - Vector3f(0.0f, 0.0f, 0.0f);
-
-    // 计算当前摆动腿的相位，用于权重计算
-    int32_t delta_step = gait_step_now - gait_step_leg_start[swing_leg];
-    while (delta_step < 0) delta_step += gait_step_total;
-    delta_step = delta_step % gait_step_total.get();
-    float phase = (float)delta_step / (float)gait_step_total;
-
-    float prepare_ratio = 0.0f;
-    float lift_ratio    = 0.0f;
-    float support_ratio = 1.0f;
-    // 重用阶段比例，保证重心控制与腿动作同步
-    get_phase_ratios(swing_leg, prepare_ratio, lift_ratio, support_ratio);
-
-    const float prepare_end = prepare_ratio;
-    const float lift_end    = prepare_ratio + lift_ratio;
-
-    // 改进的重心偏移时序：提前开始重心调整
-    float offset_weight = 0.0f;
-
-    if (phase < prepare_end) {
-        // 准备阶段用余弦缓启动，实现先移稳再抬腿
-        const float prep_phase = (prepare_end > 1e-3f) ? (phase / prepare_end) : 0.0f;
-        offset_weight = 0.5f * (1.0f - cosf(constrain_float(prep_phase, 0.0f, 1.0f) * M_PI));
-
-    } else if (phase < lift_end) {
-        // 抬腿阶段保持满偏移，最大化支撑多边形稳定性
-        offset_weight = 1.0f;
-
-    } else {
-        // 支撑阶段按比例回收重心，0.6之前保持支撑稳定
-        float support_phase = (phase - lift_end) / fmaxf(support_ratio, 1e-3f);
-        support_phase       = constrain_float(support_phase, 0.0f, 1.0f);
-
-        if (support_phase < 0.6f) {
-            offset_weight = 1.0f;
-        } else {
-            // 最后40%使用余弦回中，避免出现突然回摆
-            const float return_phase = (support_phase - 0.6f) / 0.4f;
-            offset_weight = 0.5f * (1.0f + cosf(constrain_float(return_phase, 0.0f, 1.0f) * M_PI));
-        }
-    }
-
-    // 应用重心偏移：朝支撑三角形中心偏移
-    centre_offset = desired_offset * offset_weight * offset_ratio;
-
-    // 限制最大偏移量，防止过度移动影响稳定性
-    const float MAX_OFFSET_X = 30.0f;
-    const float MAX_OFFSET_Y = 20.0f;
-    const float MAX_OFFSET_Z = 5.0f;
-
-    centre_offset.x = constrain_float(centre_offset.x, -MAX_OFFSET_X, MAX_OFFSET_X);
-    centre_offset.y = constrain_float(centre_offset.y, -MAX_OFFSET_Y, MAX_OFFSET_Y);
-    centre_offset.z = constrain_float(centre_offset.z, -MAX_OFFSET_Z, MAX_OFFSET_Z);
+    (void)swing_leg;
+    centre_offset.zero();
+    centre_offset_target.zero();
 }
 
 // 主逆运动学
@@ -593,18 +370,6 @@ void AP_QuadRuped_Wave::update()
     main_inverse_kinematics();
     output_leg_angle();
     send_servo_cmd();
-}
-
-// 末端缓动函数
-float AP_QuadRuped_Wave::slow_phi(float s, float s0)
-{
-    if (s <= s0) return s;
-    float sigma = (s - s0) / (1.0f - s0);
-    float w     = sigma
-        + 4.0f * powf(sigma, 3.0f)
-        - 7.0f * powf(sigma, 4.0f)
-        + 3.0f * powf(sigma, 5.0f);
-    return s0 + (1.0f - s0) * w;
 }
 
 // 平衡控制器
