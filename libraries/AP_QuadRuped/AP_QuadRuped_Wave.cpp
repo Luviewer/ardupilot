@@ -85,7 +85,7 @@ void AP_QuadRuped_Wave::update_leg()
     refresh_phase_offsets();
 
     // 波浪步态当前版本不处理重心偏移
-    centre_offset.zero();
+    center_offset.zero();
     centre_offset_target.zero();
 
     // 遍历所有腿，生成轨迹
@@ -352,7 +352,7 @@ Vector3f AP_QuadRuped_Wave::cubic_bezier_trajectory(float t, const Vector3f& p0,
 void AP_QuadRuped_Wave::calculate_support_polygon_centre_offset(uint8_t swing_leg)
 {
     (void)swing_leg;
-    centre_offset.zero();
+    center_offset.zero();
     centre_offset_target.zero();
 }
 
@@ -378,9 +378,9 @@ void AP_QuadRuped_Wave::balance_controller()
     const Vector3f& gyro  = _ahrs.get_gyro();
     const Vector3f& accel = _ahrs.get_accel_ef();
 
-    centre_offset.x = constrain_float(gyro.y * 0.1f, -10.0f, 10.0f);
-    centre_offset.y = constrain_float(gyro.x * 0.1f, -10.0f, 10.0f);
-    centre_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
+    center_offset.x = constrain_float(gyro.y * 0.1f, -10.0f, 10.0f);
+    center_offset.y = constrain_float(gyro.x * 0.1f, -10.0f, 10.0f);
+    center_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
 }
 
 // 相位缓存更新

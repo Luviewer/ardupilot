@@ -82,7 +82,7 @@ protected:
     float max_yaw_rate; // 最大允许角速度（rad/s）
     bool  first_run = true;
 
-    Vector3f centre_offset; // 主动控制的重心偏移量
+    Vector3f center_offset; // 主动控制的重心偏移量
 
     Vector2f offset_xy; // 重心平移控制
 
@@ -164,7 +164,7 @@ protected:
     float max_yaw_rate; // 最大允许角速度（rad/s）
     bool  first_run = true;
 
-    Vector3f centre_offset; // 主动控制的重心偏移量
+    Vector3f center_offset; // 主动控制的重心偏移量
 
     Vector2f offset_xy; // 重心平移控制
 

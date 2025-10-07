@@ -123,8 +123,8 @@ Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
     // 添加重心偏移补偿
-    // 减去 centre_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
-    totaldist_xyz -= centre_offset;
+    // 减去 center_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
+    totaldist_xyz -= center_offset;
 
     // 添加Z轴高度偏移（机体升降）
     totaldist_xyz.z += z_travel;

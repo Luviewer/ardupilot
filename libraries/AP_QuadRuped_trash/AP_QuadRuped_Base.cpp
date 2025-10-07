@@ -330,8 +330,8 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
     // 添加重心偏移补偿
-    // 减去 centre_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
-    totaldist_xyz -= centre_offset;
+    // 减去 center_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
+    totaldist_xyz -= center_offset;
     totaldist_xyz -= centre_offset_move;
 
     // 添加Z轴高度偏移（机体升降）
@@ -359,7 +359,7 @@ Vector3f AP_QuadRuped_Base::body_forward_kinematics(uint8_t leg_index)
 // 设置重心偏移 - 调整机器人的重心位置
 void AP_QuadRuped_Base::set_centre_offset(float x, float y, float z = 0)
 {
-    centre_offset = Vector3f(x, y, z); // 设置X、Y、Z三个方向的偏移量
+    center_offset = Vector3f(x, y, z); // 设置X、Y、Z三个方向的偏移量
 }
 
 // 主控制器 - 处理遥控器输入并转换为运动指令
@@ -492,9 +492,9 @@ void AP_QuadRuped_Base::balance_controller()
             val = 1500;
         }
         // 转换为X轴偏移（±100mm范围）
-        centre_offset.x = (val - 1500) / 500.0f * 100.0f;
+        center_offset.x = (val - 1500) / 500.0f * 100.0f;
     } else {
-        centre_offset.x = 0;
+        center_offset.x = 0;
     }
 
     // 处理重心Y轴偏移通道
@@ -505,9 +505,9 @@ void AP_QuadRuped_Base::balance_controller()
             val = 1500;
         }
         // 转换为Y轴偏移（±100mm范围）
-        centre_offset.y = (val - 1500) / 500.0f * 100.0f;
+        center_offset.y = (val - 1500) / 500.0f * 100.0f;
     } else {
-        centre_offset.y = 0;
+        center_offset.y = 0;
     }
 }
 

@@ -144,7 +144,7 @@ void AP_QuadRuped::calc_gait_sequence(void)
 // 设置目标重心偏移
 void AP_QuadRuped::set_centre_offset(float x, float y, float z = 0)
 {
-    centre_offset = Vector3f(x, y, z);
+    center_offset = Vector3f(x, y, z);
 }
 
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
@@ -316,7 +316,7 @@ Vector3f AP_QuadRuped::body_forward_kinematics(uint8_t leg_index)
     Vector3f totaldist_xyz = gait_pos_xyz[leg_index] + endpoint_leg_pos[leg_index] + endpoint_leg_frame[leg_index];
 
     // 添加重心偏移补偿
-    totaldist_xyz -= centre_offset; // 减去 centre_offset 本质上是：腿末端的位置没变，但机体的参考点变了，所有腿的相对位置都需要根据新的参考中心重新表示。
+    totaldist_xyz -= center_offset; // 减去 center_offset 本质上是：腿末端的位置没变，但机体的参考点变了，所有腿的相对位置都需要根据新的参考中心重新表示。
 
     totaldist_xyz.z += z_travel;
 

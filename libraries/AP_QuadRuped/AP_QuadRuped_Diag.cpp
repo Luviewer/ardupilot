@@ -318,11 +318,11 @@ void AP_QuadRuped_Diag::balance_controller()
 
     // 计算需要的重心补偿（示例实现）
     // 这里可以根据实际的平衡控制算法进行调整
-    centre_offset.x = constrain_float(gyro.y * 0.1f, -10.0f, 10.0f); // 基于横滚角速度补偿
-    centre_offset.y = constrain_float(gyro.x * 0.1f, -10.0f, 10.0f); // 基于俯仰角速度补偿
+    center_offset.x = constrain_float(gyro.y * 0.1f, -10.0f, 10.0f); // 基于横滚角速度补偿
+    center_offset.y = constrain_float(gyro.x * 0.1f, -10.0f, 10.0f); // 基于俯仰角速度补偿
 
     // 重心高度补偿（基于Z轴加速度）
-    centre_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
+    center_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
 }
 
 // gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤

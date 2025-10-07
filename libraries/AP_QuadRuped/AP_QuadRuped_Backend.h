@@ -63,7 +63,8 @@ public:
     virtual void output_leg_angle();
     virtual bool send_servo_cmd();
 
-    void set_centre_offset(float x, float y, float z = 0) { centre_offset_target = Vector3f(x, y, z); }
+    void set_center_offset(Vector2f xy, float z = 0) { center_offset = Vector3f(xy, z); }
+    void set_center_offset(float x, float y, float z = 0) { center_offset = Vector3f(x, y, z); }
 
     // 辅助函数
     void right_sleep_leg();
@@ -128,14 +129,12 @@ protected:
     float leg_lift_height;   // 抬腿高度（mm）- 腿抬起的高度
 
     // 重心控制
-    Vector3f centre_offset;      // 主动控制的重心偏移量（X、Y、Z）
-    Vector3f centre_offset_move; // 主动控制的重心偏移量（X、Y、Z）
-    Vector3f centre_offset_target { 0, 0, 0 };
-    Vector2f offset_xy; // 重心平移控制（X、Y平面）
+    Vector3f center_offset; // 主动控制的重心偏移量（X、Y、Z）
+    Vector2f offset_xy;     // 重心平移控制（X、Y平面）
     uint32_t _com_last_ms { 0 };
     float    _com_fc = 2.0f; // 低通截止频率(Hz)：1~3Hz 可调
 
-    // 每帧把 centre_offset 向 target 平滑贴近
+    // 每帧把 center_offset 向 target 平滑贴近
     // void com_follow_target();
 
     //    AC_PID roll_pid {
