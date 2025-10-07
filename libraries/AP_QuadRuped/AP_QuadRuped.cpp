@@ -7,6 +7,9 @@
 #if AP_QUADRUPED_WAVE_ENABLE
 # include "AP_QuadRuped_Wave.h"
 #endif
+#if AP_QUADRUPED_WAVE_COG_ENABLE
+# include "AP_QuadRuped_Wave_COG.h"
+#endif
 #if AP_QUADRUPED_ZongXiang_ENABLE
 # include "AP_QuadRuped_ZongXiang.h"
 #endif
@@ -44,14 +47,17 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
 #if AP_QUADRUPED_WAVE_ENABLE
     AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_WAVE], "WAVE_", 42, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_WAVE]),
 #endif
+#if AP_QUADRUPED_WAVE_COG_ENABLE
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_WAVE_COG], "WCOG_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_WAVE_COG]),
+#endif
 #if AP_QUADRUPED_ZongXiang_ENABLE
-    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_ZongXiang], "SHU_", 43, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_ZongXiang]),
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_ZongXiang], "SHU_", 44, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_ZongXiang]),
 #endif
 #if AP_QuadRuped_HengXiang_ENABLE
-    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_HengXiang], "HEN_", 44, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_HengXiang]),
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_HengXiang], "HEN_", 45, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_HengXiang]),
 #endif
 #if AP_QuadRuped_CONTINUOUSGAIT_ENABLE
-    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_Continuous], "CON_", 45, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_Continuous]),
+    AP_SUBGROUPVARPTR(_gait_backends[AP_QUADRUPED_GAIT_Continuous], "CON_", 46, AP_QuadRuped, backend_var_info[AP_QUADRUPED_GAIT_Continuous]),
 #endif
     AP_GROUPEND
 };
@@ -125,6 +131,12 @@ void AP_QuadRuped::create_backends()
     backend_var_info[AP_QUADRUPED_GAIT_WAVE] = _state[AP_QUADRUPED_GAIT_WAVE].var_info;
     _state[AP_QUADRUPED_GAIT_WAVE].instance  = AP_QUADRUPED_GAIT_WAVE;
     AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE], backend_var_info[AP_QUADRUPED_GAIT_WAVE]);
+#endif
+#if AP_QUADRUPED_WAVE_COG_ENABLE
+    _gait_backends[AP_QUADRUPED_GAIT_WAVE_COG]   = NEW_NOTHROW AP_QuadRuped_Wave_COG(*this, _state[AP_QUADRUPED_GAIT_WAVE_COG], *_ahrs, *_motors);
+    backend_var_info[AP_QUADRUPED_GAIT_WAVE_COG] = _state[AP_QUADRUPED_GAIT_WAVE_COG].var_info;
+    _state[AP_QUADRUPED_GAIT_WAVE_COG].instance  = AP_QUADRUPED_GAIT_WAVE_COG;
+    AP_Param::load_object_from_eeprom(_gait_backends[AP_QUADRUPED_GAIT_WAVE_COG], backend_var_info[AP_QUADRUPED_GAIT_WAVE_COG]);
 #endif
     // 创建工字步态后端
 #if AP_QUADRUPED_ZongXiang_ENABLE
@@ -313,9 +325,15 @@ void AP_QuadRuped::read_radio_input()
         set_walk_mode(AP_QUADRUPED_GAIT_HengXiang);
     } else if (walk_value > 1500 && walk_value < 1800) {
         set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);
-    } else if (walk_value > 1200 && walk_value < 1500) {
+    } else if (walk_value > 1350 && walk_value <= 1500) {
+#if AP_QUADRUPED_WAVE_COG_ENABLE
+        set_walk_mode(AP_QUADRUPED_GAIT_WAVE_COG);
+#else
         set_walk_mode(AP_QUADRUPED_GAIT_WAVE);
-    } else if (walk_value > 900 && walk_value < 1200) {
+#endif
+    } else if (walk_value > 1200 && walk_value <= 1350) {
+        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);
+    } else if (walk_value > 900 && walk_value <= 1200) {
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);
     }
 

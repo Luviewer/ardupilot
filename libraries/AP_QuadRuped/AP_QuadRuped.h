@@ -21,6 +21,9 @@ class AP_QuadRuped_Diag;
 #if AP_QUADRUPED_WAVE_ENABLE
 class AP_QuadRuped_Wave;
 #endif
+#if AP_QUADRUPED_WAVE_COG_ENABLE
+class AP_QuadRuped_Wave_COG;
+#endif
 #if AP_QUADRUPED_ZongXiang_ENABLE
 class AP_QuadRuped_ZongXiang;
 #endif
@@ -37,6 +40,9 @@ class AP_QuadRuped {
     friend class AP_QuadRuped_ZongXiang;
     friend class AP_QuadRuped_HengXiang;
     friend class AP_QuadRuped_Wave;
+#if AP_QUADRUPED_WAVE_COG_ENABLE
+    friend class AP_QuadRuped_Wave_COG;
+#endif
     friend class AP_QuadRuped_ContinuousGait;
 
 public:

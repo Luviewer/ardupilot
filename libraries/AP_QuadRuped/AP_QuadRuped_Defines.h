@@ -16,6 +16,7 @@ enum AP_QuadRuped_GaitType {
     AP_QUADRUPED_GAIT_ZongXiang  = 2, // 工字步态
     AP_QUADRUPED_GAIT_HengXiang  = 3, // 工字步态
     AP_QUADRUPED_GAIT_Continuous = 4, // 工字步态
+    AP_QUADRUPED_GAIT_WAVE_COG   = 5, // 波浪步态（含重心平移）
     AP_QUADRUPED_GAIT_COUNT,          // 步态总数
 };
 

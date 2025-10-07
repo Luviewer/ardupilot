@@ -40,7 +40,7 @@ public:
     // 参数表定义
     static const struct AP_Param::GroupInfo var_info[];
 
-private:
+protected:
     // 波浪步态特定参数
     AP_Int16 gait_step_total;      // 步态周期总步数：控制一个完整步态的离散化精度
     AP_Int16 gait_hz;              // 步态频率（Hz）：控制步态更新的时间分辨率
@@ -53,6 +53,8 @@ private:
 
     uint32_t lasttime;
 
+private:
+
     // 轨迹生成函数
     void generate_cycloid_trajectory(uint8_t leg_index);   // 正弦轨迹生成器：Wave步态经典实现
     void generate_bezier_trajectory(uint8_t leg_index);    // 贝塞尔曲线轨迹生成器：提供灵活的轨迹形状控制
@@ -61,8 +63,9 @@ private:
     void  balance_controller();
     void  refresh_phase_offsets(); // 运行时刷新步态步数相关的相位偏移
 
+protected:
     // 重心步态管理
-    void calculate_support_polygon_centre_offset(uint8_t swing_leg); // 支撑多边形重心计算
+    virtual void calculate_support_polygon_centre_offset(uint8_t swing_leg); // 支撑多边形重心计算
     uint8_t get_active_leg_index(); // 获取当前活跃腿的索引
 
     // 性能优化：相位缓存和三角函数优化
