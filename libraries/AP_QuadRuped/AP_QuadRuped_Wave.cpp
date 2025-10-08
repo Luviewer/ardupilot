@@ -86,7 +86,6 @@ void AP_QuadRuped_Wave::update_leg()
 
     // 波浪步态当前版本不处理重心偏移
     center_offset.zero();
-    centre_offset_target.zero();
 
     // 遍历所有腿，生成轨迹
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
@@ -346,14 +345,6 @@ Vector3f AP_QuadRuped_Wave::cubic_bezier_trajectory(float t, const Vector3f& p0,
     const float _3mtt2 = 3.0f * mt * t2;
 
     return p0 * mt3 + p1 * _3mt2t + p2 * _3mtt2 + p3 * t3;
-}
-
-// 支撑多边形重心计算（波浪步态暂未使用重心偏移）
-void AP_QuadRuped_Wave::calculate_support_polygon_centre_offset(uint8_t swing_leg)
-{
-    (void)swing_leg;
-    center_offset.zero();
-    centre_offset_target.zero();
 }
 
 // 主逆运动学

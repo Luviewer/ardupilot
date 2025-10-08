@@ -18,7 +18,7 @@ const AP_Param::GroupInfo AP_QuadRuped_Wave_COG::var_info[] = {
     AP_GROUPINFO("TRAJ_MODE", 3, AP_QuadRuped_Wave_COG, trajectory_mode, 0),
 
     // ==================== 重心偏移参数 ====================
-    AP_GROUPINFO("COG_OFFSET", 4, AP_QuadRuped_Wave_COG, centre_offset_ratio, 0.4f),
+    AP_GROUPINFO("COG_OF", 4, AP_QuadRuped_Wave_COG, centre_offset_ratio, 0.4f),
 
     // ==================== 贝塞尔曲线控制参数 ====================
     AP_GROUPINFO("BCTRL_H", 5, AP_QuadRuped_Wave_COG, bezier_control_height, 0.3f),
@@ -69,12 +69,17 @@ void AP_QuadRuped_Wave_COG::refresh_phase_offsets()
     gait_lift_divisor = 8;
 
     // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
-    for (uint8_t i = 0; i < AP_QUADRUPED_LEG_ALL; i++) {
-        gait_step_cog_start[i] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * i, gait_lift_divisor, 255));
-        gait_step_leg_start[i] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (i + 1), gait_lift_divisor, 255));
-    }
+    gait_step_cog_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 0 * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (0 * 2 + 1), gait_lift_divisor, 255));
 
-    int16_t travel = constrain_int16(step_total / 2, 1, 255);
+    gait_step_cog_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2 * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (2 * 2 + 1), gait_lift_divisor, 255));
+
+    gait_step_cog_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1 * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (1 * 2 + 1), gait_lift_divisor, 255));
+
+    gait_step_cog_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 3 * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (3 * 2 + 1), gait_lift_divisor, 255));
 }
 
 // 更新腿部运动
@@ -106,7 +111,7 @@ void AP_QuadRuped_Wave_COG::update_leg()
         // 为每条腿生成位置轨迹和旋转轨迹
         trajectory_generation(leg_index);
         cog_generation(leg_index);
-        yaw_trajectory_generation(leg_index);
+        // yaw_trajectory_generation(leg_index);
     }
 }
 
@@ -130,25 +135,19 @@ void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
     // 单腿重心偏移占 1/8 周期
     const float swing_ratio = 1.0f / (float)gait_lift_divisor;
 
-    float cog_xy_target;
-    float cog_travel;
-    if (leg_index == AP_QUADRUPED_LEG_RF || leg_index == AP_QUADRUPED_LEG_RB) {
-        cog_travel = -10.0f;
-    } else {
-        cog_travel = 10.0f;
-    }
+    const float cog_length = centre_offset_ratio.get();
 
-    if (p < swing_ratio / 2.0f) {
-        const float phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
-        const float delta = M_2PI * phase;
-        const float S     = (delta - sinf(delta)) / M_2PI * 2.0f;
+    float cog_xy_target, cog_travel, phase;
+    if (p < swing_ratio) {
+        if (leg_index == AP_QUADRUPED_LEG_RF || leg_index == AP_QUADRUPED_LEG_RB) {
+            cog_travel = -cog_length;
+        } else {
+            cog_travel = cog_length;
+        }
 
-        cog_xy_target = cog_travel * S - cog_travel;
-
-        set_center_offset(cog_xy_target, 0);
-    } else if (p < swing_ratio) {
-        
-        set_center_offset(cog_xy_target, 0);
+        phase         = constrain_float(p / swing_ratio, 0.0f, 1.0f);
+        cog_xy_target = -cog_travel + phase * 2.0f * cog_travel;
+        set_center_offset(0, cog_xy_target);
     }
 }
 
@@ -230,8 +229,6 @@ void AP_QuadRuped_Wave_COG::generate_cycloid_trajectory(uint8_t leg_index)
     // 临时变量：存储计算得到的腿部目标位置（XY平面和Z轴高度）
     Vector2f leg_xy_target;       // XY平面的目标位置
     float    leg_z_target = 0.0f; // Z轴高度，默认为0（地面）
-
-    // 重心偏移已在update_leg()中统一计算，此处无需重复调用
 
     const float swing_ratio = 1.0f / (float)gait_lift_divisor; // 单腿摆动占 1/8 周期
 
@@ -375,12 +372,12 @@ Vector3f AP_QuadRuped_Wave_COG::cubic_bezier_trajectory(float t, const Vector3f&
 }
 
 // 支撑多边形重心计算（波浪步态暂未使用重心偏移）
-void AP_QuadRuped_Wave_COG::calculate_support_polygon_centre_offset(uint8_t swing_leg)
-{
-    (void)swing_leg;
-    center_offset.zero();
-    centre_offset_target.zero();
-}
+// void AP_QuadRuped_Wave_COG::calculate_support_polygon_centre_offset(uint8_t swing_leg)
+// {
+//     (void)swing_leg;
+//     center_offset.zero();
+//     centre_offset_target.zero();
+// }
 
 // 主逆运动学
 void AP_QuadRuped_Wave_COG::main_inverse_kinematics()

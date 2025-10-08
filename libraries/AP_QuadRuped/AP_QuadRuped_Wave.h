@@ -61,9 +61,7 @@ private:
     void refresh_phase_offsets(); // 运行时刷新步态步数相关的相位偏移
 
 protected:
-    // 重心步态管理
-    virtual void calculate_support_polygon_centre_offset(uint8_t swing_leg); // 支撑多边形重心计算
-    uint8_t      get_active_leg_index();                                     // 获取当前活跃腿的索引
+    uint8_t get_active_leg_index(); // 获取当前活跃腿的索引
 
     // 性能优化：相位缓存和三角函数优化
     struct PhaseCache {
