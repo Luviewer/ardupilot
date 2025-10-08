@@ -76,6 +76,11 @@ void AP_QuadRuped_HengXiang::gait_init()
     gait_lift_divisor   = 2;                   // 抬腿除数
 }
 
+void AP_QuadRuped_HengXiang::refresh_steps()
+{
+
+}
+
 // 轨迹生成
 void AP_QuadRuped_HengXiang::trajectory_generation(uint8_t leg_index)
 {

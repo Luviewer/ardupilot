@@ -76,6 +76,20 @@ void AP_QuadRuped_ZongXiang::gait_init()
     gait_lift_divisor   = 2;                   // 抬腿除数
 }
 
+void AP_QuadRuped_ZongXiang::refresh_steps()
+{
+    const int16_t step_total = gait_step_total.get();
+    if (step_total <= 0) {
+        return;
+    }
+
+    if (step_total == gait_step_total_cached) {
+        return;
+    }
+
+    // gait_init();
+}
+
 // 轨迹生成
 void AP_QuadRuped_ZongXiang::trajectory_generation(uint8_t leg_index)
 {

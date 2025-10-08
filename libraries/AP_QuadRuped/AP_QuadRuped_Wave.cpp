@@ -17,9 +17,6 @@ const AP_Param::GroupInfo AP_QuadRuped_Wave::var_info[] = {
     // ==================== 轨迹生成模式选择 ====================
     AP_GROUPINFO("TRAJ_MODE", 3, AP_QuadRuped_Wave, trajectory_mode, 0),
 
-    // ==================== 重心偏移参数 ====================
-    AP_GROUPINFO("COG_OFFSET", 4, AP_QuadRuped_Wave, centre_offset_ratio, 0.4f),
-
     // ==================== 贝塞尔曲线控制参数 ====================
     AP_GROUPINFO("BCTRL_H", 5, AP_QuadRuped_Wave, bezier_control_height, 0.3f),
     AP_GROUPINFO("BCTRL_F", 6, AP_QuadRuped_Wave, bezier_control_forward, 0.2f),
@@ -33,15 +30,6 @@ AP_QuadRuped_Wave::AP_QuadRuped_Wave(AP_QuadRuped& frontend, AP_QuadRuped::QuadR
 {
     AP_Param::setup_object_defaults(this, var_info);
     _state.var_info = var_info;
-
-    // 初始化相位缓存
-    for (uint8_t i = 0; i < AP_QUADRUPED_LEG_ALL; i++) {
-        phase_cache[i].angle       = 0.0f;
-        phase_cache[i].sin_val     = 0.0f;
-        phase_cache[i].cos_val     = 1.0f;
-        phase_cache[i].last_update = 0;
-        phase_cache[i].valid       = false;
-    }
 }
 
 // 步态初始化
@@ -49,7 +37,30 @@ void AP_QuadRuped_Wave::gait_init()
 {
     gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Wave init - Single Leg Swing");
 
-    refresh_phase_offsets();
+    const int16_t step_total = gait_step_total.get();
+
+    // 维持25%摆动相
+    gait_lift_divisor = 4;
+
+    // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 0, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 3, gait_lift_divisor, 255));
+}
+
+void AP_QuadRuped_Wave::refresh_steps()
+{
+    const int16_t step_total = gait_step_total.get();
+    if (step_total <= 0) {
+        return;
+    }
+
+    if (step_total == gait_step_total_cached) {
+        return;
+    }
+
+    gait_init();
 }
 
 // 获取活跃腿索引
@@ -79,13 +90,10 @@ void AP_QuadRuped_Wave::update_leg()
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
         gait_step_now          = 0;
         gait_step_total_cached = -1;
-        refresh_phase_offsets();
+        refresh_steps();
     }
 
-    refresh_phase_offsets();
-
-    // 波浪步态当前版本不处理重心偏移
-    center_offset.zero();
+    refresh_steps();
 
     // 遍历所有腿，生成轨迹
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
@@ -129,32 +137,6 @@ void AP_QuadRuped_Wave::trajectory_generation(uint8_t leg_index)
     // 2. 接口统一：所有轨迹生成函数都接受相同的leg_index参数，保证接口一致性
     // 3. 性能考虑：条件判断在运行时开销极小，不影响实时性要求
     // 4. 扩展性：可以轻松添加新的else if分支来支持更多轨迹类型
-}
-
-void AP_QuadRuped_Wave::refresh_phase_offsets()
-{
-    const int16_t step_total = gait_step_total.get();
-    if (step_total <= 0) {
-        return;
-    }
-
-    if (step_total == gait_step_total_cached) {
-        return;
-    }
-
-    gait_step_total_cached = step_total;
-
-    // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
-    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(0, 0, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / 4, 0, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / 2, 0, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16((step_total * 3) / 4, 0, 255));
-
-    int16_t travel      = step_total / 2;
-    travel              = constrain_int16(travel, 1, 255);
-    gait_travel_divisor = static_cast<uint8_t>(travel);
-
-    gait_lift_divisor = 4; // 维持25%摆动相
 }
 
 // 偏航轨迹生成
@@ -204,9 +186,7 @@ void AP_QuadRuped_Wave::generate_cycloid_trajectory(uint8_t leg_index)
     Vector2f leg_xy_target;       // XY平面的目标位置
     float    leg_z_target = 0.0f; // Z轴高度，默认为0（地面）
 
-    // 重心偏移已在update_leg()中统一计算，此处无需重复调用
-
-    const float swing_ratio = 0.25f; // 单腿摆动占 1/4 周期
+    const float swing_ratio = 1.0f / (float)gait_lift_divisor; // 单腿摆动占 1/8 周期
 
     if (p < swing_ratio) {
         const float phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
@@ -229,6 +209,7 @@ void AP_QuadRuped_Wave::generate_cycloid_trajectory(uint8_t leg_index)
     // 这个位置将被逆运动学解算使用，最终转换为各个关节的角度指令
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
 }
+
 
 // 贝塞尔曲线轨迹生成器（波浪步态版本）
 // 为单条腿生成完整的步态轨迹，包含摆动相（空中）和支撑相（地面）
@@ -372,36 +353,4 @@ void AP_QuadRuped_Wave::balance_controller()
     center_offset.x = constrain_float(gyro.y * 0.1f, -10.0f, 10.0f);
     center_offset.y = constrain_float(gyro.x * 0.1f, -10.0f, 10.0f);
     center_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
-}
-
-// 相位缓存更新
-void AP_QuadRuped_Wave::update_phase_cache(float angle, uint8_t leg_index)
-{
-    if (leg_index >= AP_QUADRUPED_LEG_ALL) return;
-
-    uint32_t now = AP_HAL::millis();
-
-    if (phase_cache[leg_index].valid && (now - phase_cache[leg_index].last_update < 10) && (fabsf(angle - phase_cache[leg_index].angle) < 0.001f)) {
-        return;
-    }
-
-    phase_cache[leg_index].angle       = angle;
-    phase_cache[leg_index].sin_val     = sinf(angle);
-    phase_cache[leg_index].cos_val     = cosf(angle);
-    phase_cache[leg_index].last_update = now;
-    phase_cache[leg_index].valid       = true;
-}
-
-// 获取缓存的sin值
-float AP_QuadRuped_Wave::get_cached_sin(float angle, uint8_t leg_index)
-{
-    update_phase_cache(angle, leg_index);
-    return phase_cache[leg_index].sin_val;
-}
-
-// 获取缓存的cos值
-float AP_QuadRuped_Wave::get_cached_cos(float angle, uint8_t leg_index)
-{
-    update_phase_cache(angle, leg_index);
-    return phase_cache[leg_index].cos_val;
 }

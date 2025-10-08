@@ -74,7 +74,7 @@ AP_QuadRuped_Diag::AP_QuadRuped_Diag(AP_QuadRuped& frontend, AP_QuadRuped::QuadR
 // 步态初始化
 void AP_QuadRuped_Diag::gait_init()
 {
-    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Diag init");
+    gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_Diag step init");
 
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
@@ -82,10 +82,24 @@ void AP_QuadRuped_Diag::gait_init()
     gait_step_leg_start[AP_QUADRUPED_LEG_LB] = 0;                   // 左后腿从第0步开始
     gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2; // 左前腿从中间步开始
     gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total / 2; // 右后腿从中间步开始
-    
+
     // 设置步态参数
     gait_travel_divisor = gait_step_total / 2; // 行程除数
     gait_lift_divisor   = 2;                   // 抬腿除数
+}
+
+void AP_QuadRuped_Diag::refresh_steps()
+{
+    const int16_t step_total = gait_step_total.get();
+    if (step_total <= 0) {
+        return;
+    }
+
+    if (step_total == gait_step_total_cached) {
+        return;
+    }
+
+    gait_init();
 }
 
 // 轨迹生成统一接口函数
@@ -145,7 +159,7 @@ void AP_QuadRuped_Diag::generate_cycloid_trajectory(uint8_t leg_index)
     const Vector2f throttle_travel(throttle_x_travel, throttle_y_travel);
 
     // 临时变量：存储计算得到的腿部目标位置（XY平面和Z轴高度）
-    Vector2f leg_xy_target;  // XY平面的目标位置
+    Vector2f leg_xy_target;       // XY平面的目标位置
     float    leg_z_target = 0.0f; // Z轴高度，默认为0（地面）
 
     // 步态相位分割：以0.5为界，前半段摆动相，后半段支撑相
@@ -169,7 +183,7 @@ void AP_QuadRuped_Diag::generate_cycloid_trajectory(uint8_t leg_index)
 
         // 2D摆线轨迹计算：将1D摆线公式推广到2D平面
         // 对X和Y分量同时应用相同的标量变换，保证运动方向的协调性
-        const float S = (delta - sinf(delta)) / M_2PI * 2.0f;  // 0..2
+        const float S = (delta - sinf(delta)) / M_2PI * 2.0f; // 0..2
 
         // XY平面轨迹：从起始位置到目标位置的摆线运动
         // 公式分解：throttle_travel * S - throttle_travel = throttle_travel * (S - 1)
@@ -242,15 +256,11 @@ void AP_QuadRuped_Diag::update_leg()
     // 使用大整数范围避免频繁循环，减少相位跳跃
     // 只有当步数超过很大值时才重置，避免边界问题
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
-        gait_step_now = 0;
-        // 重置时同步调整所有腿的起始步数，保持相位关系
-        for (uint8_t i = 0; i < AP_QUADRUPED_LEG_ALL; i++) {
-            gait_step_leg_start[i] = 0;
-        }
-        // 重新设置对角步态相位
-        gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2;
-        gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total / 2;
+        gait_step_now          = 0;
+        gait_step_total_cached = -1;
+        refresh_steps();
     }
+    refresh_steps();
 
     // 遍历所有腿，生成轨迹
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
@@ -351,11 +361,11 @@ Vector3f AP_QuadRuped_Diag::cubic_bezier_trajectory(float t, const Vector3f& p0,
 
     // 预计算伯恩斯坦基函数，提高计算效率
     // 通过预先计算重复使用的项，避免在循环中重复计算，显著提升性能
-    const float mt = 1.0f - t;           // (1-t) 项，用于后续基函数计算
-    const float mt2 = mt * mt;           // (1-t)²，避免重复乘法运算
-    const float mt3 = mt2 * mt;          // (1-t)³，P₀控制点的权重系数
-    const float t2 = t * t;              // t²，用于高次项计算
-    const float t3 = t2 * t;             // t³，P₃控制点的权重系数
+    const float mt     = 1.0f - t;       // (1-t) 项，用于后续基函数计算
+    const float mt2    = mt * mt;        // (1-t)²，避免重复乘法运算
+    const float mt3    = mt2 * mt;       // (1-t)³，P₀控制点的权重系数
+    const float t2     = t * t;          // t²，用于高次项计算
+    const float t3     = t2 * t;         // t³，P₃控制点的权重系数
     const float _3mt2t = 3.0f * mt2 * t; // 3(1-t)²t，P₁控制点的权重系数
     const float _3mtt2 = 3.0f * mt * t2; // 3(1-t)t²，P₂控制点的权重系数
 
@@ -400,7 +410,7 @@ void AP_QuadRuped_Diag::generate_bezier_trajectory(uint8_t leg_index)
 
     // 步态相位判断：以0.5为界，前半段为摆动相，后半段为支撑相
     // 这种设计保证了对角步态的协调性：对角腿同时摆动，同时支撑
-    if (p < 0.5f) { // 摆动相：腿部离地，在空中移动
+    if (p < 0.5f) {                   // 摆动相：腿部离地，在空中移动
         const float phase = p * 2.0f; // 将[0,0.5]映射到[0,1]，专门用于摆动相
 
         // ==================== 贝塞尔曲线控制点定义 ====================
@@ -415,7 +425,7 @@ void AP_QuadRuped_Diag::generate_bezier_trajectory(uint8_t leg_index)
 
         // P1: 第一个控制点 - 抬腿控制点，控制抬腿初期的轨迹
         // 参数化设计：通过可调参数控制轨迹形状
-        float ctrl_height = bezier_control_height.get() * leg_lift_height; // 抬腿高度：基于用户设定的抬腿高度进行比例调节
+        float ctrl_height  = bezier_control_height.get() * leg_lift_height;           // 抬腿高度：基于用户设定的抬腿高度进行比例调节
         float ctrl_forward = bezier_control_forward.get() * throttle_travel.length(); // 前向偏移：基于行程长度进行比例调节
         // P1坐标设计：稍微前移并抬升，创造平滑的抬腿轨迹
         // X坐标：起始位置+30%的前向偏移，避免突然抬腿
@@ -447,7 +457,7 @@ void AP_QuadRuped_Diag::generate_bezier_trajectory(uint8_t leg_index)
         // phase_smooth是经过时间缩放的参数，确保运动学特性符合要求
         leg_target = cubic_bezier_trajectory(phase_smooth, p0, p1, p2, p3);
 
-    } else { // 支撑相：腿部着地，推动机器人前进
+    } else {                                   // 支撑相：腿部着地，推动机器人前进
         const float phase = (p - 0.5f) * 2.0f; // 将[0.5,1]映射到[0,1]，专门用于支撑相
 
         // 支撑相采用线性轨迹设计

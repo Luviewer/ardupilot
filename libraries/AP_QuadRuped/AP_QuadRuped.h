@@ -30,9 +30,7 @@ class AP_QuadRuped_ZongXiang;
 #if AP_QuadRuped_HengXiang_ENABLE
 class AP_QuadRuped_HengXiang;
 #endif
-#if AP_QuadRuped_CONTINUOUSGAIT_ENABLE
-class AP_QuadRuped_ContinuousGait;
-#endif
+
 
 class AP_QuadRuped {
     friend class AP_QuadRuped_Backend;
@@ -43,7 +41,6 @@ class AP_QuadRuped {
 #if AP_QUADRUPED_WAVE_COG_ENABLE
     friend class AP_QuadRuped_Wave_COG;
 #endif
-    friend class AP_QuadRuped_ContinuousGait;
 
 public:
     // 默认构造函数

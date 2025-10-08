@@ -43,6 +43,7 @@ public:
     // 纯虚函数 - 后端必须实现
     virtual void     update()                                 = 0;
     virtual void     gait_init()                              = 0;
+    virtual void     refresh_steps()                          = 0;
     virtual void     trajectory_generation(uint8_t leg_index) = 0;
     virtual uint32_t get_Freq()                               = 0;
 
@@ -130,9 +131,9 @@ protected:
 
     // 重心控制
     Vector3f center_offset; // 主动控制的重心偏移量（X、Y、Z）
-    Vector2f offset_xy;     // 重心平移控制（X、Y平面）
-    uint32_t _com_last_ms { 0 };
-    float    _com_fc = 2.0f; // 低通截止频率(Hz)：1~3Hz 可调
+
+    // 缓存步态总长
+    int16_t gait_step_total_cached;
 
     // 每帧把 center_offset 向 target 平滑贴近
     // void com_follow_target();
