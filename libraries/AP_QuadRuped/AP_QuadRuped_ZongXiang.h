@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AP_QuadRuped_Backend.h"
+#include "AP_QuadRuped_HengXiang.h"
 #include "AP_QuadRuped_Params.h"
 #include <AC_PID/AC_PID.h>
 #include <AP_AHRS/AP_AHRS_View.h>
@@ -12,8 +12,8 @@
 // 前向声明
 class AP_QuadRuped;
 
-// 对角步态后端实现
-class AP_QuadRuped_ZongXiang : public AP_QuadRuped_Backend {
+// 纵向步态后端实现 - 继承横向步态的通用功能
+class AP_QuadRuped_ZongXiang : public AP_QuadRuped_HengXiang {
 public:
     // 构造函数
     AP_QuadRuped_ZongXiang(AP_QuadRuped& frontend, AP_QuadRuped::QuadRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
@@ -21,35 +21,12 @@ public:
     // 析构函数
     virtual ~AP_QuadRuped_ZongXiang() { }
 
-    // 后端接口实现
-    void update() override;
-    void update_leg() override;
-
+    // 只重写需要不同的函数
     bool init() override;
-
     void gait_init() override;
-    void refresh_steps() override;
-
-    void     trajectory_generation(uint8_t leg_index) override;
-    void     yaw_trajectory_generation(uint8_t leg_index) override;
-    void     main_inverse_kinematics(void) override;
     Vector3f leg_inverse_kinematics(Vector3f posxyz) override;
 
-    uint32_t get_Freq() override { return gait_hz.get(); }
-
-    // 参数表定义
-    static const struct AP_Param::GroupInfo var_info[];
-
-    float hip_lock_deg[AP_QUADRUPED_LEG_ALL];
-    bool  hip_lock_inited = false;
-
-private:
-    // 对角步态特定参数
-    AP_Float gait_step_total; // 稳定性边距
-    AP_Float gait_hz;
-
-    uint32_t lasttime;
-
-    float slow_phi(float s, float s0);
-    void  balance_controller();
+protected:
+    // 重写轴向处理 - 纵向步态只使用X轴
+    Vector2f get_throttle_travel() const override;
 };
