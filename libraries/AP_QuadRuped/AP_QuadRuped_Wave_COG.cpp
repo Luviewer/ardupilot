@@ -49,11 +49,11 @@ void AP_QuadRuped_Wave_COG::gait_init()
     gait_step_cog_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 0 * 2, gait_lift_divisor, 255));
     gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (0 * 2 + 1), gait_lift_divisor, 255));
 
-    gait_step_cog_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2 * 2, gait_lift_divisor, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (2 * 2 + 1), gait_lift_divisor, 255));
+    gait_step_cog_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1 * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (1 * 2 + 1), gait_lift_divisor, 255));
 
-    gait_step_cog_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1 * 2, gait_lift_divisor, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (1 * 2 + 1), gait_lift_divisor, 255));
+    gait_step_cog_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2 * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (2 * 2 + 1), gait_lift_divisor, 255));
 
     gait_step_cog_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 3 * 2, gait_lift_divisor, 255));
     gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (3 * 2 + 1), gait_lift_divisor, 255));
@@ -82,8 +82,8 @@ void AP_QuadRuped_Wave_COG::update_leg()
     // 使用大整数范围避免频繁循环，减少相位跳跃
     // 只有当步数超过很大值时才重置，避免边界问题
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
-        gait_step_now          = 0;
-        gait_step_total_cached = -1;
+        gait_step_now = 0;
+        // gait_step_total_cached = -1;
         refresh_steps();
     }
 
@@ -128,19 +128,29 @@ void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
 
     const float cog_length = centre_offset_ratio.get();
 
-    float cog_xy_target, cog_travel, phase;
-    if (p < swing_ratio) {
-        if (leg_index == AP_QUADRUPED_LEG_RF || leg_index == AP_QUADRUPED_LEG_RB) {
-            cog_travel = -cog_length;
-        } else {
-            cog_travel = cog_length;
-        }
+    Vector2f cog_xy_target, cog_xy_travel;
+    float    phase;
 
-        phase         = constrain_float(p / swing_ratio, 0.0f, 1.0f);
-        cog_xy_target = -cog_travel + phase * 2.0f * cog_travel;
-        set_center_offset(0, cog_xy_target);
+    if (p < swing_ratio) {
+        phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
+
+        if (leg_index == AP_QUADRUPED_LEG_RF) {
+            cog_xy_travel   = Vector2f(-cog_length, -cog_length);
+            cog_xy_target.x = cog_xy_travel.x;
+            cog_xy_target.y = -cog_xy_travel.y + cog_xy_travel.y * phase * 2.0f;
+        } else if (leg_index == AP_QUADRUPED_LEG_RB) {
+            cog_xy_travel   = Vector2f(cog_length, -cog_length);
+            cog_xy_target.x = -cog_xy_travel.x + cog_xy_travel.x * phase * 2.0f;
+            cog_xy_target.y = cog_xy_travel.y;
+        } else if (leg_index == AP_QUADRUPED_LEG_LB) {
+            cog_xy_travel   = Vector2f(cog_length, cog_length);
+            cog_xy_target.x = cog_xy_travel.x;
+            cog_xy_target.y = -cog_xy_travel.y + cog_xy_travel.y * phase * 2.0f;
+        } else if (leg_index == AP_QUADRUPED_LEG_LF) {
+            cog_xy_travel   = Vector2f(-cog_length, cog_length);
+            cog_xy_target.x = -cog_xy_travel.x + cog_xy_travel.x * phase * 2.0f;
+            cog_xy_target.y = cog_xy_travel.y;
+        }
+        set_center_offset(cog_xy_target);
     }
 }
-
-
-

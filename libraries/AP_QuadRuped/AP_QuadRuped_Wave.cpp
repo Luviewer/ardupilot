@@ -44,8 +44,8 @@ void AP_QuadRuped_Wave::gait_init()
 
     // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
     gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 0, gait_lift_divisor, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1, gait_lift_divisor, 255));
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1, gait_lift_divisor, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2, gait_lift_divisor, 255));
     gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 3, gait_lift_divisor, 255));
 }
 
@@ -89,7 +89,7 @@ void AP_QuadRuped_Wave::update_leg()
     // 只有当步数超过很大值时才重置，避免边界问题
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
         gait_step_now          = 0;
-        gait_step_total_cached = -1;
+        // gait_step_total_cached = -1;
         refresh_steps();
     }
 

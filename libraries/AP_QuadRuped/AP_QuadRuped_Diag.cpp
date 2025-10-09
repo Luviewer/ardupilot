@@ -257,7 +257,7 @@ void AP_QuadRuped_Diag::update_leg()
     // 只有当步数超过很大值时才重置，避免边界问题
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
         gait_step_now          = 0;
-        gait_step_total_cached = -1;
+        // gait_step_total_cached = -1;
         refresh_steps();
     }
     refresh_steps();
