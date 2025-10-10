@@ -102,7 +102,7 @@ void AP_QuadRuped_Wave_COG::update_leg()
         // 为每条腿生成位置轨迹和旋转轨迹
         trajectory_generation(leg_index);
         cog_generation(leg_index);
-        // yaw_trajectory_generation(leg_index);
+        yaw_trajectory_generation(leg_index);
     }
 }
 

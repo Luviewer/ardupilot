@@ -230,8 +230,14 @@ void AP_QuadRuped_Diag::generate_cycloid_trajectory(uint8_t leg_index)
 void AP_QuadRuped_Diag::yaw_trajectory_generation(uint8_t leg_index)
 {
     // 计算当前腿的步数偏移
-    int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
-    if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
+   int32_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+
+    // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
+    // 先处理负数再取模，保证数学上的正确性和连续性
+    while (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
+    delta_step = delta_step % gait_step_total.get();
 
     const float p    = (float)delta_step / (float)gait_step_total; // 步态进度 ∈ [0,1)
     const float peak = yaw_travel / (float)gait_lift_divisor;      // 旋转峰值

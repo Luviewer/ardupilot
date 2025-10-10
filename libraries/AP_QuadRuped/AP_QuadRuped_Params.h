@@ -37,6 +37,7 @@ public:
 
     AP_Float throttle_roll_max;
     AP_Float throttle_pitch_max;
+    AP_Float throttle_yaw_max;
 
     AP_Float body_height;
     AP_Float left_lift;

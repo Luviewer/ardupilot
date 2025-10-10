@@ -41,6 +41,7 @@ const AP_Param::GroupInfo AP_QuadRuped_CHANNEL_Params::var_info[] = {
 
     AP_GROUPINFO("RLL_MX", 16, AP_QuadRuped_CHANNEL_Params, throttle_roll_max, 40),
     AP_GROUPINFO("PIT_MX", 17, AP_QuadRuped_CHANNEL_Params, throttle_pitch_max, 40),
+    AP_GROUPINFO("YAW_MX", 18, AP_QuadRuped_CHANNEL_Params, throttle_yaw_max, 20),
 
     AP_GROUPEND
 };

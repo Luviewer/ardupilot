@@ -204,6 +204,12 @@ void AP_QuadRuped_Backend::main_radio_controller()
         throttle_y_travel = 0.0f;
     }
 
+    if(channel.yaw_channel !=-1){
+        yaw_travel = _frontend.get_yaw_rate() * channel.throttle_yaw_max;
+    }else {
+        yaw_travel = 0.0f;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////
     // 处理滚转通道（向右为正，向左为负）
     if (channel.roll_channel != -1) {
