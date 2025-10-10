@@ -521,9 +521,7 @@ void AP_QuadRuped::read_radio_input()
 #else
         set_walk_mode(AP_QUADRUPED_GAIT_WAVE);        // 普通波浪步态
 #endif
-    } else if (walk_value > 1200 && walk_value <= 1350) {
-        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);        // 档位2：普通波浪步态
-    } else if (walk_value > 900 && walk_value <= 1200) {
+    } else if (walk_value > 900 && walk_value <= 1350) {
         set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);    // 档位1：对角步态（默认/最稳定）
     }
     // 注意：PWM < 900μs 或 > 2100μs 被视为无效信号，保持当前模式不变

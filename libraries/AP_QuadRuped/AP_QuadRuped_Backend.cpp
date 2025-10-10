@@ -182,6 +182,32 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
     }
 }
 
+// 偏航轨迹生成
+void AP_QuadRuped_Backend::yaw_trajectory_generation(uint8_t leg_index)
+{
+    // 计算当前腿的步数偏移
+   int32_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+
+    // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
+    // 先处理负数再取模，保证数学上的正确性和连续性
+    while (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
+    delta_step = delta_step % gait_step_total.get();
+
+    const float p    = (float)delta_step / (float)gait_step_total;
+    const float peak = yaw_travel / (float)gait_lift_divisor;
+
+    if (p < (1.0f / 12.0f)) {
+        gait_rot_z[leg_index] = 0.0f;
+    } else if (p < (1.0f / 6.0f)) {
+        gait_rot_z[leg_index] = peak;
+    } else {
+        const float t         = (p - (1.0f / 6.0f)) / (5.0f / 6.0f);
+        gait_rot_z[leg_index] = peak * (1.0f - t);
+    }
+}
+
 // 主控制器 - 处理遥控器输入并转换为运动指令
 void AP_QuadRuped_Backend::main_radio_controller()
 {

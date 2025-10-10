@@ -225,32 +225,6 @@ void AP_QuadRuped_Diag::generate_cycloid_trajectory(uint8_t leg_index)
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
 }
 
-// 生成偏航（旋转）轨迹
-void AP_QuadRuped_Diag::yaw_trajectory_generation(uint8_t leg_index)
-{
-    // 计算当前腿的步数偏移
-    int32_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
-
-    // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
-    // 先处理负数再取模，保证数学上的正确性和连续性
-    while (delta_step < 0) {
-        delta_step += gait_step_total;
-    }
-    delta_step = delta_step % gait_step_total.get();
-
-    const float p    = (float)delta_step / (float)gait_step_total; // 步态进度 ∈ [0,1)
-    const float peak = yaw_travel / (float)gait_lift_divisor;      // 旋转峰值
-
-    if (p < (1.0f / 2.0f)) {
-        const float t1        = p * 2.0f; // 前 1/2 时间段：无旋转
-        gait_rot_z[leg_index] = peak * t1;
-    } else {
-        // 剩余1/2时间段：线性衰减到0
-        const float t2        = (p - (1.0f / 2.0f)) * 2.0f; //
-        gait_rot_z[leg_index] = peak * (1.0f - t2);
-    }
-}
-
 // 更新腿部运动
 void AP_QuadRuped_Diag::update_leg()
 {

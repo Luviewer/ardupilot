@@ -29,7 +29,6 @@ public:
     void refresh_steps() override;
 
     void trajectory_generation(uint8_t leg_index) override;
-    void yaw_trajectory_generation(uint8_t leg_index) override;
 
     uint32_t get_Freq() override { return gait_hz.get(); }
 
@@ -38,7 +37,6 @@ public:
 
 private:
     // 对角步态特定参数
-    AP_Int16 gait_step_total;        // 步态周期总步数：控制一个完整步态的离散化精度
     AP_Int16 gait_hz;                // 步态频率（Hz）：控制步态更新的时间分辨率
     AP_Int8  trajectory_mode;        // 轨迹生成模式选择：0=经典摆线轨迹，1=贝塞尔曲线轨迹
     AP_Float bezier_control_height;  // 贝塞尔曲线控制点高度系数：调节抬腿高度（相对leg_lift_height的比例）

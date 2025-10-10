@@ -49,7 +49,7 @@ public:
 
     // 可选重写的虚函数
     virtual bool init();
-    virtual void yaw_trajectory_generation(uint8_t leg_index) { }
+    virtual void yaw_trajectory_generation(uint8_t leg_index);
     virtual void update_leg() { }
 
     // 通用工具函数
@@ -128,6 +128,8 @@ protected:
     float roll_travel;       // 横滚行程 - 横滚平衡补偿
     float pitch_travel;      // 俯仰行程 - 俯仰平衡补偿
     float leg_lift_height;   // 抬腿高度（mm）- 腿抬起的高度
+
+    AP_Int16 gait_step_total;        // 步态周期总步数：控制一个完整步态的离散化精度
 
     // 重心控制
     Vector3f center_offset; // 主动控制的重心偏移量（X、Y、Z）
