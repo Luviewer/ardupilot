@@ -2,25 +2,24 @@
 // 负责管理四足机器人的整体控制逻辑，包括步态切换、遥控器输入处理、硬件接口管理等
 
 #include "AP_QuadRuped.h"
-#include "AP_QuadRuped_Diag.h"              // 对角步态后端
-#include <AP_RCMapper/AP_RCMapper.h>         // 遥控器映射
-#include <AP_RangeFinder/AP_RangeFinder_Backend.h>  // 测距传感器
-#include <RC_Channel/RC_Channel.h>          // 遥控通道
+#include "AP_QuadRuped_Diag.h"                     // 对角步态后端
+#include <AP_RCMapper/AP_RCMapper.h>               // 遥控器映射
+#include <AP_RangeFinder/AP_RangeFinder_Backend.h> // 测距传感器
+#include <RC_Channel/RC_Channel.h>                 // 遥控通道
 
 // 条件编译包含各种步态后端
 #if AP_QUADRUPED_WAVE_ENABLE
-# include "AP_QuadRuped_Wave.h"             // 波浪步态后端
+# include "AP_QuadRuped_Wave.h" // 波浪步态后端
 #endif
 #if AP_QUADRUPED_WAVE_COG_ENABLE
-# include "AP_QuadRuped_Wave_COG.h"         // 带重心平移的波浪步态
+# include "AP_QuadRuped_Wave_COG.h" // 带重心平移的波浪步态
 #endif
 #if AP_QUADRUPED_ZongXiang_ENABLE
-# include "AP_QuadRuped_ZongXiang.h"        // 纵向工字步态
+# include "AP_QuadRuped_ZongXiang.h" // 纵向工字步态
 #endif
 #if AP_QuadRuped_HengXiang_ENABLE
-# include "AP_QuadRuped_HengXiang.h"        // 横向工字步态
+# include "AP_QuadRuped_HengXiang.h" // 横向工字步态
 #endif
-
 
 /**
  * @brief 四足机器人参数表定义
@@ -60,6 +59,8 @@ const AP_Param::GroupInfo AP_QuadRuped::var_info[] = {
     // 系统参数组 (11-20)
     // @Group: SYS_
     AP_SUBGROUPINFO(_sys_params, "SYS_", 11, AP_QuadRuped, AP_QuadRuped_SYS_Params),
+
+    AP_SUBGROUPINFO(_ctrl_params, "CTL_", 12, AP_QuadRuped, AP_QuadRuped_CTRL_Params),
 
     // 通道参数组 (21-30)
     // @Group: CH_
@@ -125,20 +126,20 @@ const struct AP_Param::GroupInfo* AP_QuadRuped::backend_var_info[AP_QUADRUPED_GA
  * - 加载参数默认值
  */
 AP_QuadRuped::AP_QuadRuped()
-    : _ahrs(nullptr)         // 姿态航向参考系统指针初始化
-    , _motors(nullptr)       // 电机控制接口指针初始化
-    , _rangefinder(nullptr)  // 测距传感器接口指针初始化
-    , _backend(nullptr)      // 当前活跃步态后端指针初始化
+    : _ahrs(nullptr)        // 姿态航向参考系统指针初始化
+    , _motors(nullptr)      // 电机控制接口指针初始化
+    , _rangefinder(nullptr) // 测距传感器接口指针初始化
+    , _backend(nullptr)     // 当前活跃步态后端指针初始化
 {
     // 初始化所有步态后端的状态结构体
     for (uint8_t i = 0; i < AP_QUADRUPED_GAIT_COUNT; i++) {
-        _gait_backends[i]      = nullptr;  // 后端实例指针置空
-        _state[i].last_time_ms = 0;        // 上次更新时间清零
-        _state[i].instance     = i;        // 设置步态实例编号
-        _state[i].var_info     = nullptr;  // 参数表指针置空
+        _gait_backends[i]      = nullptr; // 后端实例指针置空
+        _state[i].last_time_ms = 0;       // 上次更新时间清零
+        _state[i].instance     = i;       // 设置步态实例编号
+        _state[i].var_info     = nullptr; // 参数表指针置空
     }
 
-    _gait_last_type = -1;  // 设置上次步态类型为无效值，确保首次切换成功
+    _gait_last_type = -1; // 设置上次步态类型为无效值，确保首次切换成功
 
     // 从参数表中加载默认值到成员变量
     AP_Param::setup_object_defaults(this, var_info);
@@ -155,8 +156,8 @@ void AP_QuadRuped::destroy_backends()
     // 遍历所有步态类型，释放对应的后端实例内存
     for (uint8_t i = 0; i < AP_QUADRUPED_GAIT_COUNT; i++) {
         if (_gait_backends[i] != nullptr) {
-            delete _gait_backends[i];  // 释放后端对象内存
-            _gait_backends[i] = nullptr;  // 指针置空，防止悬空指针
+            delete _gait_backends[i];    // 释放后端对象内存
+            _gait_backends[i] = nullptr; // 指针置空，防止悬空指针
         }
     }
 }
@@ -184,8 +185,8 @@ bool AP_QuadRuped::init(AP_AHRS_View& ahrs, AP_Motors& motors, RangeFinder& rang
 
     // 初始化横滚和俯仰的微分滤波器
     // 参数：初始值=0, 时间常数=配置值, 初始微分值=0
-    _roll_pitch_td[0].init(0.001, _roll_pitch_td_r, 0);  // 横滚通道滤波器
-    _roll_pitch_td[1].init(0.001, _roll_pitch_td_r, 0);  // 俯仰通道滤波器
+    _roll_pitch_td[0].init(0.001, _roll_pitch_td_r, 0); // 横滚通道滤波器
+    _roll_pitch_td[1].init(0.001, _roll_pitch_td_r, 0); // 俯仰通道滤波器
 
     // 设置默认步态为对角步态（最稳定和常用）
     set_gait_type(AP_QUADRUPED_GAIT_DIAGONAL);
@@ -274,6 +275,12 @@ void AP_QuadRuped::update()
     // 发送自定义MAVLink数据（状态信息）
     send_custom_mavlink_data();
 
+    // 读取并处理遥控器输入数据
+    read_radio_input();
+
+    // 保持主更新频率的控制
+    _backend->main_radio_controller();
+
     // 频率控制：确保按照当前步态设定的频率更新
     // 计算距离上次更新的时间间隔，如果小于步态周期则跳过本次更新
     if ((AP_HAL::millis() - lasttime) < (1000 / _backend->get_Freq())) {
@@ -283,20 +290,17 @@ void AP_QuadRuped::update()
     // 更新最后执行时间戳
     lasttime = AP_HAL::millis();
 
-    // 读取并处理遥控器输入数据
-    read_radio_input();
-
     // 根据主模式执行相应的控制逻辑
     switch (fly_walk_mode.master_mode) {
         default:
-        case Walking_Mode:  // 行走模式
+        case Walking_Mode: // 行走模式
             // 设置当前选择的步态类型
             set_gait_type((GaitType)fly_walk_mode.walk_mode);
             // 调用当前步态后端的更新函数
             _backend->update();
             break;
 
-        case Flying_Mode:   // 飞行模式（特殊姿态模式）
+        case Flying_Mode: // 飞行模式（特殊姿态模式）
             switch (fly_walk_mode.fly_mode) {
                 default:
                 case Fly_Mode_Flying: {
@@ -410,13 +414,13 @@ void AP_QuadRuped::read_radio_input()
     // 检查遥控器是否处于故障保护状态（信号丢失或超出范围）
     if (rc().in_rc_failsafe()) {
         // 故障保护响应：立即清零所有运动指令，确保机器人安全停止
-        _throttle_xyz        = Vector3f(0, 0, 0);     // 清零前进、横向、偏航指令
-        _throttle_roll_pitch = Vector2f(0, 0);        // 清零横滚、俯仰平衡指令
+        _throttle_xyz        = Vector3f(0, 0, 0); // 清零前进、横向、偏航指令
+        _throttle_roll_pitch = Vector2f(0, 0);    // 清零横滚、俯仰平衡指令
 
         // 切换到最安全的默认模式组合
-        set_master_mode(Walking_Mode);                 // 设为行走模式（最基础的控制模式）
-        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);    // 设为对角步态（最稳定，支撑面最大）
-        return;  // 直接返回，不处理后续输入
+        set_master_mode(Walking_Mode);             // 设为行走模式（最基础的控制模式）
+        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL); // 设为对角步态（最稳定，支撑面最大）
+        return;                                    // 直接返回，不处理后续输入
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -425,9 +429,9 @@ void AP_QuadRuped::read_radio_input()
     // 读取运动控制通道的原始PWM值
     // 注意：通道号-1是因为AP_HAL的rcin使用0基索引，而参数配置使用1基索引
     Vector3ui throttle_chan = {
-        hal.rcin->read(_channel_params.throttle_x_channel - 1),  // X轴：前进(+)/后退(-)
-        hal.rcin->read(_channel_params.throttle_y_channel - 1),  // Y轴：左移(+)/右移(-)
-        hal.rcin->read(_channel_params.yaw_channel - 1)          // Z轴：逆时针(+)/顺时针(-)旋转
+        hal.rcin->read(_channel_params.throttle_x_channel - 1), // X轴：前进(+)/后退(-)
+        hal.rcin->read(_channel_params.throttle_y_channel - 1), // Y轴：左移(+)/右移(-)
+        hal.rcin->read(_channel_params.yaw_channel - 1)         // Z轴：逆时针(+)/顺时针(-)旋转
     };
 
     // 为未配置的通道设置默认中位值（1500μs表示零输入）
@@ -457,8 +461,8 @@ void AP_QuadRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取姿态控制通道的PWM值，用于机体平衡调整
     Vector2ui rollpitch_chan = {
-        hal.rcin->read(_channel_params.roll_channel - 1),   // 横滚：左倾(+)/右倾(-)
-        hal.rcin->read(_channel_params.pitch_channel - 1)   // 俯仰：抬头(+)/低头(-)
+        hal.rcin->read(_channel_params.roll_channel - 1), // 横滚：左倾(+)/右倾(-)
+        hal.rcin->read(_channel_params.pitch_channel - 1) // 俯仰：抬头(+)/低头(-)
     };
 
     // 为未配置的通道设置默认中位值
@@ -480,7 +484,7 @@ void AP_QuadRuped::read_radio_input()
 
         // 通过微分滤波器处理输入值，提供带有微分预测的平滑控制响应
         // 这比简单的低通滤波能提供更好的动态响应特性
-        float raw_input = ((float)(rollpitch_chan[i]) - 1500.0f) / 500.0f;
+        float raw_input         = ((float)(rollpitch_chan[i]) - 1500.0f) / 500.0f;
         _throttle_roll_pitch[i] = _roll_pitch_td[i].update(raw_input);
 
         // 安全限制：确保姿态控制量在有效范围内
@@ -492,13 +496,13 @@ void AP_QuadRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取模式开关通道，用于在行走模式和飞行模式之间切换
     uint16_t mode_value = hal.rcin->read(_channel_params.mode_channel - 1);
-    if (_channel_params.mode_channel == -1) mode_value = 1000;  // 默认为低电平（行走模式）
+    if (_channel_params.mode_channel == -1) mode_value = 1000; // 默认为低电平（行走模式）
 
     // 阈值判断：PWM > 1800μs 切换到飞行模式，否则保持行走模式
     if (mode_value > 1800) {
-        set_master_mode(Flying_Mode);   // 飞行模式：用于特殊姿态和爪子形态
+        set_master_mode(Flying_Mode); // 飞行模式：用于特殊姿态和爪子形态
     } else {
-        set_master_mode(Walking_Mode);  // 行走模式：正常的四足行走控制
+        set_master_mode(Walking_Mode); // 行走模式：正常的四足行走控制
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -506,23 +510,23 @@ void AP_QuadRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取步态选择通道的PWM值，支持多档位开关
     uint16_t walk_value = hal.rcin->read(_channel_params.walk_mode_channel - 1);
-    if (_channel_params.walk_mode_channel == -1) walk_value = 1000;  // 默认最低档位
+    if (_channel_params.walk_mode_channel == -1) walk_value = 1000; // 默认最低档位
 
     // 分段判断步态模式：不同PWM范围对应不同的步态
     // 从高到低排列，优先匹配高PWM值（高档位）
     if (walk_value > 1800 && walk_value < 2100) {
-        set_walk_mode(AP_QUADRUPED_GAIT_HengXiang);  // 档位5：横向工字步态
+        set_walk_mode(AP_QUADRUPED_GAIT_HengXiang); // 档位5：横向工字步态
     } else if (walk_value > 1600 && walk_value < 1800) {
-        set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);  // 档位4：纵向工字步态
+        set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang); // 档位4：纵向工字步态
     } else if (walk_value > 1350 && walk_value <= 1600) {
         // 档位3：根据编译配置选择波浪步态类型
 #if AP_QUADRUPED_WAVE_COG_ENABLE
-        set_walk_mode(AP_QUADRUPED_GAIT_WAVE_COG);    // 带重心平移的波浪步态
+        set_walk_mode(AP_QUADRUPED_GAIT_WAVE_COG); // 带重心平移的波浪步态
 #else
-        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);        // 普通波浪步态
+        set_walk_mode(AP_QUADRUPED_GAIT_WAVE); // 普通波浪步态
 #endif
     } else if (walk_value > 900 && walk_value <= 1350) {
-        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL);    // 档位1：对角步态（默认/最稳定）
+        set_walk_mode(AP_QUADRUPED_GAIT_DIAGONAL); // 档位1：对角步态（默认/最稳定）
     }
     // 注意：PWM < 900μs 或 > 2100μs 被视为无效信号，保持当前模式不变
 
@@ -531,15 +535,15 @@ void AP_QuadRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取飞行模式选择通道，用于选择不同的特殊姿态
     uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);
-    if (_channel_params.fly_mode_channel == -1) flying_value = 1000;  // 默认飞行姿态
+    if (_channel_params.fly_mode_channel == -1) flying_value = 1000; // 默认飞行姿态
 
     // 飞行子模式判断：同样采用分段PWM范围判断
     if (flying_value > 1800 && flying_value < 2100) {
-        set_fly_mode(Fly_Mode_Heng_Claw);    // 横向爪子形态：腿部形成横向抓取形状
+        set_fly_mode(Fly_Mode_Heng_Claw); // 横向爪子形态：腿部形成横向抓取形状
     } else if (flying_value > 1400 && flying_value < 1600) {
-        set_fly_mode(Fly_Mode_Zhong_Claw);   // 纵向爪子形态：腿部形成纵向抓取形状
+        set_fly_mode(Fly_Mode_Zhong_Claw); // 纵向爪子形态：腿部形成纵向抓取形状
     } else if (flying_value > 900 && flying_value < 1100) {
-        set_fly_mode(Fly_Mode_Flying);       // 飞行姿态：根据高度自动收起或展开腿部
+        set_fly_mode(Fly_Mode_Flying); // 飞行姿态：根据高度自动收起或展开腿部
     }
 
     ////////////////////////////////////////////////////////////////////////////////////
@@ -547,7 +551,7 @@ void AP_QuadRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取爪子控制通道，用于动态调节爪子开合角度
     uint16_t claw_value = hal.rcin->read(_channel_params.claw_channel - 1);
-    if (_channel_params.claw_channel == -1) claw_value = 1500;  // 默认中位角度（0度）
+    if (_channel_params.claw_channel == -1) claw_value = 1500; // 默认中位角度（0度）
 
     // 将爪子PWM值转换为角度（范围：-90度到+90度）
     // 1500μs对应0度，1000μs对应-90度，2000μs对应+90度
@@ -604,10 +608,10 @@ void AP_QuadRuped::send_custom_mavlink_data()
 
         // 发送当前步态模式信息
         mavlink_msg_named_value_int_send(
-            chan,                           // MAVLink通道
-            time_boot_ms,                   // 时间戳
-            "QRD_WALK_",                    // 数据名称标识符（四足机器人行走模式）
-            (int32_t)get_walk_mode()        // 当前步态模式的整数值
+            chan,                    // MAVLink通道
+            time_boot_ms,            // 时间戳
+            "QRD_WALK_",             // 数据名称标识符（四足机器人行走模式）
+            (int32_t)get_walk_mode() // 当前步态模式的整数值
         );
     }
 }

@@ -28,7 +28,6 @@ public:
     bool init() override;
 
     void gait_init() override;
-    void refresh_steps() override;
 
     void     trajectory_generation(uint8_t leg_index) override;
     void     yaw_trajectory_generation(uint8_t leg_index) override;

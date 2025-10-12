@@ -54,6 +54,23 @@ void AP_QuadRuped_Backend::reset_leg()
     }
 }
 
+void AP_QuadRuped_Backend::refresh_steps()
+ {
+    const int16_t step_total = gait_step_total.get();
+    if (step_total < 0) {
+        return;
+    }
+
+    if (step_total == gait_step_total_cached) {
+        return;
+    }
+
+    gait_step_total_cached = step_total;
+
+    gait_init();
+}
+
+
 // 计算步态序列 - 判断是否需要移动并执行相应动作
 void AP_QuadRuped_Backend::calc_gait_sequence()
 {
@@ -212,6 +229,7 @@ void AP_QuadRuped_Backend::yaw_trajectory_generation(uint8_t leg_index)
 void AP_QuadRuped_Backend::main_radio_controller()
 {
     const AP_QuadRuped_CHANNEL_Params& channel = _frontend.get_channel_params();
+    AP_QuadRuped_CTRL_Params&          ctrl    = _frontend.get_ctrl_params();
 
     //////////////////////////////////////////////////////////////////////////////////
     // 处理油门通道（前进/后退）
@@ -243,8 +261,8 @@ void AP_QuadRuped_Backend::main_radio_controller()
         float roll_current = degrees(_ahrs.roll);
 
         // 使用PI控制器计算输出
-        float dt    = 1.0f / get_Freq(); // 计算实际时间步长
-        roll_travel = roll_pid.update_all(roll_target, roll_current, dt);
+        float dt    = 0.1f; // 计算实际时间步长
+        roll_travel = ctrl.roll_pid.update_all(roll_target, roll_current, dt);
     } else {
         roll_travel = 0.0f;
     }
@@ -256,8 +274,8 @@ void AP_QuadRuped_Backend::main_radio_controller()
         float pitch_current = degrees(_ahrs.pitch);
 
         // 使用PI控制器计算输出
-        float dt     = 1.0f / get_Freq(); // 计算实际时间步长
-        pitch_travel = pitch_pid.update_all(pitch_target, pitch_current, dt);
+        float dt     = 0.1f; // 计算实际时间步长
+        pitch_travel = ctrl.pitch_pid.update_all(pitch_target, pitch_current, dt);
 
         // hal.console->printf("pitch_target = %.2f, pitch_current = %.2f",
         //                     pitch_target,

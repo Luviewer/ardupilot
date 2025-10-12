@@ -87,20 +87,6 @@ void AP_QuadRuped_Diag::gait_init()
     gait_lift_divisor = 2; // 旋转最大值
 }
 
-void AP_QuadRuped_Diag::refresh_steps()
-{
-    const int16_t step_total = gait_step_total.get();
-    if (step_total <= 0) {
-        return;
-    }
-
-    if (step_total == gait_step_total_cached) {
-        return;
-    }
-
-    gait_init();
-}
-
 // 轨迹生成统一接口函数
 // 作为步态控制系统的核心调度器，根据用户参数选择合适的轨迹生成算法
 // 这种设计模式实现了算法的可插拔性，便于后续扩展新的轨迹类型
@@ -279,7 +265,7 @@ void AP_QuadRuped_Diag::update()
     //     hengxiang_claw_leg();
     // }
 
-    main_radio_controller();
+    // main_radio_controller();
 
     // 执行平衡控制器
     // balance_controller();

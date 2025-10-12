@@ -30,7 +30,6 @@ public:
     void main_inverse_kinematics(void) override;
 
     void gait_init() override;
-    void refresh_steps() override;
 
     void trajectory_generation(uint8_t leg_index) override;
     uint32_t get_Freq() override { return gait_hz.get(); }

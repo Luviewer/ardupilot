@@ -59,6 +59,13 @@ const AP_Param::GroupInfo AP_QuadRuped_SYS_Params::var_info[] = {
     AP_GROUPEND
 };
 
+const AP_Param::GroupInfo AP_QuadRuped_CTRL_Params::var_info[] = {
+    AP_SUBGROUPINFO(pitch_pid, "PIT_", 1, AP_QuadRuped_CTRL_Params, AC_PID),
+    AP_SUBGROUPINFO(roll_pid, "ROL_", 2, AP_QuadRuped_CTRL_Params, AC_PID),
+
+    AP_GROUPEND
+};
+
 AP_QuadRuped_Params::AP_QuadRuped_Params(void)
 {
     AP_Param::setup_object_defaults(this, var_info);

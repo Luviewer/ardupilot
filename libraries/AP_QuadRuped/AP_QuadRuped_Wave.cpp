@@ -49,20 +49,6 @@ void AP_QuadRuped_Wave::gait_init()
     gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 3, gait_lift_divisor, 255));
 }
 
-void AP_QuadRuped_Wave::refresh_steps()
-{
-    const int16_t step_total = gait_step_total.get();
-    if (step_total <= 0) {
-        return;
-    }
-
-    if (step_total == gait_step_total_cached) {
-        return;
-    }
-
-    gait_init();
-}
-
 // 获取活跃腿索引
 uint8_t AP_QuadRuped_Wave::get_active_leg_index()
 {
@@ -88,7 +74,7 @@ void AP_QuadRuped_Wave::update_leg()
     // 使用大整数范围避免频繁循环，减少相位跳跃
     // 只有当步数超过很大值时才重置，避免边界问题
     if (gait_step_now >= 100000000) { // 使用int32_t接近上限的值
-        gait_step_now          = 0;
+        gait_step_now = 0;
         // gait_step_total_cached = -1;
         refresh_steps();
     }
@@ -190,7 +176,6 @@ void AP_QuadRuped_Wave::generate_cycloid_trajectory(uint8_t leg_index)
     // 这个位置将被逆运动学解算使用，最终转换为各个关节的角度指令
     gait_pos_xyz[leg_index] = Vector3f(leg_xy_target, leg_z_target);
 }
-
 
 // 贝塞尔曲线轨迹生成器（波浪步态版本）
 // 为单条腿生成完整的步态轨迹，包含摆动相（空中）和支撑相（地面）
@@ -319,7 +304,7 @@ void AP_QuadRuped_Wave::main_inverse_kinematics()
 // 主更新函数
 void AP_QuadRuped_Wave::update()
 {
-    main_radio_controller();
+    // main_radio_controller();
     main_inverse_kinematics();
     output_leg_angle();
     send_servo_cmd();

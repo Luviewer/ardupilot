@@ -31,7 +31,6 @@ class AP_QuadRuped_ZongXiang;
 class AP_QuadRuped_HengXiang;
 #endif
 
-
 class AP_QuadRuped {
     friend class AP_QuadRuped_Backend;
     friend class AP_QuadRuped_Diag;
@@ -94,6 +93,7 @@ public:
     const AP_QuadRuped_Params&         get_leg_params(uint8_t leg_index) const;
     const AP_QuadRuped_SYS_Params&     get_sys_params() const { return _sys_params; }
     const AP_QuadRuped_CHANNEL_Params& get_channel_params() const { return _channel_params; }
+    AP_QuadRuped_CTRL_Params&          get_ctrl_params() { return _ctrl_params; }
 
     // 硬件接口访问
     AP_AHRS_View& get_ahrs() { return *_ahrs; }
@@ -141,6 +141,7 @@ private:
     AP_QuadRuped_SYS_Params     _sys_params;                       // 系统参数
     AP_QuadRuped_Params         _leg_params[AP_QUADRUPED_LEG_ALL]; // 腿部参数
     AP_QuadRuped_CHANNEL_Params _channel_params;                   // 通道参数
+    AP_QuadRuped_CTRL_Params    _ctrl_params;                      // 控制参数
 
     uint32_t lasttime;
 

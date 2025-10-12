@@ -43,7 +43,6 @@ public:
     // 纯虚函数 - 后端必须实现
     virtual void update()                                 = 0;
     virtual void gait_init()                              = 0;
-    virtual void refresh_steps()                          = 0;
     virtual void trajectory_generation(uint8_t leg_index) = 0;
 
     // 基类提供默认的get_Freq()实现，使用基类的gait_hz参数
@@ -54,6 +53,7 @@ public:
     virtual bool init();
     virtual void yaw_trajectory_generation(uint8_t leg_index);
     virtual void update_leg() { }
+    virtual void refresh_steps();
 
     // 通用工具函数
     virtual void     reset_leg();
@@ -145,32 +145,6 @@ protected:
     int16_t gait_step_total_cached;
 
     // 每帧把 center_offset 向 target 平滑贴近
-
-    AC_PID roll_pid {
-        AC_PID::Defaults {
-            .p         = 1.5f,
-            .i         = 0.5f,
-            .d         = 0.000f,
-            .imax      = 10,
-            .filt_T_hz = 10.0f,
-            .filt_E_hz = 10.0f,
-            .filt_D_hz = 10.0f,
-            .srmax     = 0,
-            .srtau     = 1.0 }
-    };
-
-    AC_PID pitch_pid {
-        AC_PID::Defaults {
-            .p         = 1.5f,
-            .i         = 0.5f,
-            .d         = 0.000f,
-            .imax      = 100,
-            .filt_T_hz = 10.0f,
-            .filt_E_hz = 10.0f,
-            .filt_D_hz = 10.0f,
-            .srmax     = 0,
-            .srtau     = 1.0 }
-    };
 
     // AC_PID yaw_pid {
     //     AC_PID::Defaults {

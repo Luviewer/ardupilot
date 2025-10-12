@@ -29,7 +29,6 @@ public:
 
     void update_leg() override;
 
-    void refresh_steps() override;
     void gait_init() override;
 
 private:

@@ -59,20 +59,6 @@ void AP_QuadRuped_Wave_COG::gait_init()
     gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (3 * 2 + 1), 0, 255));
 }
 
-void AP_QuadRuped_Wave_COG::refresh_steps()
-{
-    const int16_t step_total = gait_step_total.get();
-    if (step_total <= 0) {
-        return;
-    }
-
-    if (step_total == gait_step_total_cached) {
-        return;
-    }
-
-    gait_init();
-}
-
 // 更新腿部运动
 void AP_QuadRuped_Wave_COG::update_leg()
 {

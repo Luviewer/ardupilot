@@ -1,5 +1,6 @@
 #pragma once
 
+#include <AC_PID/AC_PID.h>
 #include <AP_HAL/AP_HAL_Boards.h>
 #include <AP_Param/AP_Param.h>
 
@@ -72,4 +73,35 @@ public:
     /* 附加参数 */
     AP_Float Alpha_A;
     AP_Float Alpha_B;
+};
+
+class AP_QuadRuped_CTRL_Params {
+public:
+    static const struct AP_Param::GroupInfo var_info[];
+
+    AC_PID roll_pid {
+        AC_PID::Defaults {
+            .p         = 1.5f,
+            .i         = 0.5f,
+            .d         = 0.000f,
+            .imax      = 10,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+
+    AC_PID pitch_pid {
+        AC_PID::Defaults {
+            .p         = 1.5f,
+            .i         = 0.5f,
+            .d         = 0.000f,
+            .imax      = 100,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
 };

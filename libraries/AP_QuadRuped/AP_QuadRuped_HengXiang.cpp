@@ -81,20 +81,6 @@ void AP_QuadRuped_HengXiang::gait_init()
     gait_lift_divisor   = 2;                   // 抬腿除数
 }
 
-void AP_QuadRuped_HengXiang::refresh_steps()
-{
-    const int16_t step_total = gait_step_total.get();
-    if (step_total <= 0) {
-        return;
-    }
-
-    if (step_total == gait_step_total_cached) {
-        return;
-    }
-
-    gait_init();
-}
-
 // 轨迹生成
 void AP_QuadRuped_HengXiang::trajectory_generation(uint8_t leg_index)
 {
@@ -458,7 +444,7 @@ void AP_QuadRuped_HengXiang::update_leg()
 void AP_QuadRuped_HengXiang::update()
 {
     // 执行主控制器
-    main_radio_controller();
+    // main_radio_controller();
 
     // 执行平衡控制器
     // balance_controller();
