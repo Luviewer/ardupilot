@@ -40,7 +40,6 @@ public:
 
 protected:
     // 波浪步态特定参数
-    AP_Int16 gait_hz;                // 步态频率（Hz）：控制步态更新的时间分辨率
     AP_Int8  trajectory_mode;        // 轨迹生成模式选择：0=经典正弦轨迹，1=贝塞尔曲线轨迹
     AP_Float bezier_control_height;  // 贝塞尔曲线控制点高度系数：调节抬腿高度（相对leg_lift_height的比例）
     AP_Float bezier_control_forward; // 贝塞尔曲线控制点前向偏移系数：调节轨迹前后延伸程度（相对行程长度的比例）

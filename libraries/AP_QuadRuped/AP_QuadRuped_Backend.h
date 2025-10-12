@@ -41,11 +41,14 @@ public:
     virtual ~AP_QuadRuped_Backend() { }
 
     // 纯虚函数 - 后端必须实现
-    virtual void     update()                                 = 0;
-    virtual void     gait_init()                              = 0;
-    virtual void     refresh_steps()                          = 0;
-    virtual void     trajectory_generation(uint8_t leg_index) = 0;
-    virtual uint32_t get_Freq()                               = 0;
+    virtual void update()                                 = 0;
+    virtual void gait_init()                              = 0;
+    virtual void refresh_steps()                          = 0;
+    virtual void trajectory_generation(uint8_t leg_index) = 0;
+
+    // 基类提供默认的get_Freq()实现，使用基类的gait_hz参数
+    // 子类可以重写此方法来使用自己的频率参数，实现独立控制
+    virtual uint32_t get_Freq() { return gait_hz.get(); }
 
     // 可选重写的虚函数
     virtual bool init();
@@ -129,7 +132,11 @@ protected:
     float pitch_travel;      // 俯仰行程 - 俯仰平衡补偿
     float leg_lift_height;   // 抬腿高度（mm）- 腿抬起的高度
 
-    AP_Int16 gait_step_total;        // 步态周期总步数：控制一个完整步态的离散化精度
+    float pitch_target;
+    float roll_target;
+
+    AP_Int16 gait_step_total; // 步态周期总步数：控制一个完整步态的离散化精度
+    AP_Int16 gait_hz;         // 步态频率（Hz）：基类通用参数，子类可以重写get_Freq()使用自己的参数
 
     // 重心控制
     Vector3f center_offset; // 主动控制的重心偏移量（X、Y、Z）
@@ -138,33 +145,32 @@ protected:
     int16_t gait_step_total_cached;
 
     // 每帧把 center_offset 向 target 平滑贴近
-    // void com_follow_target();
 
-    //    AC_PID roll_pid {
-    //     AC_PID::Defaults {
-    //         .p         = 1.0f,
-    //         .i         = 0.02f,
-    //         .d         = 0.05f,
-    //         .imax      = 1,
-    //         .filt_T_hz = 10.0f,
-    //         .filt_E_hz = 10.0f,
-    //         .filt_D_hz = 10.0f,
-    //         .srmax     = 0,
-    //         .srtau     = 1.0 }
-    // };
+    AC_PID roll_pid {
+        AC_PID::Defaults {
+            .p         = 1.5f,
+            .i         = 0.5f,
+            .d         = 0.000f,
+            .imax      = 10,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
 
-    // AC_PID pitch_pid {
-    //     AC_PID::Defaults {
-    //         .p         = 1.0f,
-    //         .i         = 0.02f,
-    //         .d         = 0.1f,
-    //         .imax      = 1,
-    //         .filt_T_hz = 10.0f,
-    //         .filt_E_hz = 10.0f,
-    //         .filt_D_hz = 10.0f,
-    //         .srmax     = 0,
-    //         .srtau     = 1.0 }
-    // };
+    AC_PID pitch_pid {
+        AC_PID::Defaults {
+            .p         = 1.5f,
+            .i         = 0.5f,
+            .d         = 0.000f,
+            .imax      = 100,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
 
     // AC_PID yaw_pid {
     //     AC_PID::Defaults {

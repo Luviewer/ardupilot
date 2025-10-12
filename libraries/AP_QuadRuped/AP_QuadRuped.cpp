@@ -511,7 +511,7 @@ void AP_QuadRuped::read_radio_input()
     // 分段判断步态模式：不同PWM范围对应不同的步态
     // 从高到低排列，优先匹配高PWM值（高档位）
     if (walk_value > 1800 && walk_value < 2100) {
-        set_walk_mode(AP_QUADRUPED_GAIT_WAVE);  // 档位5：横向工字步态
+        set_walk_mode(AP_QUADRUPED_GAIT_HengXiang);  // 档位5：横向工字步态
     } else if (walk_value > 1600 && walk_value < 1800) {
         set_walk_mode(AP_QUADRUPED_GAIT_ZongXiang);  // 档位4：纵向工字步态
     } else if (walk_value > 1350 && walk_value <= 1600) {

@@ -186,7 +186,7 @@ void AP_QuadRuped_Backend::main_inverse_kinematics(void)
 void AP_QuadRuped_Backend::yaw_trajectory_generation(uint8_t leg_index)
 {
     // 计算当前腿的步数偏移
-   int32_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
+    int32_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
 
     // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
     // 先处理负数再取模，保证数学上的正确性和连续性
@@ -230,16 +230,21 @@ void AP_QuadRuped_Backend::main_radio_controller()
         throttle_y_travel = 0.0f;
     }
 
-    if(channel.yaw_channel !=-1){
+    if (channel.yaw_channel != -1) {
         yaw_travel = _frontend.get_yaw_rate() * channel.throttle_yaw_max;
-    }else {
+    } else {
         yaw_travel = 0.0f;
     }
 
     //////////////////////////////////////////////////////////////////////////////////
     // 处理滚转通道（向右为正，向左为负）
     if (channel.roll_channel != -1) {
-        roll_travel = _frontend.get_throttle_roll() * channel.throttle_roll_max;
+        roll_target        = _frontend.get_throttle_roll() * channel.throttle_roll_max;
+        float roll_current = degrees(_ahrs.roll);
+
+        // 使用PI控制器计算输出
+        float dt    = 1.0f / get_Freq(); // 计算实际时间步长
+        roll_travel = roll_pid.update_all(roll_target, roll_current, dt);
     } else {
         roll_travel = 0.0f;
     }
@@ -247,7 +252,16 @@ void AP_QuadRuped_Backend::main_radio_controller()
     //////////////////////////////////////////////////////////////////////////////////
     // 处理俯仰通道
     if (channel.pitch_channel != -1) {
-        pitch_travel = _frontend.get_throttle_pitch() * channel.throttle_pitch_max;
+        pitch_target        = _frontend.get_throttle_pitch() * channel.throttle_pitch_max;
+        float pitch_current = degrees(_ahrs.pitch);
+
+        // 使用PI控制器计算输出
+        float dt     = 1.0f / get_Freq(); // 计算实际时间步长
+        pitch_travel = pitch_pid.update_all(pitch_target, pitch_current, dt);
+
+        // hal.console->printf("pitch_target = %.2f, pitch_current = %.2f",
+        //                     pitch_target,
+        //                     pitch_current);
     } else {
         pitch_travel = 0.0f;
     }
