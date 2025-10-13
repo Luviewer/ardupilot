@@ -72,8 +72,8 @@ void AP_QuadRuped_HengXiang::gait_init()
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
     gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                   // 右前腿从第0步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total / 2; // 右后腿从中间步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = 0;                   // 左后腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 3 * gait_step_total / 4; // 右后腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 4;                   // 左后腿从第0步开始
     gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2; // 左前腿从中间步开始
 
     // 设置步态参数

@@ -41,13 +41,21 @@ bool AP_QuadRuped_ZongXiang::init()
     return true;
 }
 
-// 步态初始化 - 继承基类的实现，只需要修改消息
+// 步态初始化
 void AP_QuadRuped_ZongXiang::gait_init()
 {
     gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_ZongXiang init");
 
-    // 调用基类的步态初始化
-    AP_QuadRuped_HengXiang::gait_init();
+    // 设置每条腿的起始步数
+    // 对角步态：左前右后同时抬起，右前左后同时抬起
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                   // 右前腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = gait_step_total / 2; // 右后腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 4;                   // 左后腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = 3 * gait_step_total / 4; // 左前腿从中间步开始
+
+    // 设置步态参数
+    gait_travel_divisor = gait_step_total / 2; // 行程除数
+    gait_lift_divisor   = 2;                   // 抬腿除数
 }
 
 // 纵向步态的位移向量 - 只使用X轴，Y轴始终为0
