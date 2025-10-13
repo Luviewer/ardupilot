@@ -121,21 +121,28 @@ void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
         phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
 
         if (leg_index == AP_QUADRUPED_LEG_RF) {
+
             cog_xy_travel   = Vector2f(-cog_length, -cog_length);
-            cog_xy_target.x = cog_xy_travel.x;
-            cog_xy_target.y = -cog_xy_travel.y + cog_xy_travel.y * phase * 2.0f;
+            cog_xy_target.x = sqrt(2) * cog_xy_travel.x * cosf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
+            cog_xy_target.y = sqrt(2) * cog_xy_travel.y * sinf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
+
         } else if (leg_index == AP_QUADRUPED_LEG_RB) {
+
             cog_xy_travel   = Vector2f(cog_length, -cog_length);
-            cog_xy_target.x = -cog_xy_travel.x + cog_xy_travel.x * phase * 2.0f;
-            cog_xy_target.y = cog_xy_travel.y;
+            cog_xy_target.x = sqrt(2) * cog_xy_travel.x * sinf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
+            cog_xy_target.y = sqrt(2) * cog_xy_travel.y * cosf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
+
         } else if (leg_index == AP_QUADRUPED_LEG_LB) {
+
             cog_xy_travel   = Vector2f(cog_length, cog_length);
-            cog_xy_target.x = cog_xy_travel.x;
-            cog_xy_target.y = -cog_xy_travel.y + cog_xy_travel.y * phase * 2.0f;
+            cog_xy_target.x = sqrt(2) * cog_xy_travel.x * cosf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
+            cog_xy_target.y = sqrt(2) * cog_xy_travel.y * sinf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
+
         } else if (leg_index == AP_QUADRUPED_LEG_LF) {
+
             cog_xy_travel   = Vector2f(-cog_length, cog_length);
-            cog_xy_target.x = -cog_xy_travel.x + cog_xy_travel.x * phase * 2.0f;
-            cog_xy_target.y = cog_xy_travel.y;
+            cog_xy_target.x = sqrt(2) * cog_xy_travel.x * sinf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
+            cog_xy_target.y = sqrt(2) * cog_xy_travel.y * cosf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
         }
         set_center_offset(cog_xy_target);
     }
