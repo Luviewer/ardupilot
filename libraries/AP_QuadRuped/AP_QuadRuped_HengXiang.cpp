@@ -71,10 +71,14 @@ void AP_QuadRuped_HengXiang::gait_init()
 
     // 设置每条腿的起始步数
     // 对角步态：左前右后同时抬起，右前左后同时抬起
-    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                   // 右前腿从第0步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 3 * gait_step_total / 4; // 右后腿从中间步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 4;                   // 左后腿从第0步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2; // 左前腿从中间步开始
+    // gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                       // 右前腿从第0步开始
+    // gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 3 * gait_step_total / 4; // 右后腿从中间步开始
+    // gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 4;     // 左后腿从第0步开始
+    // gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2;     // 左前腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                       // 右前腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 2 * gait_step_total / 4; // 右后腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = 0;                       // 左后腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = 2 * gait_step_total / 4; // 左前腿从中间步开始
 
     // 设置步态参数
     gait_travel_divisor = gait_step_total / 2; // 行程除数
@@ -144,14 +148,9 @@ void AP_QuadRuped_HengXiang::generate_cycloid_trajectory(uint8_t leg_index)
         // 摆动相时间映射：将[0,0.5]映射到[0,1]，专门用于空中轨迹计算
         const float phase = p * 2.0f; // 0..1
 
-        // 运动平滑处理：使用slow_phi函数实现末端减速
-        // 0.80f参数表示在80%的摆动相行程开始减速，确保落地轻柔
-        // 这种设计可以显著减少落地冲击，保护机械结构
-        const float phase_slow = slow_phi(phase, 0.80f); // 末段减速
-
         // 角度参数：将时间相位转换为角度参数，用于三角函数计算
         // M_2PI * phase_slow 将[0,1]映射到[0,2π]，完成一个完整的摆线周期
-        const float delta = M_2PI * phase_slow;
+        const float delta = M_2PI * phase;
 
         // ==================== 摆线轨迹数学原理 ====================
         // 摆线公式：S = (δ - sin(δ)) / 2π * 2，其中δ∈[0,2π]
@@ -293,13 +292,10 @@ void AP_QuadRuped_HengXiang::generate_bezier_trajectory(uint8_t leg_index)
         // P3: 终点 - 前支撑位置，确保腿精确落地到目标位置
         // 正值表示相对于机器人中心向前的位置
         Vector3f p3 = Vector3f(throttle_travel.x, throttle_travel.y, 0.0f);
-        // 运动平滑处理：使用slow_phi函数实现末端减速
-        // 0.85f参数表示在85%的摆动相行程开始减速，确保轻柔落地
-        // 这种设计可以减少冲击力，保护机械结构，提高运动平稳性
-        const float phase_smooth = slow_phi(phase, 0.85f);
+
         // 轨迹生成：调用贝塞尔曲线函数计算实际位置
         // phase_smooth是经过时间缩放的参数，确保运动学特性符合要求
-        leg_target = cubic_bezier_trajectory(phase_smooth, p0, p1, p2, p3);
+        leg_target = cubic_bezier_trajectory(phase, p0, p1, p2, p3);
     } else {                                   // 支撑相：腿部着地，推动机器人前进
         const float phase = (p - 0.5f) * 2.0f; // 将[0.5,1]映射到[0,1]，专门用于支撑相
         // 支撑相采用线性轨迹设计
@@ -323,60 +319,31 @@ void AP_QuadRuped_HengXiang::generate_bezier_trajectory(uint8_t leg_index)
 void AP_QuadRuped_HengXiang::yaw_trajectory_generation(uint8_t leg_index)
 {
     // 计算当前腿的步数偏移
-    int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
-    if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
+    int32_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
 
-    const float p    = (float)delta_step / (float)gait_step_total; // 步态进度 ∈ [0,1)
-    const float peak = yaw_travel / (float)gait_lift_divisor;      // 旋转峰值
+    // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
+    // 先处理负数再取模，保证数学上的正确性和连续性
+    while (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
+    delta_step = delta_step % gait_step_total.get();
 
-    if (p < (1.0f / 12.0f)) { // 前1/12时间段：无旋转
+    const float p    = (float)delta_step / (float)gait_step_total;
+    const float peak = yaw_travel / (float)gait_lift_divisor;
+
+    if (p < (1.0f / 12.0f)) {
         gait_rot_z[leg_index] = 0.0f;
-    } else if (p < (1.0f / 6.0f)) { // 1/12到1/6时间段：达到峰值旋转
+    } else if (p < (1.0f / 6.0f)) {
         gait_rot_z[leg_index] = peak;
-    } else { // 剩余5/6时间段：线性衰减到0
-        // 线性从 peak 衰减到 0，区间长度 = 5/6
-        const float t         = (p - (1.0f / 6.0f)) / (5.0f / 6.0f); // t ∈ [0,1)
-        gait_rot_z[leg_index] = peak * (1.0f - t);                   // 直接给定，不依赖上一帧
+    } else {
+        const float t         = (p - (1.0f / 6.0f)) / (5.0f / 6.0f);
+        gait_rot_z[leg_index] = peak * (1.0f - t);
     }
 }
 
 Vector3f AP_QuadRuped_HengXiang::leg_inverse_kinematics(Vector3f posxyz)
 {
-    const AP_QuadRuped_SYS_Params& Sys_Param = _frontend.get_sys_params();
-
-    // 存储计算出的关节角度（度）
-    Vector3f leg_deg = { 0, 0, 0 };
-
-    // 1. 计算髋关节角度（绕Z轴旋转）
-    leg_deg.x = -degrees(atan2f(0.0f, posxyz.y)); // 使用atan2计算XY平面内的角度
-
-    // 2. 计算从髋关节到末端在XY平面的投影距离
-    float trueX = fabsf(posxyz.y) - Sys_Param.COXA_LEN; // 减去髋关节长度
-
-    // 3. 计算从股关节到末端的空间距离
-    float im = sqrtf(trueX * trueX + posxyz.z * posxyz.z);
-
-    // 4. 计算股关节角度（使用余弦定理）
-    float q1 = atan2f(trueX, posxyz.z); // 股关节与末端连线与垂直方向的夹角
-
-    // 使用余弦定理计算股关节角度
-    float d1  = Sys_Param.FEMUR_LEN * Sys_Param.FEMUR_LEN - Sys_Param.TIBIA_LEN * Sys_Param.TIBIA_LEN + im * im;
-    float d2  = 2 * Sys_Param.FEMUR_LEN * im;
-    float q2  = acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f)); // 约束在[-1,1]范围内防止数值错误
-    leg_deg.y = -(degrees(q1 + q2) - 90);                            // 计算股关节角度并调整坐标系
-
-    // 5. 计算胫关节角度（使用余弦定理）
-    d1        = Sys_Param.FEMUR_LEN * Sys_Param.FEMUR_LEN - im * im + Sys_Param.TIBIA_LEN * Sys_Param.TIBIA_LEN;
-    d2        = 2 * Sys_Param.TIBIA_LEN * Sys_Param.FEMUR_LEN;
-    leg_deg.z = -(degrees(acosf(constrain_value(float(d1 / d2), -1.0f, 1.0f))) - 90); // 计算胫关节角度
-
-    if (_frontend.get_class() == AP_QUADRUPED_USL_BV2) {
-        const float alpha = degrees(atan2f(Sys_Param.Alpha_A, Sys_Param.Alpha_B));
-        leg_deg.y -= alpha;
-        leg_deg.z += 90.0f - alpha;
-    }
-
-    return leg_deg; // 返回{髋关节, 股关节, 胫关节}角度
+    return AP_QuadRuped_Backend::leg_inverse_kinematics(posxyz);
 }
 
 // 主逆运动学计算 - 计算所有腿的关节角度
@@ -476,18 +443,4 @@ void AP_QuadRuped_HengXiang::balance_controller()
 
     // 重心高度补偿（基于Z轴加速度）
     center_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
-}
-
-// gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
-// 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
-// 末段时间缩放函数：C2 连续，末端 v=a=0
-float AP_QuadRuped_HengXiang::slow_phi(float s, float s0)
-{
-    if (s <= s0) return s;
-    float sigma = (s - s0) / (1.0f - s0); // 0..1
-    float w     = sigma
-        + 4.0f * powf(sigma, 3.0f)
-        - 7.0f * powf(sigma, 4.0f)
-        + 3.0f * powf(sigma, 5.0f); // w(0)=0,w'(0)=1; w(1)=1,w'(1)=0
-    return s0 + (1.0f - s0) * w;
 }

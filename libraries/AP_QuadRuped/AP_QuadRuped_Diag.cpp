@@ -155,11 +155,11 @@ void AP_QuadRuped_Diag::generate_cycloid_trajectory(uint8_t leg_index)
         // 运动平滑处理：使用slow_phi函数实现末端减速
         // 0.80f参数表示在80%的摆动相行程开始减速，确保落地轻柔
         // 这种设计可以显著减少落地冲击，保护机械结构
-        const float phase_slow = slow_phi(phase, 0.80f); // 末段减速
+        // const float phase_slow = slow_phi(phase, 0.80f); // 末段减速
 
         // 角度参数：将时间相位转换为角度参数，用于三角函数计算
         // M_2PI * phase_slow 将[0,1]映射到[0,2π]，完成一个完整的摆线周期
-        const float delta = M_2PI * phase_slow;
+        const float delta = M_2PI * phase;
 
         // ==================== 摆线轨迹数学原理 ====================
         // 摆线公式：S = (δ - sin(δ)) / 2π * 2，其中δ∈[0,2π]
