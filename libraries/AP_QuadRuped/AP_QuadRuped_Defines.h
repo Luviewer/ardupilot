@@ -31,3 +31,8 @@ enum AP_QuadRuped_CLASS {
 typedef AP_QuadRuped_GaitType GaitType;
 typedef AP_QuadRuped_LegIndex LegIndex;
 typedef AP_QuadRuped_CLASS    QuadRupedClass;
+
+// 统一的常量定义
+#define AP_QUADRUPED_SPEED_HZ_DEFAULT     25.0f  // 默认步态频率（Hz）
+#define AP_QUADRUPED_STEP_TOTAL_DEFAULT   24     // 默认步态总步数
+#define AP_QUADRUPED_START_COXA_ANGLE     45.0f  // 起始髋关节角度

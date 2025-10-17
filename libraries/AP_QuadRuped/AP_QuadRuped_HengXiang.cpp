@@ -2,8 +2,8 @@
 #include "AP_QuadRuped.h"
 #include <AP_HAL/AP_HAL.h>
 
-#define SPEED_HZ_DEFAULT        25.0f // 默认步态频率（Hz）
-#define GAIT_STEP_TOTAL_DEFAULT 24    // 默认步态总步数
+#define SPEED_HZ_DEFAULT        AP_QUADRUPED_SPEED_HZ_DEFAULT // 默认步态频率（Hz）
+#define GAIT_STEP_TOTAL_DEFAULT AP_QUADRUPED_STEP_TOTAL_DEFAULT // 默认步态总步数
 
 // 外部HAL实例
 extern const AP_HAL::HAL& hal;

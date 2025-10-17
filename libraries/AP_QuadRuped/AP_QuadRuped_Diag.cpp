@@ -152,11 +152,6 @@ void AP_QuadRuped_Diag::generate_cycloid_trajectory(uint8_t leg_index)
         // 摆动相时间映射：将[0,0.5]映射到[0,1]，专门用于空中轨迹计算
         const float phase = p * 2.0f; // 0..1
 
-        // 运动平滑处理：使用slow_phi函数实现末端减速
-        // 0.80f参数表示在80%的摆动相行程开始减速，确保落地轻柔
-        // 这种设计可以显著减少落地冲击，保护机械结构
-        // const float phase_slow = slow_phi(phase, 0.80f); // 末段减速
-
         // 角度参数：将时间相位转换为角度参数，用于三角函数计算
         // M_2PI * phase_slow 将[0,1]映射到[0,2π]，完成一个完整的摆线周期
         const float delta = M_2PI * phase;
@@ -299,19 +294,7 @@ void AP_QuadRuped_Diag::balance_controller()
     center_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
 }
 
-// gait_step本质上是一个离散化的时间变量，将连续的步态运动分解为多个离散的步骤
-// 和逆运动学相互约束，逆运动学解算出相应的关节角，再通过轨迹生成生成轨迹
-// 末段时间缩放函数：C2 连续，末端 v=a=0
-float AP_QuadRuped_Diag::slow_phi(float s, float s0)
-{
-    if (s <= s0) return s;
-    float sigma = (s - s0) / (1.0f - s0); // 0..1
-    float w     = sigma
-        + 4.0f * powf(sigma, 3.0f)
-        - 7.0f * powf(sigma, 4.0f)
-        + 3.0f * powf(sigma, 5.0f); // w(0)=0,w'(0)=1; w(1)=1,w'(1)=0
-    return s0 + (1.0f - s0) * w;
-}
+
 
 // 三次贝塞尔曲线轨迹生成函数
 // 使用四个控制点生成平滑的3D空间轨迹，提供比摆线曲线更灵活的轨迹控制
@@ -412,14 +395,9 @@ void AP_QuadRuped_Diag::generate_bezier_trajectory(uint8_t leg_index)
         // 正值表示相对于机器人中心向前的位置
         Vector3f p3 = Vector3f(throttle_travel.x, throttle_travel.y, 0.0f);
 
-        // 运动平滑处理：使用slow_phi函数实现末端减速
-        // 0.85f参数表示在85%的摆动相行程开始减速，确保轻柔落地
-        // 这种设计可以减少冲击力，保护机械结构，提高运动平稳性
-        const float phase_smooth = slow_phi(phase, 0.85f);
-
         // 轨迹生成：调用贝塞尔曲线函数计算实际位置
-        // phase_smooth是经过时间缩放的参数，确保运动学特性符合要求
-        leg_target = cubic_bezier_trajectory(phase_smooth, p0, p1, p2, p3);
+        // 使用原始相位值，不进行末端减速处理
+        leg_target = cubic_bezier_trajectory(phase, p0, p1, p2, p3);
 
     } else {                                   // 支撑相：腿部着地，推动机器人前进
         const float phase = (p - 0.5f) * 2.0f; // 将[0.5,1]映射到[0,1]，专门用于支撑相

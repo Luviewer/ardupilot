@@ -42,8 +42,7 @@ private:
 
     uint32_t lasttime;
 
-    float slow_phi(float s, float s0);
-    void  balance_controller();
+      void  balance_controller();
 
     // 轨迹生成函数
     void     generate_cycloid_trajectory(uint8_t leg_index);                                                                   // 摆线轨迹生成器：使用经典摆线算法，计算简单，运动平稳
