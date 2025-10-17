@@ -55,7 +55,7 @@ void AP_QuadRuped_Backend::reset_leg()
 }
 
 void AP_QuadRuped_Backend::refresh_steps()
- {
+{
     const int16_t step_total = gait_step_total.get();
     if (step_total < 0) {
         return;
@@ -69,7 +69,6 @@ void AP_QuadRuped_Backend::refresh_steps()
 
     gait_init();
 }
-
 
 // 计算步态序列 - 判断是否需要移动并执行相应动作
 void AP_QuadRuped_Backend::calc_gait_sequence()
@@ -141,6 +140,9 @@ Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
 
     // 添加重心偏移补偿
     // 减去 center_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
+    if (throttle_x_travel <= 0.01 && throttle_y_travel <= 0.01 && yaw_travel <= 0.01) {
+        center_offset = { 0, 0, 0 };
+    }
     totaldist_xyz -= center_offset;
 
     // 添加Z轴高度偏移（机体升降）
