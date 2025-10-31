@@ -46,7 +46,14 @@ void AP_QuadRuped_ZongXiang::gait_init()
 {
     gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_ZongXiang init");
 
-    AP_QuadRuped_HengXiang::gait_init();
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                       // 右前腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 2 * gait_step_total / 4; // 右后腿从中间步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = 3 * gait_step_total / 4;                       // 左后腿从第0步开始
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 4; // 左前腿从中间步开始
+
+    // 设置步态参数
+    gait_travel_divisor = gait_step_total / 2; // 行程除数
+    gait_lift_divisor   = 2;                   // 抬腿除数
 }
 
 // 纵向步态的位移向量 - 只使用X轴，Y轴始终为0

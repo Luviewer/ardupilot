@@ -2,7 +2,7 @@
 #include "AP_QuadRuped.h"
 #include <AP_HAL/AP_HAL.h>
 
-#define SPEED_HZ_DEFAULT        AP_QUADRUPED_SPEED_HZ_DEFAULT // 默认步态频率（Hz）
+#define SPEED_HZ_DEFAULT        AP_QUADRUPED_SPEED_HZ_DEFAULT   // 默认步态频率（Hz）
 #define GAIT_STEP_TOTAL_DEFAULT AP_QUADRUPED_STEP_TOTAL_DEFAULT // 默认步态总步数
 
 // 外部HAL实例
@@ -19,6 +19,8 @@ const AP_Param::GroupInfo AP_QuadRuped_HengXiang::var_info[] = {
     // 贝塞尔曲线参数
     AP_GROUPINFO("BEZ_H", 4, AP_QuadRuped_HengXiang, bezier_control_height, 1.2f),  // 贝塞尔曲线控制点高度系数
     AP_GROUPINFO("BEZ_F", 5, AP_QuadRuped_HengXiang, bezier_control_forward, 0.3f), // 贝塞尔曲线控制点前向偏移系数
+    AP_GROUPINFO("COG_X", 7, AP_QuadRuped_HengXiang, centre_offset_ratio_x, 0.4f), // X方向重心偏移比例系数
+    AP_GROUPINFO("COG_Y", 8, AP_QuadRuped_HengXiang, centre_offset_ratio_y, 0.1f), // Y方向重心偏移比例系数（较小值）
 
     AP_GROUPEND
 };
@@ -69,20 +71,39 @@ void AP_QuadRuped_HengXiang::gait_init()
 {
     gcs().send_text(MAV_SEVERITY_INFO, "AP_QuadRuped_HengXiang init");
 
-    // 设置每条腿的起始步数
-    // 对角步态：左前右后同时抬起，右前左后同时抬起
-    // gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                       // 右前腿从第0步开始
-    // gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 3 * gait_step_total / 4; // 右后腿从中间步开始
-    // gait_step_leg_start[AP_QUADRUPED_LEG_LB] = gait_step_total / 4;     // 左后腿从第0步开始
-    // gait_step_leg_start[AP_QUADRUPED_LEG_LF] = gait_step_total / 2;     // 左前腿从中间步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = 0;                       // 右前腿从第0步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = 2 * gait_step_total / 4; // 右后腿从中间步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = 0;                       // 左后腿从第0步开始
-    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = 2 * gait_step_total / 4; // 左前腿从中间步开始
+    const int16_t step_total = gait_step_total.get();
 
-    // 设置步态参数
-    gait_travel_divisor = gait_step_total / 2; // 行程除数
-    gait_lift_divisor   = 2;                   // 抬腿除数
+    // 维持12.5%摆动相
+    gait_lift_divisor = 8;
+
+    // 设置每条腿的起始步数 - 波浪步态：90度相位差，确保单腿摆动
+    gait_step_cog_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 0 * 2, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (0 * 2 + 1), 0, 255));
+
+    gait_step_cog_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 1 * 2, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_RB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (1 * 2 + 1), 0, 255));
+
+    gait_step_cog_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 2 * 2, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LB] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (2 * 2 + 1), 0, 255));
+
+    gait_step_cog_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * 3 * 2, 0, 255));
+    gait_step_leg_start[AP_QUADRUPED_LEG_LF] = static_cast<uint8_t>(constrain_int16(step_total / gait_lift_divisor * (3 * 2 + 1), 0, 255));
+}
+
+void AP_QuadRuped_HengXiang::refresh_steps()
+{
+    const int16_t step_total = gait_step_total.get();
+    if (step_total < 0) {
+        return;
+    }
+
+    if (step_total == gait_step_total_cached) {
+        return;
+    }
+
+    gait_step_total_cached = step_total;
+
+    gait_init();
 }
 
 // 轨迹生成
@@ -143,58 +164,23 @@ void AP_QuadRuped_HengXiang::generate_cycloid_trajectory(uint8_t leg_index)
     Vector2f leg_xy_target;       // XY平面的目标位置
     float    leg_z_target = 0.0f; // Z轴高度，默认为0（地面）
 
-    // 步态相位分割：以0.5为界，前半段摆动相，后半段支撑相
-    if (p < 0.5f) { // ==================== 摆动相（Swing Phase）====================
-        // 摆动相时间映射：将[0,0.5]映射到[0,1]，专门用于空中轨迹计算
-        const float phase = p * 2.0f; // 0..1
+    const float swing_ratio = 1.0f / (float)gait_lift_divisor; // 单腿摆动占 1/8 周期
 
-        // 角度参数：将时间相位转换为角度参数，用于三角函数计算
-        // M_2PI * phase_slow 将[0,1]映射到[0,2π]，完成一个完整的摆线周期
+    if (p < swing_ratio) {
+        const float phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
         const float delta = M_2PI * phase;
+        const float S     = (delta - sinf(delta)) / M_2PI * 2.0f;
 
-        // ==================== 摆线轨迹数学原理 ====================
-        // 摆线公式：S = (δ - sin(δ)) / 2π * 2，其中δ∈[0,2π]
-        // 这个公式的物理意义：模拟滚轮边缘一点的运动轨迹
-        // 特性：S(0)=0, S(π)=1, S(2π)=2，且起点和终点的速度、加速度都为0
+        leg_xy_target = throttle_travel * S - throttle_travel;
+        leg_z_target  = -leg_lift_height * (1.0f - cosf(delta));
 
-        // 2D摆线轨迹计算：将1D摆线公式推广到2D平面
-        // 对X和Y分量同时应用相同的标量变换，保证运动方向的协调性
-        const float S = (delta - sinf(delta)) / M_2PI * 2.0f; // 0..2
-
-        // XY平面轨迹：从起始位置到目标位置的摆线运动
-        // 公式分解：throttle_travel * S - throttle_travel = throttle_travel * (S - 1)
-        // 当S=0时，位置为-throttle_travel（起始位置）
-        // 当S=2时，位置为+throttle_travel（目标位置）
-        leg_xy_target = throttle_travel * S - throttle_travel; // 原公式在 X 上的 1D 推广到 2D
-
-        // Z轴轨迹：垂直方向的摆线运动，实现抬腿和落地
-        // 公式：-leg_lift_height * (1 - cos(δ))
-        // 特性：
-        // - δ=0时，Z=0（地面起始）
-        // - δ=π时，Z=-2*leg_lift_height（最高点）
-        // - δ=2π时，Z=0（地面落地）
-        // 负号表示向上为负方向（符合机器人坐标系）
-        leg_z_target = -leg_lift_height * (1.0f - cosf(delta));
-
-    } else { // ==================== 支撑相（Stance Phase）====================
-        // 支撑相时间映射：将[0.5,1]映射到[0,1]，用于地面接触期轨迹
-        const float phase = (p - 0.5f) * 2.0f; // 0..1
+    } else {
+        const float phase = constrain_float((p - swing_ratio) / (1.0f - swing_ratio), 0.0f, 1.0f);
         const float delta = M_2PI * phase;
+        const float S     = (delta - sinf(delta)) / M_2PI * 2.0f;
 
-        // 支撑相摆线计算：使用与摆动相对称的数学公式
-        // 这种对称设计保证了步态的连续性和协调性
-        const float S = (delta - sinf(delta)) / M_2PI * 2.0f;
-
-        // 支撑相XY轨迹：从目标位置返回起始位置的摆线运动
-        // 公式：-throttle_travel * S + throttle_travel = throttle_travel * (1 - S)
-        // 当S=0时，位置为+throttle_travel（前支撑位置）
-        // 当S=2时，位置为-throttle_travel（后支撑位置）
-        // 这种设计实现了腿部推动机器人前进的效果
-        leg_xy_target = -throttle_travel * S + throttle_travel; // 同样推广到 2D
-
-        // 支撑相Z轴：强制为0，确保支撑相期间腿部始终与地面接触
-        // 这是机器人稳定行走的必要条件，提供持续的地面反作用力
-        leg_z_target = 0.0f;
+        leg_xy_target = -throttle_travel * S + throttle_travel;
+        leg_z_target  = 0.0f;
     }
 
     // 结果输出：将计算得到的3D位置存储到全局数组中
@@ -404,6 +390,7 @@ void AP_QuadRuped_HengXiang::update_leg()
         // 为每条腿生成位置轨迹和旋转轨迹
         trajectory_generation(leg_index);
         yaw_trajectory_generation(leg_index);
+        cog_generation(leg_index);
     }
 }
 
@@ -443,4 +430,54 @@ void AP_QuadRuped_HengXiang::balance_controller()
 
     // 重心高度补偿（基于Z轴加速度）
     center_offset.z = constrain_float(accel.z * 0.05f, -5.0f, 5.0f);
+}
+
+void AP_QuadRuped_HengXiang::cog_generation(uint8_t leg_index)
+{
+    // 步态相位计算：与贝塞尔曲线轨迹相同的相位处理逻辑
+    // 这种统一设计保证了不同轨迹算法之间的相位一致性
+    int32_t delta_step = gait_step_now - gait_step_cog_start[leg_index];
+
+    // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
+    // 先处理负数再取模，保证数学上的正确性和连续性
+    while (delta_step < 0) {
+        delta_step += gait_step_total;
+    }
+    delta_step = delta_step % gait_step_total.get();
+
+    // 归一化相位转换：将离散步数映射到连续的[0,1]区间
+    // 这个p值是整个轨迹生成的时间基准，驱动后续所有的数学计算
+    const float p = (float)delta_step / (float)gait_step_total; // 0..1
+
+    // 单腿重心偏移占 1/8 周期
+    const float swing_ratio = 1.0f / (float)gait_lift_divisor;
+
+    const float cog_length_x = centre_offset_ratio_x.get();  // X方向重心偏移幅度
+    const float cog_length_y = centre_offset_ratio_y.get();  // Y方向重心偏移幅度
+
+    Vector2f cog_xy_target;
+    float    phase;
+
+    if (p < swing_ratio) {
+        phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
+
+        if (leg_index == AP_QUADRUPED_LEG_RF) {
+            // 椭圆形轨迹：X方向大范围偏移，Y方向小范围偏移
+            cog_xy_target.x = -cog_length_x * cosf(M_PI / 2 * (phase - 0.5)); 
+            cog_xy_target.y = -cog_length_y * sinf(M_PI / 2 * (phase - 0.5)); 
+
+        } else if (leg_index == AP_QUADRUPED_LEG_RB) {
+            cog_xy_target.x = cog_length_x * sinf(M_PI / 2 * (phase - 0.5));  
+            cog_xy_target.y = -cog_length_y * cosf(M_PI / 2 * (phase - 0.5)); 
+
+        } else if (leg_index == AP_QUADRUPED_LEG_LB) {
+            cog_xy_target.x = cog_length_x * cosf(M_PI / 2 * (phase - 0.5));  
+            cog_xy_target.y = cog_length_y * sinf(M_PI / 2 * (phase - 0.5));  
+
+        } else if (leg_index == AP_QUADRUPED_LEG_LF) {
+            cog_xy_target.x = -cog_length_x * sinf(M_PI / 2 * (phase - 0.5));
+            cog_xy_target.y = cog_length_y * cosf(M_PI / 2 * (phase - 0.5));  
+        }
+        set_center_offset(cog_xy_target);
+    }
 }

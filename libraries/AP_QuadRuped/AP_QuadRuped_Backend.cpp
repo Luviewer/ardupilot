@@ -140,7 +140,7 @@ Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
 
     // 添加重心偏移补偿
     // 减去 center_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
-    if (throttle_x_travel <= 0.01 && throttle_y_travel <= 0.01 && yaw_travel <= 0.01) {
+    if (abs(throttle_x_travel) <= 0.01 && abs(throttle_y_travel) <= 0.01 && abs(yaw_travel) <= 0.01) {
         center_offset = { 0, 0, 0 };
     }
     totaldist_xyz -= center_offset;
