@@ -290,6 +290,8 @@ void AP_QuadRuped::update()
     // 更新最后执行时间戳
     lasttime = AP_HAL::millis();
 
+    const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
+
     // 根据主模式执行相应的控制逻辑
     switch (fly_walk_mode.master_mode) {
         default:
@@ -305,7 +307,6 @@ void AP_QuadRuped::update()
                 default:
                 case Fly_Mode_Flying: {
                     // 获取测距传感器数据进行高度检测
-                    const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
                     if (sensor) {
                         // 读取地面距离（厘米）
                         uint16_t sonar_cm = sensor->distance_cm();
@@ -321,12 +322,38 @@ void AP_QuadRuped::update()
 
                 case Fly_Mode_Zhong_Claw:
                     // 纵向爪子模式：腿部形成纵向爪子形状
-                    _backend->zhongxiang_claw_leg(get_claw_angle());
+                    // _backend->zhongxiang_claw_leg(get_claw_angle());
+                    if (_motors->get_throttle() >= 0.5 && hal.rcin->read(CH_7) > 1500) {
+                        _backend->zhongxiang_claw_leg(-40);
+                    } else {
+                        if (sensor) {
+                            // 读取地面距离（厘米）
+                            uint16_t sonar_cm = sensor->distance_cm();
+                            if (sonar_cm < 8) {
+                                // 离地较高时：收起腿部成X形向上姿态
+                                _backend->zhongxiang_claw_leg(70);
+                            } else {
+                                _backend->zhongxiang_claw_leg(-40);
+                            }
+                        }
+                    }
+
                     break;
 
                 case Fly_Mode_Heng_Claw:
                     // 横向爪子模式：腿部形成横向爪子形状
-                    _backend->hengxiang_claw_leg(get_claw_angle());
+                    // _backend->hengxiang_claw_leg(get_claw_angle());
+
+                    if (sensor) {
+                        // 读取地面距离（厘米）
+                        uint16_t sonar_cm = sensor->distance_cm();
+                        if (sonar_cm < 8) {
+                            // 离地较高时：收起腿部成X形向上姿态
+                            _backend->hengxiang_claw_leg(40);
+                        } else {
+                            _backend->hengxiang_claw_leg(-40);
+                        }
+                    }
                     break;
             }
             break;
