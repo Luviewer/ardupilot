@@ -1,0 +1,16 @@
+# hw definition file for processing by chibios_hwdef.py
+# for Holybro Pixhawk4 hardware.
+
+include ../Pogo-CANFCU-Mini/hwdef.dat
+
+undef PA3 PA2 PA1 PA0 PE9 PE11 PE13 PE14
+
+# This gives bi-dir dshot on the first four channels and regular dshot on the next two
+PA3  TIM2_CH4  TIM2  PWM(1)  GPIO(52) BIDIR
+PA2  TIM2_CH3  TIM2  PWM(2)  GPIO(53)
+PA1  TIM2_CH2  TIM2  PWM(3)  GPIO(54) BIDIR
+PA0  TIM2_CH1  TIM2  PWM(4)  GPIO(55)
+PE9  TIM1_CH1  TIM1  PWM(5)  GPIO(56) BIDIR
+PE11 TIM1_CH2  TIM1  PWM(6)  GPIO(57)
+PE13 TIM1_CH3  TIM1  PWM(7)  GPIO(58) BIDIR
+PE14 TIM1_CH4  TIM1  PWM(8)  GPIO(59)
