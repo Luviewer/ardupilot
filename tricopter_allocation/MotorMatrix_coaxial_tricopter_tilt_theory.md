@@ -1,5 +1,14 @@
 # 共轴三旋翼倾转电机混控理论依据
 
+## 0. 概述
+
+本文档描述了共轴三旋翼倾转电机的混控理论依据。该设计包含三个电机位置（前左、前右、后置），每个位置配备共轴双桨（上下两个电机，旋转方向相反）。**所有三个电机均可通过舵机实现倾转**，用于增强pitch控制能力。
+
+**重要说明**：
+- 倾转角度通过pitch控制输出计算，而非从舵机读取（舵机一般无法读取当前角度）
+- 倾转角度动态影响roll、pitch、throttle混控因子
+- 根据MATLAB推导的控制分配矩阵，所有混控因子都考虑了倾转的影响
+
 ## 1. 坐标系定义
 
 ### 1.1 机体坐标系（Body Frame）
@@ -209,8 +218,9 @@ M_pitch_FR ≈ (x_FR - θ) / x_max
 在脚本中，我们使用：
 
 ```lua
-pitch_factor_left = sin(θ) * TILT_PITCH_GAIN * 0.5
-pitch_factor_right = -sin(θ) * TILT_PITCH_GAIN * 0.5
+pitch_factor_left = sin(θ_left) * TILT_PITCH_GAIN * 0.5
+pitch_factor_right = -sin(θ_right) * TILT_PITCH_GAIN * 0.5
+pitch_factor_rear = cos(θ_rear) * 0.5
 ```
 
 **理论依据**：
@@ -218,6 +228,20 @@ pitch_factor_right = -sin(θ) * TILT_PITCH_GAIN * 0.5
 2. **符号相反**：前左和前右倾转方向相反，所以符号相反
 3. **增益系数0.5**：归一化因子，确保pitch控制力矩在合理范围内
 4. **TILT_PITCH_GAIN**：可调增益，用于平衡倾转控制灵敏度
+5. **后置电机**：主要使用cos项（位置力矩），因为后置电机在X轴负方向
+
+### 4.4 倾转角度计算方式
+
+**重要**：舵机一般无法读取当前倾转角度，因此需要通过控制输出计算目标倾转角度。
+
+**计算方式**：
+1. 获取pitch控制输出：`pitch_demand = vehicle:get_control_output(CONTROL_OUTPUT_PITCH)`（范围：-1.0 到 1.0）
+2. 转换为倾转角度：`tilt_angle = pitch_demand * TILT_ANGLE_MAX`（度）
+3. 设置舵机PWM输出：根据倾转角度计算PWM值并输出到舵机
+
+**倾转策略**：
+- **前左和前右**：对称倾转（相反方向），`tilt_angle_left = pitch_demand * TILT_ANGLE_MAX`，`tilt_angle_right = -pitch_demand * TILT_ANGLE_MAX`
+- **后置**：根据 `REAR_TILT_RATIO` 决定是否倾转，`tilt_angle_rear = pitch_demand * REAR_TILT_RATIO * TILT_ANGLE_MAX`（默认REAR_TILT_RATIO=0.0，不倾转）
 
 ### 4.3 完整公式
 
@@ -279,7 +303,18 @@ M_roll_R = 0
 
 ### 6.2 倾转对Roll的影响
 
-当电机倾转时，roll控制能力会略微减小（因为 `cos(θ) < 1`），但在小角度时可以忽略。
+当电机倾转时，roll控制能力会减小（因为 `cos(θ) < 1`）。
+
+**根据MATLAB推导**：Roll力矩 = `-Fi*ly*(cos(a1) - cos(a2))`
+
+**实际实现**：
+```lua
+roll_factor_left = -0.5 * cos(θ_left)
+roll_factor_right = 0.5 * cos(θ_right)
+roll_factor_rear = 0  -- 后置ly=0，不贡献roll
+```
+
+倾转会减小roll控制能力，需要在实际飞行中考虑这一影响。
 
 ## 7. 动态更新策略
 
@@ -372,24 +407,26 @@ M_pitch = sin(θ) · gain
 ```
 M_pitch_FL = sin(θ_FL) · TILT_PITCH_GAIN · 0.5
 M_pitch_FR = -sin(θ_FR) · TILT_PITCH_GAIN · 0.5
-M_pitch_R = 0.5  （固定值）
+M_pitch_R = cos(θ_R) · 0.5  （后置主要用cos项）
 ```
 
-**Roll因子**（固定）：
+**Roll因子**（受倾转影响）：
 ```
-M_roll_FL = -0.5
-M_roll_FR = +0.5
-M_roll_R = 0
+M_roll_FL = -0.5 · cos(θ_FL)
+M_roll_FR = +0.5 · cos(θ_FR)
+M_roll_R = 0  （后置ly=0，不贡献roll）
 ```
 
 **Yaw因子**（共轴对）：
 ```
-M_yaw = 0  （所有电机）
+M_yaw = 0  （所有电机，共轴对相互抵消）
 ```
 
-**Throttle因子**：
+**Throttle因子**（受倾转影响）：
 ```
-M_throttle = 1.0  （所有电机）
+M_throttle_FL = cos(θ_FL)  （倾转损失升力）
+M_throttle_FR = cos(θ_FR)
+M_throttle_R = cos(θ_R)
 ```
 
 ### 10.2 理论优势
