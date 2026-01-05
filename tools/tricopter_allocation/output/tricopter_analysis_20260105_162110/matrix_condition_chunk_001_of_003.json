@@ -1,0 +1,14 @@
+{
+  "chunk_index": 1,
+  "total_chunks": 3,
+  "start_index": 0,
+  "end_index": 500,
+  "total_results": 1369,
+  "results": [
+    {
+      "tilt_FL": -90.0,
+      "tilt_FR": -90.0,
+      "tilt_R": -90.0,
+      "condition_number": 6.156884624717952,
+      "min_lift_factor": 1.2246467991473532e-16,
+      "is_singular": 

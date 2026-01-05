@@ -1,0 +1,3251 @@
+[
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 6.123233995736766e-17,
+    "lift_loss_ratio": 0.9999999999999999,
+    "total_lift": 3.6739403974420594e-16,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.05788272588897684,
+    "lift_loss_ratio": 0.9421172741110232,
+    "total_lift": 0.34729635533386105,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.11400671444188964,
+    "lift_loss_ratio": 0.8859932855581103,
+    "total_lift": 0.6840402866513379,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.16666666666666674,
+    "lift_loss_ratio": 0.8333333333333333,
+    "total_lift": 1.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.21426253656217983,
+    "lift_loss_ratio": 0.7857374634378201,
+    "total_lift": 1.285575219373079,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.255348147706326,
+    "lift_loss_ratio": 0.744651852293674,
+    "total_lift": 1.5320888862379562,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.2886751345948129,
+    "lift_loss_ratio": 0.7113248654051871,
+    "total_lift": 1.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.31323087359530283,
+    "lift_loss_ratio": 0.6867691264046971,
+    "total_lift": 1.879385241571817,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.3282692510040694,
+    "lift_loss_ratio": 0.6717307489959305,
+    "total_lift": 1.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.3333333333333334,
+    "lift_loss_ratio": 0.6666666666666665,
+    "total_lift": 2.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.3282692510040694,
+    "lift_loss_ratio": 0.6717307489959305,
+    "total_lift": 1.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.31323087359530283,
+    "lift_loss_ratio": 0.6867691264046971,
+    "total_lift": 1.879385241571817,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.2886751345948129,
+    "lift_loss_ratio": 0.7113248654051871,
+    "total_lift": 1.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.255348147706326,
+    "lift_loss_ratio": 0.744651852293674,
+    "total_lift": 1.5320888862379562,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.21426253656217983,
+    "lift_loss_ratio": 0.7857374634378201,
+    "total_lift": 1.285575219373079,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.16666666666666674,
+    "lift_loss_ratio": 0.8333333333333333,
+    "total_lift": 1.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.11400671444188964,
+    "lift_loss_ratio": 0.8859932855581103,
+    "total_lift": 0.6840402866513379,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.05788272588897684,
+    "lift_loss_ratio": 0.9421172741110232,
+    "total_lift": 0.34729635533386105,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -90.0,
+    "tilt_FR": -90.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 6.123233995736766e-17,
+    "lift_loss_ratio": 0.9999999999999999,
+    "total_lift": 3.6739403974420594e-16,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.11576545177795362,
+    "lift_loss_ratio": 0.8842345482220464,
+    "total_lift": 0.6945927106677218,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.17364817766693041,
+    "lift_loss_ratio": 0.8263518223330696,
+    "total_lift": 1.0418890660015825,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.22977216621984323,
+    "lift_loss_ratio": 0.7702278337801568,
+    "total_lift": 1.3786329973190594,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.2824321184446203,
+    "lift_loss_ratio": 0.7175678815553796,
+    "total_lift": 1.6945927106677219,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.3300279883401334,
+    "lift_loss_ratio": 0.6699720116598666,
+    "total_lift": 1.9801679300408004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.37111359948427963,
+    "lift_loss_ratio": 0.6288864005157204,
+    "total_lift": 2.226681596905678,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.4044405863727665,
+    "lift_loss_ratio": 0.5955594136272335,
+    "total_lift": 2.426643518236599,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.42899632537325644,
+    "lift_loss_ratio": 0.5710036746267435,
+    "total_lift": 2.5739779522395385,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.4440347027820229,
+    "lift_loss_ratio": 0.5559652972179772,
+    "total_lift": 2.6642082166921375,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.4490987851112869,
+    "lift_loss_ratio": 0.5509012148887131,
+    "total_lift": 2.6945927106677217,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.4440347027820229,
+    "lift_loss_ratio": 0.5559652972179772,
+    "total_lift": 2.6642082166921375,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.42899632537325644,
+    "lift_loss_ratio": 0.5710036746267435,
+    "total_lift": 2.5739779522395385,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.4044405863727665,
+    "lift_loss_ratio": 0.5955594136272335,
+    "total_lift": 2.426643518236599,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.37111359948427963,
+    "lift_loss_ratio": 0.6288864005157204,
+    "total_lift": 2.226681596905678,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.3300279883401334,
+    "lift_loss_ratio": 0.6699720116598666,
+    "total_lift": 1.9801679300408004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.2824321184446203,
+    "lift_loss_ratio": 0.7175678815553796,
+    "total_lift": 1.6945927106677219,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.22977216621984323,
+    "lift_loss_ratio": 0.7702278337801568,
+    "total_lift": 1.3786329973190594,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.17364817766693041,
+    "lift_loss_ratio": 0.8263518223330696,
+    "total_lift": 1.0418890660015825,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -80.0,
+    "tilt_FR": -80.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.11576545177795362,
+    "lift_loss_ratio": 0.8842345482220464,
+    "total_lift": 0.6945927106677218,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.22801342888377926,
+    "lift_loss_ratio": 0.7719865711162207,
+    "total_lift": 1.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.28589615477275604,
+    "lift_loss_ratio": 0.7141038452272439,
+    "total_lift": 1.7153769286365361,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.3420201433256688,
+    "lift_loss_ratio": 0.6579798566743311,
+    "total_lift": 2.052120859954013,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.3946800955504459,
+    "lift_loss_ratio": 0.6053199044495541,
+    "total_lift": 2.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.442275965445959,
+    "lift_loss_ratio": 0.5577240345540411,
+    "total_lift": 2.653655792675754,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.4833615765901052,
+    "lift_loss_ratio": 0.5166384234098949,
+    "total_lift": 2.9001694595406313,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.5166885634785922,
+    "lift_loss_ratio": 0.48331143652140784,
+    "total_lift": 3.1001313808715527,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.5412443024790821,
+    "lift_loss_ratio": 0.45875569752091794,
+    "total_lift": 3.2474658148744924,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.5562826798878485,
+    "lift_loss_ratio": 0.4437173201121515,
+    "total_lift": 3.3376960793270913,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.5613467622171125,
+    "lift_loss_ratio": 0.43865323778288745,
+    "total_lift": 3.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.5562826798878485,
+    "lift_loss_ratio": 0.4437173201121515,
+    "total_lift": 3.3376960793270913,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.5412443024790821,
+    "lift_loss_ratio": 0.45875569752091794,
+    "total_lift": 3.2474658148744924,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.5166885634785922,
+    "lift_loss_ratio": 0.48331143652140784,
+    "total_lift": 3.1001313808715527,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.4833615765901052,
+    "lift_loss_ratio": 0.5166384234098949,
+    "total_lift": 2.9001694595406313,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.442275965445959,
+    "lift_loss_ratio": 0.5577240345540411,
+    "total_lift": 2.653655792675754,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.3946800955504459,
+    "lift_loss_ratio": 0.6053199044495541,
+    "total_lift": 2.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.3420201433256688,
+    "lift_loss_ratio": 0.6579798566743311,
+    "total_lift": 2.052120859954013,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.28589615477275604,
+    "lift_loss_ratio": 0.7141038452272439,
+    "total_lift": 1.7153769286365361,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -70.0,
+    "tilt_FR": -70.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.22801342888377926,
+    "lift_loss_ratio": 0.7719865711162207,
+    "total_lift": 1.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.3333333333333334,
+    "lift_loss_ratio": 0.6666666666666665,
+    "total_lift": 2.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.3912160592223102,
+    "lift_loss_ratio": 0.6087839407776898,
+    "total_lift": 2.347296355333861,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.447340047775223,
+    "lift_loss_ratio": 0.552659952224777,
+    "total_lift": 2.684040286651338,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.5000000000000001,
+    "lift_loss_ratio": 0.4999999999999999,
+    "total_lift": 3.000000000000001,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.5475958698955132,
+    "lift_loss_ratio": 0.45240413010448677,
+    "total_lift": 3.2855752193730794,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.5886814810396594,
+    "lift_loss_ratio": 0.41131851896034055,
+    "total_lift": 3.5320888862379567,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.6220084679281462,
+    "lift_loss_ratio": 0.37799153207185376,
+    "total_lift": 3.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.6465642069286363,
+    "lift_loss_ratio": 0.35343579307136375,
+    "total_lift": 3.8793852415718173,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.6616025843374027,
+    "lift_loss_ratio": 0.3383974156625973,
+    "total_lift": 3.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.6666666666666666,
+    "lift_loss_ratio": 0.33333333333333337,
+    "total_lift": 4.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.6616025843374027,
+    "lift_loss_ratio": 0.3383974156625973,
+    "total_lift": 3.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.6465642069286363,
+    "lift_loss_ratio": 0.35343579307136375,
+    "total_lift": 3.8793852415718173,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.6220084679281462,
+    "lift_loss_ratio": 0.37799153207185376,
+    "total_lift": 3.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.5886814810396594,
+    "lift_loss_ratio": 0.41131851896034055,
+    "total_lift": 3.5320888862379567,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.5475958698955132,
+    "lift_loss_ratio": 0.45240413010448677,
+    "total_lift": 3.2855752193730794,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.5000000000000001,
+    "lift_loss_ratio": 0.4999999999999999,
+    "total_lift": 3.000000000000001,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.447340047775223,
+    "lift_loss_ratio": 0.552659952224777,
+    "total_lift": 2.684040286651338,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.3912160592223102,
+    "lift_loss_ratio": 0.6087839407776898,
+    "total_lift": 2.347296355333861,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -60.0,
+    "tilt_FR": -60.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.3333333333333334,
+    "lift_loss_ratio": 0.6666666666666665,
+    "total_lift": 2.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.42852507312435956,
+    "lift_loss_ratio": 0.5714749268756405,
+    "total_lift": 2.5711504387461575,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.48640779901333636,
+    "lift_loss_ratio": 0.5135922009866636,
+    "total_lift": 2.918446794080018,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.5425317875662492,
+    "lift_loss_ratio": 0.4574682124337508,
+    "total_lift": 3.255190725397495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.5951917397910264,
+    "lift_loss_ratio": 0.40480826020897365,
+    "total_lift": 3.571150438746158,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.6427876096865394,
+    "lift_loss_ratio": 0.35721239031346064,
+    "total_lift": 3.8567256581192364,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.6838732208306856,
+    "lift_loss_ratio": 0.3161267791693144,
+    "total_lift": 4.103239324984114,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.7172002077191725,
+    "lift_loss_ratio": 0.2827997922808275,
+    "total_lift": 4.303201246315035,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.7417559467196625,
+    "lift_loss_ratio": 0.2582440532803375,
+    "total_lift": 4.450535680317975,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.7567943241284288,
+    "lift_loss_ratio": 0.24320567587157116,
+    "total_lift": 4.540765944770573,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.7618584064576929,
+    "lift_loss_ratio": 0.23814159354230713,
+    "total_lift": 4.571150438746157,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.7567943241284288,
+    "lift_loss_ratio": 0.24320567587157116,
+    "total_lift": 4.540765944770573,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.7417559467196625,
+    "lift_loss_ratio": 0.2582440532803375,
+    "total_lift": 4.450535680317975,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.7172002077191725,
+    "lift_loss_ratio": 0.2827997922808275,
+    "total_lift": 4.303201246315035,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.6838732208306856,
+    "lift_loss_ratio": 0.3161267791693144,
+    "total_lift": 4.103239324984114,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.6427876096865394,
+    "lift_loss_ratio": 0.35721239031346064,
+    "total_lift": 3.8567256581192364,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.5951917397910264,
+    "lift_loss_ratio": 0.40480826020897365,
+    "total_lift": 3.571150438746158,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.5425317875662492,
+    "lift_loss_ratio": 0.4574682124337508,
+    "total_lift": 3.255190725397495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.48640779901333636,
+    "lift_loss_ratio": 0.5135922009866636,
+    "total_lift": 2.918446794080018,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -50.0,
+    "tilt_FR": -50.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.42852507312435956,
+    "lift_loss_ratio": 0.5714749268756405,
+    "total_lift": 2.5711504387461575,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.510696295412652,
+    "lift_loss_ratio": 0.48930370458734795,
+    "total_lift": 3.064177772475912,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.5685790213016287,
+    "lift_loss_ratio": 0.43142097869837126,
+    "total_lift": 3.4114741278097727,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.6247030098545416,
+    "lift_loss_ratio": 0.37529699014545836,
+    "total_lift": 3.74821805912725,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.6773629620793188,
+    "lift_loss_ratio": 0.3226370379206812,
+    "total_lift": 4.0641777724759125,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.7249588319748318,
+    "lift_loss_ratio": 0.2750411680251682,
+    "total_lift": 4.349752991848991,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.766044443118978,
+    "lift_loss_ratio": 0.233955556881022,
+    "total_lift": 4.596266658713868,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.7993714300074649,
+    "lift_loss_ratio": 0.2006285699925351,
+    "total_lift": 4.796228580044789,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.8239271690079549,
+    "lift_loss_ratio": 0.17607283099204507,
+    "total_lift": 4.943563014047729,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.8389655464167213,
+    "lift_loss_ratio": 0.16103445358327872,
+    "total_lift": 5.033793278500328,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.8440296287459853,
+    "lift_loss_ratio": 0.1559703712540147,
+    "total_lift": 5.064177772475912,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.8389655464167213,
+    "lift_loss_ratio": 0.16103445358327872,
+    "total_lift": 5.033793278500328,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.8239271690079549,
+    "lift_loss_ratio": 0.17607283099204507,
+    "total_lift": 4.943563014047729,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.7993714300074649,
+    "lift_loss_ratio": 0.2006285699925351,
+    "total_lift": 4.796228580044789,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.766044443118978,
+    "lift_loss_ratio": 0.233955556881022,
+    "total_lift": 4.596266658713868,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.7249588319748318,
+    "lift_loss_ratio": 0.2750411680251682,
+    "total_lift": 4.349752991848991,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.6773629620793188,
+    "lift_loss_ratio": 0.3226370379206812,
+    "total_lift": 4.0641777724759125,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.6247030098545416,
+    "lift_loss_ratio": 0.37529699014545836,
+    "total_lift": 3.74821805912725,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.5685790213016287,
+    "lift_loss_ratio": 0.43142097869837126,
+    "total_lift": 3.4114741278097727,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -40.0,
+    "tilt_FR": -40.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.510696295412652,
+    "lift_loss_ratio": 0.48930370458734795,
+    "total_lift": 3.064177772475912,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.5773502691896258,
+    "lift_loss_ratio": 0.42264973081037416,
+    "total_lift": 3.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.6352329950786025,
+    "lift_loss_ratio": 0.36476700492139746,
+    "total_lift": 3.8113979704716154,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.6913569836315153,
+    "lift_loss_ratio": 0.3086430163684847,
+    "total_lift": 4.148141901789092,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.7440169358562926,
+    "lift_loss_ratio": 0.2559830641437074,
+    "total_lift": 4.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.7916128057518056,
+    "lift_loss_ratio": 0.2083871942481944,
+    "total_lift": 4.749676834510834,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.8326984168959518,
+    "lift_loss_ratio": 0.1673015831040482,
+    "total_lift": 4.996190501375711,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.8660254037844387,
+    "lift_loss_ratio": 0.1339745962155613,
+    "total_lift": 5.196152422706632,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.8905811427849285,
+    "lift_loss_ratio": 0.1094188572150715,
+    "total_lift": 5.343486856709571,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.9056195201936951,
+    "lift_loss_ratio": 0.09438047980630493,
+    "total_lift": 5.433717121162171,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.9106836025229592,
+    "lift_loss_ratio": 0.08931639747704079,
+    "total_lift": 5.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.9056195201936951,
+    "lift_loss_ratio": 0.09438047980630493,
+    "total_lift": 5.433717121162171,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.8905811427849285,
+    "lift_loss_ratio": 0.1094188572150715,
+    "total_lift": 5.343486856709571,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.8660254037844387,
+    "lift_loss_ratio": 0.1339745962155613,
+    "total_lift": 5.196152422706632,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.8326984168959518,
+    "lift_loss_ratio": 0.1673015831040482,
+    "total_lift": 4.996190501375711,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.7916128057518056,
+    "lift_loss_ratio": 0.2083871942481944,
+    "total_lift": 4.749676834510834,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.7440169358562926,
+    "lift_loss_ratio": 0.2559830641437074,
+    "total_lift": 4.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.6913569836315153,
+    "lift_loss_ratio": 0.3086430163684847,
+    "total_lift": 4.148141901789092,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.6352329950786025,
+    "lift_loss_ratio": 0.36476700492139746,
+    "total_lift": 3.8113979704716154,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -30.0,
+    "tilt_FR": -30.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.5773502691896258,
+    "lift_loss_ratio": 0.42264973081037416,
+    "total_lift": 3.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.6264617471906057,
+    "lift_loss_ratio": 0.37353825280939434,
+    "total_lift": 3.7587704831436337,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.6843444730795825,
+    "lift_loss_ratio": 0.31565552692041754,
+    "total_lift": 4.106066838477495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.7404684616324952,
+    "lift_loss_ratio": 0.25953153836750475,
+    "total_lift": 4.4428107697949715,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.7931284138572723,
+    "lift_loss_ratio": 0.20687158614272771,
+    "total_lift": 4.758770483143634,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.8407242837527854,
+    "lift_loss_ratio": 0.1592757162472146,
+    "total_lift": 5.044345702516712,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.8818098948969316,
+    "lift_loss_ratio": 0.11819010510306838,
+    "total_lift": 5.2908593693815895,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.9151368817854185,
+    "lift_loss_ratio": 0.08486311821458148,
+    "total_lift": 5.490821290712511,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.9396926207859084,
+    "lift_loss_ratio": 0.06030737921409157,
+    "total_lift": 5.638155724715451,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.954730998194675,
+    "lift_loss_ratio": 0.045269001805325004,
+    "total_lift": 5.72838598916805,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.9597950805239389,
+    "lift_loss_ratio": 0.040204919476061085,
+    "total_lift": 5.758770483143634,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.954730998194675,
+    "lift_loss_ratio": 0.045269001805325004,
+    "total_lift": 5.72838598916805,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.9396926207859084,
+    "lift_loss_ratio": 0.06030737921409157,
+    "total_lift": 5.638155724715451,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.9151368817854185,
+    "lift_loss_ratio": 0.08486311821458148,
+    "total_lift": 5.490821290712511,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.8818098948969316,
+    "lift_loss_ratio": 0.11819010510306838,
+    "total_lift": 5.2908593693815895,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.8407242837527854,
+    "lift_loss_ratio": 0.1592757162472146,
+    "total_lift": 5.044345702516712,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.7931284138572723,
+    "lift_loss_ratio": 0.20687158614272771,
+    "total_lift": 4.758770483143634,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.7404684616324952,
+    "lift_loss_ratio": 0.25953153836750475,
+    "total_lift": 4.4428107697949715,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.6843444730795825,
+    "lift_loss_ratio": 0.31565552692041754,
+    "total_lift": 4.106066838477495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -20.0,
+    "tilt_FR": -20.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.6264617471906057,
+    "lift_loss_ratio": 0.37353825280939434,
+    "total_lift": 3.7587704831436337,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.6565385020081387,
+    "lift_loss_ratio": 0.3434614979918613,
+    "total_lift": 3.939231012048832,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.7144212278971155,
+    "lift_loss_ratio": 0.2855787721028845,
+    "total_lift": 4.286527367382693,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.7705452164500283,
+    "lift_loss_ratio": 0.22945478354997173,
+    "total_lift": 4.623271298700169,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.8232051686748054,
+    "lift_loss_ratio": 0.17679483132519458,
+    "total_lift": 4.9392310120488325,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.8708010385703185,
+    "lift_loss_ratio": 0.12919896142968146,
+    "total_lift": 5.224806231421911,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.9118866497144648,
+    "lift_loss_ratio": 0.08811335028553524,
+    "total_lift": 5.471319898286788,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.9452136366029515,
+    "lift_loss_ratio": 0.054786363397048454,
+    "total_lift": 5.671281819617709,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.9697693756034415,
+    "lift_loss_ratio": 0.030230624396558547,
+    "total_lift": 5.8186162536206485,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.984807753012208,
+    "lift_loss_ratio": 0.01519224698779198,
+    "total_lift": 5.908846518073248,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.989871835341472,
+    "lift_loss_ratio": 0.01012816465852795,
+    "total_lift": 5.9392310120488325,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.984807753012208,
+    "lift_loss_ratio": 0.01519224698779198,
+    "total_lift": 5.908846518073248,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.9697693756034415,
+    "lift_loss_ratio": 0.030230624396558547,
+    "total_lift": 5.8186162536206485,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.9452136366029515,
+    "lift_loss_ratio": 0.054786363397048454,
+    "total_lift": 5.671281819617709,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.9118866497144648,
+    "lift_loss_ratio": 0.08811335028553524,
+    "total_lift": 5.471319898286788,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.8708010385703185,
+    "lift_loss_ratio": 0.12919896142968146,
+    "total_lift": 5.224806231421911,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.8232051686748054,
+    "lift_loss_ratio": 0.17679483132519458,
+    "total_lift": 4.9392310120488325,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.7705452164500283,
+    "lift_loss_ratio": 0.22945478354997173,
+    "total_lift": 4.623271298700169,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.7144212278971155,
+    "lift_loss_ratio": 0.2855787721028845,
+    "total_lift": 4.286527367382693,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": -10.0,
+    "tilt_FR": -10.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.6565385020081387,
+    "lift_loss_ratio": 0.3434614979918613,
+    "total_lift": 3.939231012048832,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.6666666666666666,
+    "lift_loss_ratio": 0.33333333333333337,
+    "total_lift": 4.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.7245493925556435,
+    "lift_loss_ratio": 0.27545060744435645,
+    "total_lift": 4.347296355333861,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.7806733811085563,
+    "lift_loss_ratio": 0.21932661889144367,
+    "total_lift": 4.684040286651338,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.8333333333333334,
+    "lift_loss_ratio": 0.16666666666666663,
+    "total_lift": 5.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.8809292032288464,
+    "lift_loss_ratio": 0.11907079677115362,
+    "total_lift": 5.2855752193730785,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.9220148143729926,
+    "lift_loss_ratio": 0.0779851856270074,
+    "total_lift": 5.532088886237956,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.9553418012614796,
+    "lift_loss_ratio": 0.044658198738520394,
+    "total_lift": 5.732050807568878,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.9798975402619695,
+    "lift_loss_ratio": 0.020102459738030487,
+    "total_lift": 5.879385241571817,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.9949359176707361,
+    "lift_loss_ratio": 0.005064082329263919,
+    "total_lift": 5.969615506024416,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 1.0,
+    "lift_loss_ratio": 0.0,
+    "total_lift": 6.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.9949359176707361,
+    "lift_loss_ratio": 0.005064082329263919,
+    "total_lift": 5.969615506024416,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.9798975402619695,
+    "lift_loss_ratio": 0.020102459738030487,
+    "total_lift": 5.879385241571817,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.9553418012614796,
+    "lift_loss_ratio": 0.044658198738520394,
+    "total_lift": 5.732050807568878,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.9220148143729926,
+    "lift_loss_ratio": 0.0779851856270074,
+    "total_lift": 5.532088886237956,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.8809292032288464,
+    "lift_loss_ratio": 0.11907079677115362,
+    "total_lift": 5.2855752193730785,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.8333333333333334,
+    "lift_loss_ratio": 0.16666666666666663,
+    "total_lift": 5.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.7806733811085563,
+    "lift_loss_ratio": 0.21932661889144367,
+    "total_lift": 4.684040286651338,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.7245493925556435,
+    "lift_loss_ratio": 0.27545060744435645,
+    "total_lift": 4.347296355333861,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 0.0,
+    "tilt_FR": 0.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.6666666666666666,
+    "lift_loss_ratio": 0.33333333333333337,
+    "total_lift": 4.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.6565385020081387,
+    "lift_loss_ratio": 0.3434614979918613,
+    "total_lift": 3.939231012048832,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.7144212278971155,
+    "lift_loss_ratio": 0.2855787721028845,
+    "total_lift": 4.286527367382693,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.7705452164500283,
+    "lift_loss_ratio": 0.22945478354997173,
+    "total_lift": 4.623271298700169,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.8232051686748054,
+    "lift_loss_ratio": 0.17679483132519458,
+    "total_lift": 4.9392310120488325,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.8708010385703185,
+    "lift_loss_ratio": 0.12919896142968146,
+    "total_lift": 5.224806231421911,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.9118866497144648,
+    "lift_loss_ratio": 0.08811335028553524,
+    "total_lift": 5.471319898286788,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.9452136366029515,
+    "lift_loss_ratio": 0.054786363397048454,
+    "total_lift": 5.671281819617709,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.9697693756034415,
+    "lift_loss_ratio": 0.030230624396558547,
+    "total_lift": 5.8186162536206485,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.984807753012208,
+    "lift_loss_ratio": 0.01519224698779198,
+    "total_lift": 5.908846518073248,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.989871835341472,
+    "lift_loss_ratio": 0.01012816465852795,
+    "total_lift": 5.9392310120488325,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.984807753012208,
+    "lift_loss_ratio": 0.01519224698779198,
+    "total_lift": 5.908846518073248,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.9697693756034415,
+    "lift_loss_ratio": 0.030230624396558547,
+    "total_lift": 5.8186162536206485,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.9452136366029515,
+    "lift_loss_ratio": 0.054786363397048454,
+    "total_lift": 5.671281819617709,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.9118866497144648,
+    "lift_loss_ratio": 0.08811335028553524,
+    "total_lift": 5.471319898286788,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.8708010385703185,
+    "lift_loss_ratio": 0.12919896142968146,
+    "total_lift": 5.224806231421911,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.8232051686748054,
+    "lift_loss_ratio": 0.17679483132519458,
+    "total_lift": 4.9392310120488325,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.7705452164500283,
+    "lift_loss_ratio": 0.22945478354997173,
+    "total_lift": 4.623271298700169,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.7144212278971155,
+    "lift_loss_ratio": 0.2855787721028845,
+    "total_lift": 4.286527367382693,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 10.0,
+    "tilt_FR": 10.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.6565385020081387,
+    "lift_loss_ratio": 0.3434614979918613,
+    "total_lift": 3.939231012048832,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.6264617471906057,
+    "lift_loss_ratio": 0.37353825280939434,
+    "total_lift": 3.7587704831436337,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.6843444730795825,
+    "lift_loss_ratio": 0.31565552692041754,
+    "total_lift": 4.106066838477495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.7404684616324952,
+    "lift_loss_ratio": 0.25953153836750475,
+    "total_lift": 4.4428107697949715,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.7931284138572723,
+    "lift_loss_ratio": 0.20687158614272771,
+    "total_lift": 4.758770483143634,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.8407242837527854,
+    "lift_loss_ratio": 0.1592757162472146,
+    "total_lift": 5.044345702516712,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.8818098948969316,
+    "lift_loss_ratio": 0.11819010510306838,
+    "total_lift": 5.2908593693815895,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.9151368817854185,
+    "lift_loss_ratio": 0.08486311821458148,
+    "total_lift": 5.490821290712511,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.9396926207859084,
+    "lift_loss_ratio": 0.06030737921409157,
+    "total_lift": 5.638155724715451,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.954730998194675,
+    "lift_loss_ratio": 0.045269001805325004,
+    "total_lift": 5.72838598916805,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.9597950805239389,
+    "lift_loss_ratio": 0.040204919476061085,
+    "total_lift": 5.758770483143634,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.954730998194675,
+    "lift_loss_ratio": 0.045269001805325004,
+    "total_lift": 5.72838598916805,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.9396926207859084,
+    "lift_loss_ratio": 0.06030737921409157,
+    "total_lift": 5.638155724715451,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.9151368817854185,
+    "lift_loss_ratio": 0.08486311821458148,
+    "total_lift": 5.490821290712511,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.8818098948969316,
+    "lift_loss_ratio": 0.11819010510306838,
+    "total_lift": 5.2908593693815895,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.8407242837527854,
+    "lift_loss_ratio": 0.1592757162472146,
+    "total_lift": 5.044345702516712,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.7931284138572723,
+    "lift_loss_ratio": 0.20687158614272771,
+    "total_lift": 4.758770483143634,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.7404684616324952,
+    "lift_loss_ratio": 0.25953153836750475,
+    "total_lift": 4.4428107697949715,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.6843444730795825,
+    "lift_loss_ratio": 0.31565552692041754,
+    "total_lift": 4.106066838477495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 20.0,
+    "tilt_FR": 20.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.6264617471906057,
+    "lift_loss_ratio": 0.37353825280939434,
+    "total_lift": 3.7587704831436337,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.5773502691896258,
+    "lift_loss_ratio": 0.42264973081037416,
+    "total_lift": 3.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.6352329950786025,
+    "lift_loss_ratio": 0.36476700492139746,
+    "total_lift": 3.8113979704716154,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.6913569836315153,
+    "lift_loss_ratio": 0.3086430163684847,
+    "total_lift": 4.148141901789092,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.7440169358562926,
+    "lift_loss_ratio": 0.2559830641437074,
+    "total_lift": 4.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.7916128057518056,
+    "lift_loss_ratio": 0.2083871942481944,
+    "total_lift": 4.749676834510834,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.8326984168959518,
+    "lift_loss_ratio": 0.1673015831040482,
+    "total_lift": 4.996190501375711,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.8660254037844387,
+    "lift_loss_ratio": 0.1339745962155613,
+    "total_lift": 5.196152422706632,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.8905811427849285,
+    "lift_loss_ratio": 0.1094188572150715,
+    "total_lift": 5.343486856709571,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.9056195201936951,
+    "lift_loss_ratio": 0.09438047980630493,
+    "total_lift": 5.433717121162171,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.9106836025229592,
+    "lift_loss_ratio": 0.08931639747704079,
+    "total_lift": 5.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.9056195201936951,
+    "lift_loss_ratio": 0.09438047980630493,
+    "total_lift": 5.433717121162171,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.8905811427849285,
+    "lift_loss_ratio": 0.1094188572150715,
+    "total_lift": 5.343486856709571,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.8660254037844387,
+    "lift_loss_ratio": 0.1339745962155613,
+    "total_lift": 5.196152422706632,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.8326984168959518,
+    "lift_loss_ratio": 0.1673015831040482,
+    "total_lift": 4.996190501375711,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.7916128057518056,
+    "lift_loss_ratio": 0.2083871942481944,
+    "total_lift": 4.749676834510834,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.7440169358562926,
+    "lift_loss_ratio": 0.2559830641437074,
+    "total_lift": 4.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.6913569836315153,
+    "lift_loss_ratio": 0.3086430163684847,
+    "total_lift": 4.148141901789092,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.6352329950786025,
+    "lift_loss_ratio": 0.36476700492139746,
+    "total_lift": 3.8113979704716154,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 30.0,
+    "tilt_FR": 30.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.5773502691896258,
+    "lift_loss_ratio": 0.42264973081037416,
+    "total_lift": 3.464101615137755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.510696295412652,
+    "lift_loss_ratio": 0.48930370458734795,
+    "total_lift": 3.064177772475912,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.5685790213016287,
+    "lift_loss_ratio": 0.43142097869837126,
+    "total_lift": 3.4114741278097727,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.6247030098545416,
+    "lift_loss_ratio": 0.37529699014545836,
+    "total_lift": 3.74821805912725,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.6773629620793188,
+    "lift_loss_ratio": 0.3226370379206812,
+    "total_lift": 4.0641777724759125,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.7249588319748318,
+    "lift_loss_ratio": 0.2750411680251682,
+    "total_lift": 4.349752991848991,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.766044443118978,
+    "lift_loss_ratio": 0.233955556881022,
+    "total_lift": 4.596266658713868,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.7993714300074649,
+    "lift_loss_ratio": 0.2006285699925351,
+    "total_lift": 4.796228580044789,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.8239271690079549,
+    "lift_loss_ratio": 0.17607283099204507,
+    "total_lift": 4.943563014047729,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.8389655464167213,
+    "lift_loss_ratio": 0.16103445358327872,
+    "total_lift": 5.033793278500328,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.8440296287459853,
+    "lift_loss_ratio": 0.1559703712540147,
+    "total_lift": 5.064177772475912,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.8389655464167213,
+    "lift_loss_ratio": 0.16103445358327872,
+    "total_lift": 5.033793278500328,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.8239271690079549,
+    "lift_loss_ratio": 0.17607283099204507,
+    "total_lift": 4.943563014047729,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.7993714300074649,
+    "lift_loss_ratio": 0.2006285699925351,
+    "total_lift": 4.796228580044789,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.766044443118978,
+    "lift_loss_ratio": 0.233955556881022,
+    "total_lift": 4.596266658713868,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.7249588319748318,
+    "lift_loss_ratio": 0.2750411680251682,
+    "total_lift": 4.349752991848991,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.6773629620793188,
+    "lift_loss_ratio": 0.3226370379206812,
+    "total_lift": 4.0641777724759125,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.6247030098545416,
+    "lift_loss_ratio": 0.37529699014545836,
+    "total_lift": 3.74821805912725,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.5685790213016287,
+    "lift_loss_ratio": 0.43142097869837126,
+    "total_lift": 3.4114741278097727,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 40.0,
+    "tilt_FR": 40.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.510696295412652,
+    "lift_loss_ratio": 0.48930370458734795,
+    "total_lift": 3.064177772475912,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.42852507312435956,
+    "lift_loss_ratio": 0.5714749268756405,
+    "total_lift": 2.5711504387461575,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.48640779901333636,
+    "lift_loss_ratio": 0.5135922009866636,
+    "total_lift": 2.918446794080018,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.5425317875662492,
+    "lift_loss_ratio": 0.4574682124337508,
+    "total_lift": 3.255190725397495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.5951917397910264,
+    "lift_loss_ratio": 0.40480826020897365,
+    "total_lift": 3.571150438746158,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.6427876096865394,
+    "lift_loss_ratio": 0.35721239031346064,
+    "total_lift": 3.8567256581192364,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.6838732208306856,
+    "lift_loss_ratio": 0.3161267791693144,
+    "total_lift": 4.103239324984114,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.7172002077191725,
+    "lift_loss_ratio": 0.2827997922808275,
+    "total_lift": 4.303201246315035,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.7417559467196625,
+    "lift_loss_ratio": 0.2582440532803375,
+    "total_lift": 4.450535680317975,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.7567943241284288,
+    "lift_loss_ratio": 0.24320567587157116,
+    "total_lift": 4.540765944770573,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.7618584064576929,
+    "lift_loss_ratio": 0.23814159354230713,
+    "total_lift": 4.571150438746157,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.7567943241284288,
+    "lift_loss_ratio": 0.24320567587157116,
+    "total_lift": 4.540765944770573,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.7417559467196625,
+    "lift_loss_ratio": 0.2582440532803375,
+    "total_lift": 4.450535680317975,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.7172002077191725,
+    "lift_loss_ratio": 0.2827997922808275,
+    "total_lift": 4.303201246315035,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.6838732208306856,
+    "lift_loss_ratio": 0.3161267791693144,
+    "total_lift": 4.103239324984114,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.6427876096865394,
+    "lift_loss_ratio": 0.35721239031346064,
+    "total_lift": 3.8567256581192364,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.5951917397910264,
+    "lift_loss_ratio": 0.40480826020897365,
+    "total_lift": 3.571150438746158,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.5425317875662492,
+    "lift_loss_ratio": 0.4574682124337508,
+    "total_lift": 3.255190725397495,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.48640779901333636,
+    "lift_loss_ratio": 0.5135922009866636,
+    "total_lift": 2.918446794080018,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 50.0,
+    "tilt_FR": 50.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.42852507312435956,
+    "lift_loss_ratio": 0.5714749268756405,
+    "total_lift": 2.5711504387461575,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.3333333333333334,
+    "lift_loss_ratio": 0.6666666666666665,
+    "total_lift": 2.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.3912160592223102,
+    "lift_loss_ratio": 0.6087839407776898,
+    "total_lift": 2.347296355333861,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.447340047775223,
+    "lift_loss_ratio": 0.552659952224777,
+    "total_lift": 2.684040286651338,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.5000000000000001,
+    "lift_loss_ratio": 0.4999999999999999,
+    "total_lift": 3.000000000000001,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.5475958698955132,
+    "lift_loss_ratio": 0.45240413010448677,
+    "total_lift": 3.2855752193730794,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.5886814810396594,
+    "lift_loss_ratio": 0.41131851896034055,
+    "total_lift": 3.5320888862379567,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.6220084679281462,
+    "lift_loss_ratio": 0.37799153207185376,
+    "total_lift": 3.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.6465642069286363,
+    "lift_loss_ratio": 0.35343579307136375,
+    "total_lift": 3.8793852415718173,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.6616025843374027,
+    "lift_loss_ratio": 0.3383974156625973,
+    "total_lift": 3.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.6666666666666666,
+    "lift_loss_ratio": 0.33333333333333337,
+    "total_lift": 4.0,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.6616025843374027,
+    "lift_loss_ratio": 0.3383974156625973,
+    "total_lift": 3.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.6465642069286363,
+    "lift_loss_ratio": 0.35343579307136375,
+    "total_lift": 3.8793852415718173,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.6220084679281462,
+    "lift_loss_ratio": 0.37799153207185376,
+    "total_lift": 3.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.5886814810396594,
+    "lift_loss_ratio": 0.41131851896034055,
+    "total_lift": 3.5320888862379567,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.5475958698955132,
+    "lift_loss_ratio": 0.45240413010448677,
+    "total_lift": 3.2855752193730794,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.5000000000000001,
+    "lift_loss_ratio": 0.4999999999999999,
+    "total_lift": 3.000000000000001,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.447340047775223,
+    "lift_loss_ratio": 0.552659952224777,
+    "total_lift": 2.684040286651338,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.3912160592223102,
+    "lift_loss_ratio": 0.6087839407776898,
+    "total_lift": 2.347296355333861,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 60.0,
+    "tilt_FR": 60.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.3333333333333334,
+    "lift_loss_ratio": 0.6666666666666665,
+    "total_lift": 2.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.22801342888377926,
+    "lift_loss_ratio": 0.7719865711162207,
+    "total_lift": 1.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.28589615477275604,
+    "lift_loss_ratio": 0.7141038452272439,
+    "total_lift": 1.7153769286365361,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.3420201433256688,
+    "lift_loss_ratio": 0.6579798566743311,
+    "total_lift": 2.052120859954013,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.3946800955504459,
+    "lift_loss_ratio": 0.6053199044495541,
+    "total_lift": 2.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.442275965445959,
+    "lift_loss_ratio": 0.5577240345540411,
+    "total_lift": 2.653655792675754,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.4833615765901052,
+    "lift_loss_ratio": 0.5166384234098949,
+    "total_lift": 2.9001694595406313,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.5166885634785922,
+    "lift_loss_ratio": 0.48331143652140784,
+    "total_lift": 3.1001313808715527,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.5412443024790821,
+    "lift_loss_ratio": 0.45875569752091794,
+    "total_lift": 3.2474658148744924,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.5562826798878485,
+    "lift_loss_ratio": 0.4437173201121515,
+    "total_lift": 3.3376960793270913,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.5613467622171125,
+    "lift_loss_ratio": 0.43865323778288745,
+    "total_lift": 3.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.5562826798878485,
+    "lift_loss_ratio": 0.4437173201121515,
+    "total_lift": 3.3376960793270913,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.5412443024790821,
+    "lift_loss_ratio": 0.45875569752091794,
+    "total_lift": 3.2474658148744924,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.5166885634785922,
+    "lift_loss_ratio": 0.48331143652140784,
+    "total_lift": 3.1001313808715527,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.4833615765901052,
+    "lift_loss_ratio": 0.5166384234098949,
+    "total_lift": 2.9001694595406313,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.442275965445959,
+    "lift_loss_ratio": 0.5577240345540411,
+    "total_lift": 2.653655792675754,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.3946800955504459,
+    "lift_loss_ratio": 0.6053199044495541,
+    "total_lift": 2.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.3420201433256688,
+    "lift_loss_ratio": 0.6579798566743311,
+    "total_lift": 2.052120859954013,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.28589615477275604,
+    "lift_loss_ratio": 0.7141038452272439,
+    "total_lift": 1.7153769286365361,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 70.0,
+    "tilt_FR": 70.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.22801342888377926,
+    "lift_loss_ratio": 0.7719865711162207,
+    "total_lift": 1.3680805733026755,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 0.11576545177795362,
+    "lift_loss_ratio": 0.8842345482220464,
+    "total_lift": 0.6945927106677218,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.17364817766693041,
+    "lift_loss_ratio": 0.8263518223330696,
+    "total_lift": 1.0418890660015825,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.22977216621984323,
+    "lift_loss_ratio": 0.7702278337801568,
+    "total_lift": 1.3786329973190594,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.2824321184446203,
+    "lift_loss_ratio": 0.7175678815553796,
+    "total_lift": 1.6945927106677219,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.3300279883401334,
+    "lift_loss_ratio": 0.6699720116598666,
+    "total_lift": 1.9801679300408004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.37111359948427963,
+    "lift_loss_ratio": 0.6288864005157204,
+    "total_lift": 2.226681596905678,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.4044405863727665,
+    "lift_loss_ratio": 0.5955594136272335,
+    "total_lift": 2.426643518236599,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.42899632537325644,
+    "lift_loss_ratio": 0.5710036746267435,
+    "total_lift": 2.5739779522395385,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.4440347027820229,
+    "lift_loss_ratio": 0.5559652972179772,
+    "total_lift": 2.6642082166921375,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.4490987851112869,
+    "lift_loss_ratio": 0.5509012148887131,
+    "total_lift": 2.6945927106677217,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.4440347027820229,
+    "lift_loss_ratio": 0.5559652972179772,
+    "total_lift": 2.6642082166921375,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.42899632537325644,
+    "lift_loss_ratio": 0.5710036746267435,
+    "total_lift": 2.5739779522395385,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.4044405863727665,
+    "lift_loss_ratio": 0.5955594136272335,
+    "total_lift": 2.426643518236599,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.37111359948427963,
+    "lift_loss_ratio": 0.6288864005157204,
+    "total_lift": 2.226681596905678,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.3300279883401334,
+    "lift_loss_ratio": 0.6699720116598666,
+    "total_lift": 1.9801679300408004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.2824321184446203,
+    "lift_loss_ratio": 0.7175678815553796,
+    "total_lift": 1.6945927106677219,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.22977216621984323,
+    "lift_loss_ratio": 0.7702278337801568,
+    "total_lift": 1.3786329973190594,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.17364817766693041,
+    "lift_loss_ratio": 0.8263518223330696,
+    "total_lift": 1.0418890660015825,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 80.0,
+    "tilt_FR": 80.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 0.11576545177795362,
+    "lift_loss_ratio": 0.8842345482220464,
+    "total_lift": 0.6945927106677218,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -90.0,
+    "lift_ratio": 6.123233995736766e-17,
+    "lift_loss_ratio": 0.9999999999999999,
+    "total_lift": 3.6739403974420594e-16,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -80.0,
+    "lift_ratio": 0.05788272588897684,
+    "lift_loss_ratio": 0.9421172741110232,
+    "total_lift": 0.34729635533386105,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -70.0,
+    "lift_ratio": 0.11400671444188964,
+    "lift_loss_ratio": 0.8859932855581103,
+    "total_lift": 0.6840402866513379,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -60.0,
+    "lift_ratio": 0.16666666666666674,
+    "lift_loss_ratio": 0.8333333333333333,
+    "total_lift": 1.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -50.0,
+    "lift_ratio": 0.21426253656217983,
+    "lift_loss_ratio": 0.7857374634378201,
+    "total_lift": 1.285575219373079,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -40.0,
+    "lift_ratio": 0.255348147706326,
+    "lift_loss_ratio": 0.744651852293674,
+    "total_lift": 1.5320888862379562,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -30.0,
+    "lift_ratio": 0.2886751345948129,
+    "lift_loss_ratio": 0.7113248654051871,
+    "total_lift": 1.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -20.0,
+    "lift_ratio": 0.31323087359530283,
+    "lift_loss_ratio": 0.6867691264046971,
+    "total_lift": 1.879385241571817,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": -10.0,
+    "lift_ratio": 0.3282692510040694,
+    "lift_loss_ratio": 0.6717307489959305,
+    "total_lift": 1.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 0.0,
+    "lift_ratio": 0.3333333333333334,
+    "lift_loss_ratio": 0.6666666666666665,
+    "total_lift": 2.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 10.0,
+    "lift_ratio": 0.3282692510040694,
+    "lift_loss_ratio": 0.6717307489959305,
+    "total_lift": 1.9696155060244163,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 20.0,
+    "lift_ratio": 0.31323087359530283,
+    "lift_loss_ratio": 0.6867691264046971,
+    "total_lift": 1.879385241571817,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 30.0,
+    "lift_ratio": 0.2886751345948129,
+    "lift_loss_ratio": 0.7113248654051871,
+    "total_lift": 1.7320508075688776,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 40.0,
+    "lift_ratio": 0.255348147706326,
+    "lift_loss_ratio": 0.744651852293674,
+    "total_lift": 1.5320888862379562,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 50.0,
+    "lift_ratio": 0.21426253656217983,
+    "lift_loss_ratio": 0.7857374634378201,
+    "total_lift": 1.285575219373079,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 60.0,
+    "lift_ratio": 0.16666666666666674,
+    "lift_loss_ratio": 0.8333333333333333,
+    "total_lift": 1.0000000000000004,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 70.0,
+    "lift_ratio": 0.11400671444188964,
+    "lift_loss_ratio": 0.8859932855581103,
+    "total_lift": 0.6840402866513379,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 80.0,
+    "lift_ratio": 0.05788272588897684,
+    "lift_loss_ratio": 0.9421172741110232,
+    "total_lift": 0.34729635533386105,
+    "total_thrust": 6.0
+  },
+  {
+    "tilt_FL": 90.0,
+    "tilt_FR": 90.0,
+    "tilt_R": 90.0,
+    "lift_ratio": 6.123233995736766e-17,
+    "lift_loss_ratio": 0.9999999999999999,
+    "total_lift": 3.6739403974420594e-16,
+    "total_thrust": 6.0
+  }
+]
