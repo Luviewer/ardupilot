@@ -29,12 +29,28 @@ void AP_MotorsMatrix_6DoF_Scripting::output_to_motors()
 {
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN:
-        case SpoolState::GROUND_IDLE:
         {
-            // no output, cant spin up for ground idle because we don't know which way motors should be spining
+            // no output when shut down
             for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
                 if (motor_enabled[i]) {
                     _actuator[i] = 0.0f;
+                }
+            }
+            break;
+        }
+        case SpoolState::GROUND_IDLE:
+        {
+            // sends output to motors when armed but not flying
+            // for non-reversible motors, output ground idle value (spin_min)
+            // for reversible motors, keep at 0 (don't know which direction)
+            for (uint8_t i = 0; i < AP_MOTORS_MAX_NUM_MOTORS; i++) {
+                if (motor_enabled[i]) {
+                    if (_reversible[i]) {
+                        _actuator[i] = 0.0f;  // reversible motors stay at 0 in ground idle
+                    } else {
+                        // non-reversible motors output ground idle value
+                        set_actuator_with_slew(_actuator[i], actuator_spin_up_to_ground_idle());
+                    }
                 }
             }
             break;
