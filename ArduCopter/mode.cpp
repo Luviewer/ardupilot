@@ -501,6 +501,30 @@ void Copter::update_flight_mode()
 #endif
     attitude_control->landed_gain_reduction(copter.ap.land_complete); // Adjust gains when landed to attenuate ground oscillation
 
+#if AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
+    // TriTilt: use RC7 to command pitch attitude offset while RC2 is repurposed for forward thrust
+    if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_TRI &&
+        (AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT) {
+
+        // Read RC7 PWM directly (SERVO output CH_7 macro is 0-based channel index 6)
+        const uint16_t pwm7 = RC_Channels::get_radio_in(CH_7);
+        if (pwm7 >= 900 && pwm7 <= 2100) {
+            // Map 1000..2000 -> -1..+1 (1500 -> 0)
+            float norm = (float(pwm7) - 1500.0f) * (1.0f / 500.0f);
+            norm = constrain_float(norm, -1.0f, 1.0f);
+
+            const auto *tri_tilt = static_cast<const AP_MotorsTri_Tilt*>(motors);
+            const float max_deg = tri_tilt->tilt_pitch_offset_max_deg();
+            const float pitch_off_deg = norm * max_deg;
+
+            AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
+            if (att6 != nullptr) {
+                att6->set_offset_roll_pitch(0.0f, pitch_off_deg);
+            }
+        }
+    }
+#endif // AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
+
     // set ekf reset handling method
     pos_control->set_reset_handling_method(flightmode->move_vehicle_on_ekf_reset() ? AC_PosControl::EKFResetMethod::MoveVehicle : AC_PosControl::EKFResetMethod::MoveTarget);
 

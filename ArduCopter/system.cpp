@@ -378,10 +378,21 @@ void Copter::allocate_motors(void)
             break;
 #if AP_MOTORS_TRI_ENABLED
         case AP_Motors::MOTOR_FRAME_TRI:
+        {
+#if AP_MOTORS_TRI_TILT_ENABLED
+            // Use FRAME_TYPE to select TriTilt backend while keeping FRAME_CLASS=TRI
+            if ((AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT) {
+                motors = NEW_NOTHROW AP_MotorsTri_Tilt(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsTri_Tilt::var_info;
+                AP_Param::set_frame_type_flags(AP_PARAM_FRAME_TRICOPTER);
+                break;
+            }
+#endif // AP_MOTORS_TRI_TILT_ENABLED
             motors = NEW_NOTHROW AP_MotorsTri(copter.scheduler.get_loop_rate_hz());
             motors_var_info = AP_MotorsTri::var_info;
             AP_Param::set_frame_type_flags(AP_PARAM_FRAME_TRICOPTER);
             break;
+        }
 #endif  // AP_MOTORS_TRI_ENABLED
         case AP_Motors::MOTOR_FRAME_SINGLE:
             motors = NEW_NOTHROW AP_MotorsSingle(copter.scheduler.get_loop_rate_hz());
@@ -445,8 +456,19 @@ void Copter::allocate_motors(void)
     }
 
 #if FRAME_CONFIG != HELI_FRAME
-    if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING ||
-        (AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_6DOF_DYNAMIC_SCRIPTING) {
+    const AP_Motors::motor_frame_class frame_class = (AP_Motors::motor_frame_class)g2.frame_class.get();
+    const AP_Motors::motor_frame_type frame_type = (AP_Motors::motor_frame_type)g.frame_type.get();
+
+    const bool use_6dof_attitude =
+        (frame_class == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING) ||
+        (frame_class == AP_Motors::MOTOR_FRAME_6DOF_DYNAMIC_SCRIPTING)
+#if AP_SCRIPTING_ENABLED
+        // TriTilt uses forward input which is only produced by the 6DoF attitude controller
+        || ((frame_class == AP_Motors::MOTOR_FRAME_TRI) && (frame_type == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT))
+#endif
+        ;
+
+    if (use_6dof_attitude) {
 #if AP_SCRIPTING_ENABLED
         attitude_control = NEW_NOTHROW AC_AttitudeControl_Multi_6DoF(*ahrs_view, *motors);
         attitude_control_var_info = AC_AttitudeControl_Multi_6DoF::var_info;
@@ -463,6 +485,17 @@ void Copter::allocate_motors(void)
         AP_BoardConfig::allocation_error("AttitudeControl");
     }
     AP_Param::load_object_from_eeprom(attitude_control, attitude_control_var_info);
+
+#if AP_SCRIPTING_ENABLED
+    // Configure 6DoF attitude controller flags for TriTilt (5DoF: forward enabled, lateral disabled)
+    if ((frame_class == AP_Motors::MOTOR_FRAME_TRI) && (frame_type == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT)) {
+        AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
+        if (att6 != nullptr) {
+            att6->set_forward_enable(true);
+            att6->set_lateral_enable(false);
+        }
+    }
+#endif // AP_SCRIPTING_ENABLED
         
     pos_control = NEW_NOTHROW AC_PosControl(*ahrs_view, *motors, *attitude_control);
     if (pos_control == nullptr) {

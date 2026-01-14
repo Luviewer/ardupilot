@@ -8,6 +8,9 @@
 #if AP_MOTORS_TRI_ENABLED
 #include "AP_MotorsTri.h"
 #endif  // AP_MOTORS_TRI_ENABLED
+#if AP_MOTORS_TRI_TILT_ENABLED
+#include "AP_MotorsTri_Tilt.h"
+#endif  // AP_MOTORS_TRI_TILT_ENABLED
 #include "AP_MotorsHeli_Single.h"
 #include "AP_MotorsHeli_Dual.h"
 #include "AP_MotorsHeli_Quad.h"

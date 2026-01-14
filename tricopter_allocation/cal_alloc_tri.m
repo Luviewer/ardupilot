@@ -106,3 +106,24 @@ b_FM_alloc = subs(b_FM, [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(
 F_alloc = [
     diff(b_FM_alloc, f1_s1), diff(b_FM_alloc, f1_c1), diff(b_FM_alloc, f2_s2), diff(b_FM_alloc, f2_c2), diff(b_FM_alloc, f3_s3), diff(b_FM_alloc, f3_c3)
     ];
+
+
+% F_alloc =
+ 
+% [      -1,         0, -1,      0,        -1,         0]
+% [       0,        -1,  0,     -1,         0,        -1]
+% [       0, -lfront_y,  0,      0,         0,  lfront_y]
+% [       0,  lfront_x,  0, -lrear,         0, -lfront_x]
+% [lfront_y,         0,  0,      0, -lfront_y,         0]
+
+
+% >> simplify(pinv(F_alloc))
+ 
+% ans =
+ 
+% [-1/3,    0,                                     0,           0,  1/(2*lfront_y)]
+% [   0, -1/2, (lfront_x - lrear)/(2*lfront_y*lrear), 1/(2*lrear),               0]
+% [-1/3,    0,                                     0,           0,               0]
+% [   0,    0,            -lfront_x/(lfront_y*lrear),    -1/lrear,               0]
+% [-1/3,    0,                                     0,           0, -1/(2*lfront_y)]
+% [   0, -1/2, (lfront_x + lrear)/(2*lfront_y*lrear), 1/(2*lrear),               0]
