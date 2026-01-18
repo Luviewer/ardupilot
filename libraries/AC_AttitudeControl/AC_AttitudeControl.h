@@ -296,6 +296,8 @@ public:
 
     // Converts a thrust vector and heading angle to a body-to-NED quaternion attitude
     Quaternion attitude_from_thrust_vector(Vector3f thrust_vector, float heading_angle_rad) const;
+    Quaternion attitude_from_thrust_vector(Vector3f thrust_vector, float heading_angle_rad, float pitch_angle_rad) const;
+
 
     // Run angular velocity controller and send outputs to the motors
     virtual void rate_controller_run() = 0;

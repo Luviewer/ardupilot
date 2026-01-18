@@ -63,6 +63,7 @@ void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_rate_heading_rads(const 
 {
     // convert thrust vector to a roll and pitch angles
     // this negates the advantage of using thrust vector control, but works just fine
+    // Vector3f angle_target = attitude_from_thrust_vector(thrust_vector, _ahrs.yaw, radians(pitch_offset_deg)).to_vector312();
     Vector3f angle_target = attitude_from_thrust_vector(thrust_vector, _ahrs.yaw).to_vector312();
 
     input_euler_angle_roll_pitch_euler_rate_yaw_rad(angle_target.x, angle_target.y, heading_rate_rads);
@@ -74,6 +75,7 @@ void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_rate_heading_rads(const 
 void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_heading_rad(const Vector3f& thrust_vector, float heading_angle_rad, float heading_rate_rads)
 {
     // convert thrust vector to a roll and pitch angles
+    // Vector3f angle_target = attitude_from_thrust_vector(thrust_vector, _ahrs.yaw, radians(pitch_offset_deg)).to_vector312();
     Vector3f angle_target = attitude_from_thrust_vector(thrust_vector, _ahrs.yaw).to_vector312();
 
     // note that we are throwing away heading rate here

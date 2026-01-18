@@ -965,6 +965,42 @@ Quaternion AC_AttitudeControl::attitude_from_thrust_vector(Vector3f thrust_vecto
     return thrust_vec_quat*yaw_quat;
 }
 
+Quaternion AC_AttitudeControl::attitude_from_thrust_vector(Vector3f thrust_vector, float heading_angle_rad, float pitch_angle_rad) const
+{
+    const Vector3f thrust_vector_up{0.0f, 0.0f, -1.0f};
+
+    if (is_zero(thrust_vector.length_squared())) {
+        thrust_vector = thrust_vector_up;
+    } else {
+        thrust_vector.normalize();
+    }
+
+    // 该版本使用“固定 pitch + 推力矢量解 roll”的方式：
+    // 1) 先去掉航向，得到 yaw=0 下的推力方向
+    // 2) 在已知 pitch 的前提下，从推力方向解出 roll
+    const float cyaw = cosf(heading_angle_rad);
+    const float syaw = sinf(heading_angle_rad);
+    Vector3f thrust_yaw_aligned(
+        cyaw * thrust_vector.x + syaw * thrust_vector.y,
+       -syaw * thrust_vector.x + cyaw * thrust_vector.y,
+        thrust_vector.z);
+
+    const float cos_pitch = cosf(pitch_angle_rad);
+    float roll_angle_rad;
+    if (fabsf(cos_pitch) < 0.01f) {
+        // pitch 接近 ±90° 时退化，用 y 分量近似解 roll
+        roll_angle_rad = -asinf(constrain_float(thrust_yaw_aligned.y, -1.0f, 1.0f));
+    } else {
+        // 对应 thrust_vector = [-sin(pitch)*cos(roll), -sin(roll), -cos(pitch)*cos(roll)] (yaw=0)
+        roll_angle_rad = atan2f(thrust_yaw_aligned.y * cos_pitch, thrust_yaw_aligned.z);
+    }
+
+    Quaternion target_quat;
+    target_quat.from_euler(roll_angle_rad, pitch_angle_rad, heading_angle_rad);
+    return target_quat;
+}
+
+
 // Calculates the body frame angular velocities to follow the target attitude
 void AC_AttitudeControl::update_attitude_target()
 {

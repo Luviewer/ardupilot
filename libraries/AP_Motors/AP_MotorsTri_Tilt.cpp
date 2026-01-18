@@ -307,34 +307,61 @@ void AP_MotorsTri_Tilt::thrust_compensation(void)
     AP_MotorsMatrix::thrust_compensation();
 }
 
+// sets the roll and pitch offset, this rotates the thrust vector in body frame
+// these are typically set such that the throttle thrust vector is earth frame up
+void AP_MotorsTri_Tilt::set_roll_pitch(float roll_deg, float pitch_deg)
+{
+    _roll_offset = radians(roll_deg);
+    _pitch_offset = radians(pitch_deg);
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // output_armed_stabilizing - 主要控制分配
 // 实现流程：5DOF 输入 -> 静态矩阵 -> 6 个中间量 -> 推力 + 倾转角
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AP_MotorsTri_Tilt::output_armed_stabilizing()
 {
+    // uint8_t i;            // general purpose counter
+    float   roll_thrust;     // roll thrust input value, +/- 1.0
+    float   pitch_thrust;    // pitch thrust input value, +/- 1.0
+    float   yaw_thrust;      // yaw thrust input value, +/- 1.0
+    float   throttle_thrust; // throttle thrust input value, 0.0 - 1.0
+    float   forward_thrust;             // forward thrust input value, +/- 1.0
+
     // 获取电压与高度补偿增益
     const float compensation_gain = thr_lin.get_compensation_gain();
 
-    // 准备 5DOF 控制输入
-    float desired[5];
-
-    // 注意：
+    roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
+    pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;
+    yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;
+    
     // - Fx（前向力）必须来自 get_forward()（由 AP_Motors::set_forward 写入），不是 _pitch_in。
     // - _pitch_in 是俯仰力矩请求（My）。
-    float throttle_thrust = get_throttle() * compensation_gain;
-    // throttle 在电机库内限定为 [0, 1]
-    if (throttle_thrust <= 0.0f) {
-        throttle_thrust = 0.0f;
+    throttle_thrust = get_throttle() * compensation_gain;
+    // 前向力随油门缩放（与 6DoF 脚本混控行为一致）
+    forward_thrust = get_forward() * throttle_thrust;
+
+    // set throttle limit flags
+    if (throttle_thrust <= 0) {
+        throttle_thrust = 0;
+        // we cant thrust down, the vehicle can do it, but it would break a lot of assumptions further up the control stack
+        // 1G decent probably plenty anyway....
         limit.throttle_lower = true;
     }
-    if (throttle_thrust >= 1.0f) {
-        throttle_thrust = 1.0f;
+    if (throttle_thrust >= 1) {
+        throttle_thrust = 1;
         limit.throttle_upper = true;
     }
 
-    // 前向力随油门缩放（与 6DoF 脚本混控行为一致）
-    const float forward_thrust = get_forward() * throttle_thrust;
+    // rotate the thrust into bodyframe
+    Matrix3f rot;
+    Vector3f thrust_vec;
+    rot.from_euler312(0, _pitch_offset, 0.0f);
+
+    thrust_vec.x = forward_thrust;
+    thrust_vec.y = 0.0f;
+    thrust_vec.z = -throttle_thrust;
+    thrust_vec = rot * thrust_vec;
 
     // 重要符号约定（与 cal_alloc_tri.m 一致）：
     // 推导使用机体系 Z 轴向下为正（NED）。
@@ -343,56 +370,38 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     //
     // 同时 Fx 行定义为 Fx = -(F1*sin(a1)+F2*sin(a2)+F3*sin(a3))，
     // 因此前向正向推力指令需要在这里取负号。
-    desired[0] = -forward_thrust;     // Fx（前向力，+x 向前）
-    desired[1] = -throttle_thrust;    // Fz（向下为正，所以上推力为负）
+    desired[0] = thrust_vec.x; // Fx（前向力，+x 向前）
+    desired[1] = thrust_vec.z; // Fz（向下为正，所以上推力为负）
     // Mx（滚转力矩）
-    desired[2] = (_roll_in + _roll_in_ff) * compensation_gain;
+    desired[2] = roll_thrust;
     // My（俯仰力矩）
-    desired[3] = (_pitch_in + _pitch_in_ff) * compensation_gain;
+    desired[3] = pitch_thrust;
     // Mz（偏航力矩）：由 output_to_motors() 中共轴差分推力处理
-    desired[4] = 0.0f;
+    desired[4] = yaw_thrust;
 
     // 使用伪逆矩阵计算 6 个中间变量
     // _intermediate = [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-    for (int i = 0; i < 6; i++) {
+    for (uint8_t i = 0; i < 6; i++) {
         _intermediate[i] = 0.0f;
-        for (int j = 0; j < 5; j++) {
+        for (uint8_t j = 0; j < 5; j++) {
             _intermediate[i] += _alloc_matrix_pinv[i][j] * desired[j];
         }
     }
 
     // 根据中间变量求解推力与倾转角
-    // 电机 1：前右
-    float f1_sin = _intermediate[0];
-    float f1_cos = _intermediate[1];
-    _thrust[0] = sqrtf(f1_sin * f1_sin + f1_cos * f1_cos);
-    _tilt_angle[0] = atan2f(f1_sin, f1_cos);
-
-    // 电机 2：后置
-    float f2_sin = _intermediate[2];
-    float f2_cos = _intermediate[3];
-    _thrust[1] = sqrtf(f2_sin * f2_sin + f2_cos * f2_cos);
-    _tilt_angle[1] = atan2f(f2_sin, f2_cos);
-
-    // 电机 3：前左
-    float f3_sin = _intermediate[4];
-    float f3_cos = _intermediate[5];
-    _thrust[2] = sqrtf(f3_sin * f3_sin + f3_cos * f3_cos);
-    _tilt_angle[2] = atan2f(f3_sin, f3_cos);
+    for (uint8_t i = 0; i < 3; i++) {
+         f_sin[i] = _intermediate[2*i];
+         f_cos[i] = _intermediate[2*i + 1];
+        _thrust[i] = sqrtf(f_sin[i] * f_sin[i] + f_cos[i] * f_cos[i]);
+        _tilt_angle[i] = atan2f(f_sin[i], f_cos[i]);
+    } 
 
     // 施加约束
     // 若 _servo_angle_max == 0，则倾转角不做软件限幅
-    const bool clamp_tilt = (_servo_angle_max > 0.0f);
-    const float max_angle_rad = clamp_tilt ? radians(_servo_angle_max) : radians(float(AP_MOTORS_TRI_TILT_ANGLE_MAX));
+    // const bool clamp_tilt = (_servo_angle_max > 0.0f);
+    // const float max_angle_rad = clamp_tilt ? radians(_servo_angle_max) : radians(float(AP_MOTORS_TRI_TILT_ANGLE_MAX));
 
-    for (int i = 0; i < 3; i++) {
-        if (clamp_tilt) {
-            _tilt_angle[i] = constrain_float(_tilt_angle[i], -max_angle_rad, max_angle_rad);
-        } else {
-            // 仍需保持合理范围，避免下游 NaN/溢出
-            _tilt_angle[i] = constrain_float(_tilt_angle[i], -radians(float(AP_MOTORS_TRI_TILT_ANGLE_MAX)), radians(float(AP_MOTORS_TRI_TILT_ANGLE_MAX)));
-        }
-
+    for (uint8_t i = 0; i < 3; i++) {
         // 约束推力 [0, 1]
         _thrust[i] = constrain_float(_thrust[i], 0.0f, 1.0f);
 
@@ -407,7 +416,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
 
     // 若存在电机饱和则做推力缩放
     float max_thrust = 0.0f;
-    for (int i = 0; i < 3; i++) {
+    for (uint8_t i = 0; i < 3; i++) {
         if (_thrust[i] > max_thrust) {
             max_thrust = _thrust[i];
         }
@@ -416,7 +425,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // 超限则缩放
     if (max_thrust > 1.0f) {
         float scale = 1.0f / max_thrust;
-        for (int i = 0; i < 3; i++) {
+        for (uint8_t i = 0; i < 3; i++) {
             _thrust[i] *= scale;
         }
         limit.throttle_upper = true;
@@ -428,19 +437,26 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AP_MotorsTri_Tilt::output_to_motors()
 {
+    if (!initialised_ok()) {
+        return;
+    }
+
+    int16_t fr_out_cd = 0;
+    int16_t fl_out_cd = 0;
+    int16_t rear_out_cd = 0;
+    
+    // const bool fr_rev = (_tilt_servo_fr_rev.get() != 0);
+    // const bool rear_rev = (_tilt_servo_rear_rev.get() != 0);
+    // const bool fl_rev = (_tilt_servo_fl_rev.get() != 0);
+
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN: {
             // 电机输出最小值
             for (uint8_t i = 0; i < 6; i++) {
                 if (motor_enabled[i]) {
                     _actuator[i] = 0.0f;
-                    rc_write(i, get_pwm_output_min());
                 }
             }
-            // 舵机回中
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 0);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, 0);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 0);
             break;
         }
 
@@ -450,57 +466,44 @@ void AP_MotorsTri_Tilt::output_to_motors()
             for (uint8_t i = 0; i < 6; i++) {
                 if (motor_enabled[i]) {
                     set_actuator_with_slew(_actuator[i], spin_up);
-                    rc_write(i, output_to_pwm(_actuator[i]));
                 }
             }
-            // 舵机回中
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 0);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, 0);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 0);
             break;
         }
 
         case SpoolState::SPOOLING_UP:
         case SpoolState::THROTTLE_UNLIMITED:
-        case SpoolState::SPOOLING_DOWN: {
-            // 根据推力请求设置电机输出
-            // 对共轴对施加偏航差分
-            
-            // 计算偏航差分推力
-            float yaw_thrust = (_yaw_in + _yaw_in_ff) * _yaw_torque_factor * float(_yaw_dir.get());
-            yaw_thrust = constrain_float(yaw_thrust, -0.5f, 0.5f);
-
-            // 前右共轴对（电机 0-1）
-            apply_coaxial_yaw(AP_MOTORS_MOT_1, AP_MOTORS_MOT_2, _thrust[0], yaw_thrust);
-
-            // 后置共轴对（电机 2-3）
-            apply_coaxial_yaw(AP_MOTORS_MOT_3, AP_MOTORS_MOT_4, _thrust[1], yaw_thrust);
-
-            // 前左共轴对（电机 4-5）
-            apply_coaxial_yaw(AP_MOTORS_MOT_5, AP_MOTORS_MOT_6, _thrust[2], yaw_thrust);
+        case SpoolState::SPOOLING_DOWN: 
+            for (uint8_t i = 0; i < 3; i++) {
+                set_actuator_with_slew(_actuator[2*i], thr_lin.thrust_to_actuator(_thrust[i]));
+                set_actuator_with_slew(_actuator[2*i+1], thr_lin.thrust_to_actuator(_thrust[i]));
+            }
 
             // 输出倾转舵机角度（厘度）
             // 若 _servo_angle_max == 0，则无软件限幅（仍受 SERVOx_MIN/MAX 限制）。
             const float lim_deg = (_servo_angle_max > 0.0f) ? float(_servo_angle_max) : float(AP_MOTORS_TRI_TILT_ANGLE_MAX);
-            const int16_t fr_angle_cd = int16_t(constrain_float(degrees(_tilt_angle[0]), -lim_deg, lim_deg) * 100);
-            const int16_t fl_angle_cd = int16_t(constrain_float(degrees(_tilt_angle[2]), -lim_deg, lim_deg) * 100);
-            const int16_t rear_angle_cd = int16_t(constrain_float(degrees(_tilt_angle[1]), -lim_deg, lim_deg) * 100);
-
-            // 若已配置 SRV_Channels::set_angle()，scaled 输出使用厘度
-            const bool fr_rev = (_tilt_servo_fr_rev.get() != 0);
-            const bool rear_rev = (_tilt_servo_rear_rev.get() != 0);
-            const bool fl_rev = (_tilt_servo_fl_rev.get() != 0);
-
-            const int16_t fr_out_cd = fr_rev ? -fr_angle_cd : fr_angle_cd;
-            const int16_t rear_out_cd = rear_rev ? -rear_angle_cd : rear_angle_cd;
-            const int16_t fl_out_cd = fl_rev ? -fl_angle_cd : fl_angle_cd;
-
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, fr_out_cd);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, rear_out_cd);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, fl_out_cd);
+            fr_out_cd = int16_t(constrain_float(degrees(_tilt_angle[0]), -lim_deg, lim_deg) * 100);
+            fl_out_cd = int16_t(constrain_float(degrees(_tilt_angle[2]), -lim_deg, lim_deg) * 100);
+            rear_out_cd = int16_t(constrain_float(degrees(_tilt_angle[1]), -lim_deg, lim_deg) * 100);
+            // fr_out_cd = fr_rev ? -fr_angle_cd : fr_angle_cd;
+            // rear_out_cd = rear_rev ? -rear_angle_cd : rear_angle_cd;
+            // fl_out_cd = fl_rev ? -fl_angle_cd : fl_angle_cd;
             break;
+    }
+
+    for (uint8_t i = 0; i < 6; i++) {
+        if (motor_enabled[i]) {
+            rc_write(i, output_to_pwm(_actuator[i]));
         }
     }
+
+    // fr_out_cd = 3000;   
+    // fl_out_cd = 3000;
+    // rear_out_cd = 3000;
+
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * rear_out_cd);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -537,30 +540,6 @@ void AP_MotorsTri_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
     if (motor_enabled[motor_num]) {
         rc_write(motor_num, pwm);
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 通过共轴差分推力施加偏航力矩
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void AP_MotorsTri_Tilt::apply_coaxial_yaw(uint8_t motor_upper, uint8_t motor_lower, 
-                                           float base_thrust, float yaw_thrust)
-{
-    // 上电机为 CW、下电机为 CCW
-    // 正偏航（机体顺时针）时，增加 CCW 电机、减少 CW 电机
-    float thrust_upper = base_thrust - yaw_thrust;
-    float thrust_lower = base_thrust + yaw_thrust;
-
-    // 约束到有效范围 [0, 1]
-    thrust_upper = constrain_float(thrust_upper, 0.0f, 1.0f);
-    thrust_lower = constrain_float(thrust_lower, 0.0f, 1.0f);
-
-    // 推力转换为执行器量
-    float actuator_upper = thr_lin.thrust_to_actuator(thrust_upper);
-    float actuator_lower = thr_lin.thrust_to_actuator(thrust_lower);
-
-    // 输出到电机
-    rc_write(motor_upper, output_to_pwm(actuator_upper));
-    rc_write(motor_lower, output_to_pwm(actuator_lower));
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -602,13 +581,13 @@ void AP_MotorsTri_Tilt::calculate_allocation_matrix()
     _alloc_matrix[2][5] = ly;         // F3*cos(a3)
 
     // 第 3 行：My（俯仰力矩）
-    // My = lx*F1*cos(a1) - lr*F2*cos(a2) - lx*F3*cos(a3)
+    // My = lx*F1*cos(a1) - lr*F2*cos(a2) + lx*F3*cos(a3)
     _alloc_matrix[3][0] = 0.0f;       // F1*sin(a1)
     _alloc_matrix[3][1] = lx;         // F1*cos(a1)
     _alloc_matrix[3][2] = 0.0f;       // F2*sin(a2)
     _alloc_matrix[3][3] = -lr;        // F2*cos(a2)
     _alloc_matrix[3][4] = 0.0f;       // F3*sin(a3)
-    _alloc_matrix[3][5] = -lx;        // F3*cos(a3)
+    _alloc_matrix[3][5] = lx;         // F3*cos(a3)
 
     // 第 4 行：Mz（偏航力矩）
     // Mz = ly*F1*sin(a1) - ly*F3*sin(a3)
@@ -632,8 +611,10 @@ void AP_MotorsTri_Tilt::calculate_allocation_matrix_pinv()
     float lr = _lrear;
 
     // 防止除零
-    if (fabsf(ly) < 0.01f || fabsf(lr) < 0.01f) {
+    const float sum_x_r = lx + lr;
+    if (fabsf(ly) < 0.01f || fabsf(sum_x_r) < 0.01f) {
         // 参数无效时使用安全默认值
+        lx = 1.0f;
         ly = 0.5f;
         lr = 1.0f;
     }
@@ -647,9 +628,9 @@ void AP_MotorsTri_Tilt::calculate_allocation_matrix_pinv()
 
     // 第 1 行：F1*cos(a1)
     _alloc_matrix_pinv[1][0] = 0.0f;                    // Fx
-    _alloc_matrix_pinv[1][1] = -1.0f/2.0f;              // Fz
-    _alloc_matrix_pinv[1][2] = (lx - lr)/(2.0f*ly*lr);  // Mx
-    _alloc_matrix_pinv[1][3] = 1.0f/(2.0f*lr);          // My
+    _alloc_matrix_pinv[1][1] = -lr/(2.0f*sum_x_r);      // Fz
+    _alloc_matrix_pinv[1][2] = -1.0f/(2.0f*ly);         // Mx
+    _alloc_matrix_pinv[1][3] = 1.0f/(2.0f*sum_x_r);     // My
     _alloc_matrix_pinv[1][4] = 0.0f;                    // Mz
 
     // 第 2 行：F2*sin(a2)
@@ -661,9 +642,9 @@ void AP_MotorsTri_Tilt::calculate_allocation_matrix_pinv()
 
     // 第 3 行：F2*cos(a2)
     _alloc_matrix_pinv[3][0] = 0.0f;                    // Fx
-    _alloc_matrix_pinv[3][1] = 0.0f;                    // Fz
-    _alloc_matrix_pinv[3][2] = -lx/(ly*lr);             // Mx
-    _alloc_matrix_pinv[3][3] = -1.0f/lr;                // My
+    _alloc_matrix_pinv[3][1] = -lx/sum_x_r;             // Fz
+    _alloc_matrix_pinv[3][2] = 0.0f;                    // Mx
+    _alloc_matrix_pinv[3][3] = -1.0f/sum_x_r;           // My
     _alloc_matrix_pinv[3][4] = 0.0f;                    // Mz
 
     // 第 4 行：F3*sin(a3)
@@ -675,9 +656,9 @@ void AP_MotorsTri_Tilt::calculate_allocation_matrix_pinv()
 
     // 第 5 行：F3*cos(a3)
     _alloc_matrix_pinv[5][0] = 0.0f;                    // Fx
-    _alloc_matrix_pinv[5][1] = -1.0f/2.0f;              // Fz
-    _alloc_matrix_pinv[5][2] = (lx + lr)/(2.0f*ly*lr);  // Mx
-    _alloc_matrix_pinv[5][3] = 1.0f/(2.0f*lr);          // My
+    _alloc_matrix_pinv[5][1] = -lr/(2.0f*sum_x_r);      // Fz
+    _alloc_matrix_pinv[5][2] = 1.0f/(2.0f*ly);          // Mx
+    _alloc_matrix_pinv[5][3] = 1.0f/(2.0f*sum_x_r);     // My
     _alloc_matrix_pinv[5][4] = 0.0f;                    // Mz
 }
 

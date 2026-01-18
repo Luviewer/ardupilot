@@ -25,6 +25,8 @@ Croll = [
 Cbn = Croll * Cpitch * Cyaw;
 Cnb = Cbn';
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% 第i个旋转坐标系1到机体坐标系的旋转矩阵
 % 旋转角度
 syms angle_1 real;
@@ -34,36 +36,43 @@ b_C_i1 = subs(Cpitch', pitch, angle_1);
 
 %% 第i个机体系到旋转坐标系3的位置，在机体系
 % lfront_x x轴距离，lfront_y y轴距离
-syms lfront_x lfront_y lrear real;
+syms lfront_x lfront_y lrear_x real;
 
+i_Front_R_Position = [lfront_x, lfront_y, 0]';
+i_Front_L_Position = [-lfront_x, lfront_y, 0]';
+i_Rear_Position = [0, -lrear_x, 0]';
 
-i1_P1 = [lfront_x, lfront_y, 0]';
-b_Pi = Cyaw * i1_P1;
+% a1前右，a2后置，a3前左
+syms a1 a2 a3 real;
+syms F1 F2 F3 real;
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% 合力计算
 syms Fi real;
 i3_Fi = [0, 0, -Fi]';
 b_Fi = b_C_i1 * i3_Fi;
 
-%% 合力矩计算
-syms Qi real;
-b_Mi = cross(b_Pi, b_Fi);
-
 %% 代入第i组旋转机构等到总合力
-% a1前右，a2后置，a3前左
-syms a1 a2 a3 real;
-syms F1 F2 F3 real;
-
-b_F = subs(b_Fi, [Fi, angle_1, yaw], [F1, a1, 0]) + subs(b_Fi, [Fi, angle_1, yaw, lfront_x, lfront_y], [F2, a2, pi, lrear, 0]) + subs(b_Fi, [Fi, angle_1, yaw], [F3, a3, pi]);
+b_F = subs(b_Fi, [Fi, angle_1], [F1, a1]) + subs(b_Fi, [Fi, angle_1], [F2, a2]) + subs(b_Fi, [Fi, angle_1], [F3, a3]);
 b_F = simplify(b_F);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%% 合力矩计算
+syms Qi real;
+
 %% 代入第i组旋转机构等到总合力矩
-b_M = subs(b_Mi, [Fi, angle_1, yaw], [F1, a1, 0]) + subs(b_Mi, [Fi, angle_1, yaw, lfront_x, lfront_y], [F2, a2, pi, lrear, 0]) + subs(b_Mi, [Fi, angle_1, yaw], [F3, a3, pi]);
+b_M = subs(cross(i_Front_R_Position, b_Fi), [Fi, angle_1], [F1, a1]) + subs(cross(i_Rear_Position, b_Fi), [Fi, angle_1], [F2, a2]) + subs(cross(i_Front_L_Position, b_Fi), [Fi, angle_1], [F3, a3]);
 b_M = simplify(b_M);
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% 控制分配
 b_FM = [b_F; b_M];
 b_FM = [b_FM(1, :); b_FM(3:6, :)];
+b_FM = expand(b_FM);
+
 
 %% 输出控制分配矩阵
 disp('========================================');
@@ -107,23 +116,28 @@ F_alloc = [
     diff(b_FM_alloc, f1_s1), diff(b_FM_alloc, f1_c1), diff(b_FM_alloc, f2_s2), diff(b_FM_alloc, f2_c2), diff(b_FM_alloc, f3_s3), diff(b_FM_alloc, f3_c3)
     ];
 
+disp('F_alloc = ');
+disp(F_alloc);
+disp('========================================');
 
-% F_alloc =
- 
-% [      -1,         0, -1,      0,        -1,         0]
-% [       0,        -1,  0,     -1,         0,        -1]
-% [       0, -lfront_y,  0,      0,         0,  lfront_y]
-% [       0,  lfront_x,  0, -lrear,         0, -lfront_x]
-% [lfront_y,         0,  0,      0, -lfront_y,         0]
+F_pinv = simplify(pinv(F_alloc));
+disp('F_pinv = ');
+disp(F_pinv);
+disp('========================================');
 
-
-% >> simplify(pinv(F_alloc))
+% ========================================
+% F_alloc = 
+% [      -1,         0,       -1,       0,       -1,         0]
+% [       0,        -1,        0,      -1,        0,        -1]
+% [       0, -lfront_y,        0, lrear_x,        0, -lfront_y]
+% [       0,  lfront_x,        0,       0,        0, -lfront_x]
+% [lfront_y,         0, -lrear_x,       0, lfront_y,         0]
  
-% ans =
- 
-% [-1/3,    0,                                     0,           0,  1/(2*lfront_y)]
-% [   0, -1/2, (lfront_x - lrear)/(2*lfront_y*lrear), 1/(2*lrear),               0]
-% [-1/3,    0,                                     0,           0,               0]
-% [   0,    0,            -lfront_x/(lfront_y*lrear),    -1/lrear,               0]
-% [-1/3,    0,                                     0,           0, -1/(2*lfront_y)]
-% [   0, -1/2, (lfront_x + lrear)/(2*lfront_y*lrear), 1/(2*lrear),               0]
+% ========================================
+% F_pinv = 
+% [-lrear_x/(2*(lfront_y + lrear_x)),                                 0,                           0,               0, 1/(2*(lfront_y + lrear_x))]
+% [                                0, -lrear_x/(2*(lfront_y + lrear_x)), -1/(2*(lfront_y + lrear_x)),  1/(2*lfront_x),                          0]
+% [   -lfront_y/(lfront_y + lrear_x),                                 0,                           0,               0,    -1/(lfront_y + lrear_x)]
+% [                                0,    -lfront_y/(lfront_y + lrear_x),      1/(lfront_y + lrear_x),               0,                          0]
+% [-lrear_x/(2*(lfront_y + lrear_x)),                                 0,                           0,               0, 1/(2*(lfront_y + lrear_x))]
+% [                                0, -lrear_x/(2*(lfront_y + lrear_x)), -1/(2*(lfront_y + lrear_x)), -1/(2*lfront_x),                          0]

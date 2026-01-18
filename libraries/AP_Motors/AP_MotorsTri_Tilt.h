@@ -61,6 +61,8 @@ public:
     // Max pitch attitude offset (deg) applied via RC7
     float tilt_pitch_offset_max_deg() const { return _tilt_pitch_off_max_deg; }
 
+    void set_roll_pitch(float roll_deg, float pitch_deg) override;
+
 protected:
     // setup motors - configures the static allocation matrix
     void setup_motors(motor_frame_class frame_class, motor_frame_type frame_type) override;
@@ -84,9 +86,10 @@ protected:
     // Calculate the pseudo-inverse of the allocation matrix
     void calculate_allocation_matrix_pinv();
 
-    // Helper function to apply yaw torque via differential thrust on coaxial pairs
-    void apply_coaxial_yaw(uint8_t motor_upper, uint8_t motor_lower, float base_thrust, float yaw_thrust);
-
+    // Current offset angles, radians
+    float _roll_offset;
+    float _pitch_offset;
+    
 private:
     // Geometric parameters (normalized arm lengths)
     AP_Float _lfront_x;         // Front arm X distance (normalized)
@@ -119,6 +122,10 @@ private:
     // Intermediate variables from allocation matrix
     float _intermediate[6];     // [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
 
+    // 准备 5DOF 控制输入
+    float desired[5];
+    float f_sin[3], f_cos[3];
+    
     // Forward thrust input (for 5DOF control)
     float _forward_thrust;
 
