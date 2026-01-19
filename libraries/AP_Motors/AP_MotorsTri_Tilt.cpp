@@ -356,7 +356,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // rotate the thrust into bodyframe
     Matrix3f rot;
     Vector3f thrust_vec;
-    rot.from_euler312(0, _pitch_offset, 0.0f);
+    rot.from_euler312(0, -_pitch_offset, 0.0f);
 
     thrust_vec.x = forward_thrust;
     thrust_vec.y = 0.0f;
@@ -497,9 +497,9 @@ void AP_MotorsTri_Tilt::output_to_motors()
         }
     }
 
-    // fr_out_cd = 3000;   
-    // fl_out_cd = 3000;
-    // rear_out_cd = 3000;
+    // fr_out_cd = 9000;   
+    // fl_out_cd = 9000;
+    // rear_out_cd = 9000;
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);

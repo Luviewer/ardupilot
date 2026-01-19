@@ -515,7 +515,40 @@ void Copter::update_flight_mode()
 
             const auto *tri_tilt = static_cast<const AP_MotorsTri_Tilt*>(motors);
             const float max_deg = tri_tilt->tilt_pitch_offset_max_deg();
-            const float pitch_off_deg = norm * max_deg;
+            const float pitch_off_deg_target = norm * max_deg;
+
+            // Static variables for smooth transition and sudden change detection
+            static float last_pitch_off_deg = 0.0f;
+            static float last_pitch_off_deg_target = 0.0f;
+            static bool initialized = false;
+
+            // Initialize on first run
+            if (!initialized) {
+                last_pitch_off_deg = pitch_off_deg_target;
+                last_pitch_off_deg_target = pitch_off_deg_target;
+                initialized = true;
+            }
+
+            // Detect sudden change in target (threshold: 5 degrees)
+            // Check before rate limiting to catch actual user input changes
+            const float sudden_change_threshold = 5.0f;
+            const float change_magnitude = fabsf(pitch_off_deg_target - last_pitch_off_deg_target);
+            if (change_magnitude > sudden_change_threshold) {
+                // Reset attitude controller I terms to prevent accumulated error from causing large correction
+                attitude_control->reset_rate_controller_I_terms();
+            }
+
+            // Rate limiter: limit change rate to 8 degrees/second (adjustable)
+            const float max_rate_deg_per_sec = 8.0f;
+            const float dt = copter.G_Dt;
+            const float max_change = max_rate_deg_per_sec * dt;
+            float pitch_off_deg = constrain_float(pitch_off_deg_target,
+                                                   last_pitch_off_deg - max_change,
+                                                   last_pitch_off_deg + max_change);
+
+            // Update last values
+            last_pitch_off_deg = pitch_off_deg;
+            last_pitch_off_deg_target = pitch_off_deg_target;
 
             AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
             if (att6 != nullptr) {
