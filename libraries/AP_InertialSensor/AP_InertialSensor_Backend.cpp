@@ -140,6 +140,14 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
         accel.z *= accel_scale.z;
     }
 
+    // optional additional rotation around Y axis (degrees)
+    const float pitch_rot_deg = _imu.get_imu_pitch_rot_deg();
+    if (!is_zero(pitch_rot_deg)) {
+        Quaternion quat;
+        quat.from_axis_angle(Vector3f{0, 1, 0}, radians(pitch_rot_deg));
+        accel = quat * accel;
+    }
+
     // rotate to body frame
     accel.rotate(_imu._board_orientation);
 }
@@ -164,6 +172,14 @@ void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vecto
 
         // gyro calibration is always assumed to have been done in sensor frame
         gyro -= _imu._gyro_offset(instance);
+    }
+
+    // optional additional rotation around Y axis (degrees)
+    const float pitch_rot_deg = _imu.get_imu_pitch_rot_deg();
+    if (!is_zero(pitch_rot_deg)) {
+        Quaternion quat;
+        quat.from_axis_angle(Vector3f{0, 1, 0}, radians(pitch_rot_deg));
+        gyro = quat * gyro;
     }
 
     gyro.rotate(_imu._board_orientation);

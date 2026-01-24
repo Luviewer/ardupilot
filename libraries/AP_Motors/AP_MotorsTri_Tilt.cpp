@@ -37,6 +37,7 @@
 
 #include "AP_MotorsTri_Tilt.h"
 #include <AP_AHRS/AP_AHRS_View.h>
+#include <AP_InertialSensor/AP_InertialSensor.h>
 #define AP_MOTORS_TRI_TILT_USE_113E6D0_ALLOC
 
 extern const AP_HAL::HAL& hal;
@@ -383,14 +384,16 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     desired[4] = yaw_thrust;
 
     float desired_transformed[5];
-    AP_AHRS_View *ahrs_view = AP::ahrs().get_view();
+    // AP_AHRS_View *ahrs_view = AP::ahrs().get_view();
     float pitch_rad = 0.0f;  // 默认pitch=0（单位矩阵）
     
-    if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
-        // Get desired pitch angle in degrees and convert to radians
-        float desired_pitch_deg = ahrs_view->get_desired_pitch_deg();
-        pitch_rad = radians(desired_pitch_deg);
-    }
+    // if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
+    //     // Get desired pitch angle in degrees and convert to radians
+    //     float desired_pitch_deg = ahrs_view->get_desired_pitch_deg();
+    //     pitch_rad = radians(desired_pitch_deg);
+    // }else{
+    // }
+    pitch_rad = radians(AP::ins().get_imu_pitch_rot_deg());
 
 #ifdef AP_MOTORS_TRI_TILT_USE_113E6D0_ALLOC
     // Pre-compute cos and sin for efficiency

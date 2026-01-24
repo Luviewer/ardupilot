@@ -555,9 +555,10 @@ void Copter::update_flight_mode()
             //     att6->set_offset_roll_pitch(0.0f, pitch_off_deg);
             // }
 
-            if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
-                ahrs_view->set_desired_pitch_deg(pitch_off_deg);
-            }
+            // if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
+            //     ahrs_view->set_desired_pitch_deg(pitch_off_deg);
+            // }
+            AP::ins().set_imu_pitch_rot_deg(pitch_off_deg);
         }
     }
 #endif // AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED

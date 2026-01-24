@@ -313,6 +313,10 @@ public:
     // return time in microseconds of last update() call
     uint32_t get_last_update_usec(void) const { return _last_update_usec; }
 
+    // IMU rotation (around Y axis, degrees)
+    void set_imu_pitch_rot_deg(float pitch_deg) { _imu_pitch_rot_deg = pitch_deg; }
+    float get_imu_pitch_rot_deg() const { return _imu_pitch_rot_deg; }
+
     // for killing an IMU for testing purposes
     void kill_imu(uint8_t imu_idx, bool kill_it);
 
@@ -739,6 +743,9 @@ private:
 
     Vector3f _trim_rad;
     bool _new_trim;
+
+    // additional IMU rotation (degrees, around Y axis)
+    float _imu_pitch_rot_deg = 0.0f;
 
     bool _accel_cal_requires_reboot;
 
