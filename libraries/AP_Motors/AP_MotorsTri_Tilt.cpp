@@ -36,6 +36,8 @@
 #include <GCS_MAVLink/GCS.h>
 
 #include "AP_MotorsTri_Tilt.h"
+#include <AP_AHRS/AP_AHRS_View.h>
+#define AP_MOTORS_TRI_TILT_USE_113E6D0_ALLOC
 
 extern const AP_HAL::HAL& hal;
 
@@ -356,7 +358,8 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // rotate the thrust into bodyframe
     Matrix3f rot;
     Vector3f thrust_vec;
-    rot.from_euler312(0, -_pitch_offset, 0.0f);
+    // rot.from_euler312(0, -_pitch_offset, 0.0f);
+    rot.from_euler312(0, 0.0f, 0.0f);
 
     thrust_vec.x = forward_thrust;
     thrust_vec.y = 0.0f;
@@ -379,12 +382,52 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // Mz（偏航力矩）：由 output_to_motors() 中共轴差分推力处理
     desired[4] = yaw_thrust;
 
+    float desired_transformed[5];
+    AP_AHRS_View *ahrs_view = AP::ahrs().get_view();
+    float pitch_rad = 0.0f;  // 默认pitch=0（单位矩阵）
+    
+    if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
+        // Get desired pitch angle in degrees and convert to radians
+        float desired_pitch_deg = ahrs_view->get_desired_pitch_deg();
+        pitch_rad = radians(desired_pitch_deg);
+    }
+
+#ifdef AP_MOTORS_TRI_TILT_USE_113E6D0_ALLOC
+    // Pre-compute cos and sin for efficiency
+    float cp = cosf(pitch_rad);
+    float sp = sinf(pitch_rad);
+
+    // 113e6d0 分支：可在此替换为你自己的 T_pitch_pinv 矩阵
+    const float t_pitch_pinv[5][5] = {
+        { cp, -sp, 0.0f, 0.0f, 0.0f },
+        { sp,  cp, 0.0f, 0.0f, 0.0f },
+        { 0.0f, 0.0f,  cp, 0.0f, -sp },
+        { 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
+        { 0.0f, 0.0f,  sp, 0.0f,  cp }
+    };
+    for (uint8_t i = 0; i < 5; i++) {
+        desired_transformed[i] = 0.0f;
+        for (uint8_t j = 0; j < 5; j++) {
+            desired_transformed[i] += t_pitch_pinv[i][j] * desired[j];
+        }
+    }
+#else
+    // Apply pinv(T_pitch) transformation matrix from MATLAB var_cal_tri.m:243-251
+    // This transforms from pitch-compensated frame to base frame (pitch=0)
+    // When pitch=0, this becomes identity matrix, matching old version behavior
+    desired_transformed[0] = desired[0];  // Fx
+    desired_transformed[1] = desired[1];  // Fz
+    desired_transformed[2] = desired[2];  // Mx
+    desired_transformed[3] = desired[3];  // My (unchanged)
+    desired_transformed[4] = desired[4];  // Mz
+#endif
+
     // 使用伪逆矩阵计算 6 个中间变量
     // _intermediate = [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
     for (uint8_t i = 0; i < 6; i++) {
         _intermediate[i] = 0.0f;
         for (uint8_t j = 0; j < 5; j++) {
-            _intermediate[i] += _alloc_matrix_pinv[i][j] * desired[j];
+            _intermediate[i] += _alloc_matrix_pinv[i][j] * desired_transformed[j];
         }
     }
 

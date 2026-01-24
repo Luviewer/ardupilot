@@ -550,9 +550,13 @@ void Copter::update_flight_mode()
             last_pitch_off_deg = pitch_off_deg;
             last_pitch_off_deg_target = pitch_off_deg_target;
 
-            AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
-            if (att6 != nullptr) {
-                att6->set_offset_roll_pitch(0.0f, pitch_off_deg);
+            // AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
+            // if (att6 != nullptr) {
+            //     att6->set_offset_roll_pitch(0.0f, pitch_off_deg);
+            // }
+
+            if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
+                ahrs_view->set_desired_pitch_deg(pitch_off_deg);
             }
         }
     }
