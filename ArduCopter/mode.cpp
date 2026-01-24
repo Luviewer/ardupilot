@@ -510,7 +510,7 @@ void Copter::update_flight_mode()
         const uint16_t pwm7 = RC_Channels::get_radio_in(CH_7);
         if (pwm7 >= 900 && pwm7 <= 2100) {
             // Map 1000..2000 -> -1..+1 (1500 -> 0)
-            float norm = (float(pwm7) - 1500.0f) * (1.0f / 500.0f);
+            float norm = (float(pwm7) - 1000.0f) * (1.0f / 1000.0f);
             norm = constrain_float(norm, -1.0f, 1.0f);
 
             const auto *tri_tilt = static_cast<const AP_MotorsTri_Tilt*>(motors);
@@ -559,6 +559,7 @@ void Copter::update_flight_mode()
             //     ahrs_view->set_desired_pitch_deg(pitch_off_deg);
             // }
             AP::ins().set_imu_pitch_rot_deg(pitch_off_deg);
+            AP::compass().set_imu_pitch_rot_deg(pitch_off_deg);
         }
     }
 #endif // AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED

@@ -146,6 +146,11 @@ void AP_Compass_Backend::accumulate_sample(Vector3f &field,
     /* correct raw_field for known errors */
     correct_field(field);
 
+    Quaternion quat;
+    float aim_pitch_deg = _compass.get_imu_pitch_rot_deg();
+    quat.from_axis_angle(Vector3f{0, 1, 0}, radians(aim_pitch_deg));
+    field = quat * field;
+
     if (!field_ok(field)) {
         return;
     }

@@ -76,6 +76,11 @@ friend class AP_Compass_DroneCAN;
 public:
     Compass();
 
+    // IMU rotation (around Y axis, degrees)
+    void set_imu_pitch_rot_deg(float pitch_deg) { _imu_pitch_rot_deg = pitch_deg; }
+    float get_imu_pitch_rot_deg() const { return _imu_pitch_rot_deg; }
+    float _imu_pitch_rot_deg;
+
     /* Do not allow copies */
     CLASS_NO_COPY(Compass);
 
@@ -689,6 +694,7 @@ private:
     bool suppress_devid_save;
 
     uint8_t _first_usable; // first compass usable based on COMPASSx_USE param
+
 };
 
 namespace AP {
