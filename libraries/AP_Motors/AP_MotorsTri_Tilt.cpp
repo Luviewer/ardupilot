@@ -410,6 +410,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // _thrust[4] = _thrust_left;
     // _thrust[5] = _thrust_left;
     
+    // 互补控制融合
     float ahrs_pitch = AP::ins().get_imu_pitch_rot_deg() /90.0f;
 
     // add tilt angle for each motor
