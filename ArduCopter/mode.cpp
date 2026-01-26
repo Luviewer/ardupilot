@@ -528,9 +528,24 @@ void Copter::update_flight_mode()
             // Static variable to store accumulated pitch offset angle
             static float pitch_off_deg = 0.0f;
             
-            // Integrate angular velocity to get pitch offset angle
-            const float dt = copter.G_Dt;
-            pitch_off_deg += pitch_rate_deg_per_sec * dt;
+            // Limit pitch offset to ±90 degrees
+            const float max_pitch_off_deg = 90.0f;
+            const float min_pitch_off_deg = -90.0f;
+            
+            // Check if integration would exceed limits
+            // If already at limit and trying to increase further, stop integration
+            if ((pitch_off_deg >= max_pitch_off_deg && pitch_rate_deg_per_sec > 0.0f) ||
+                (pitch_off_deg <= min_pitch_off_deg && pitch_rate_deg_per_sec < 0.0f)) {
+                // Stop rotation when at limit
+                pitch_rate_deg_per_sec = 0.0f;
+            } else {
+                // Integrate angular velocity to get pitch offset angle
+                const float dt = copter.G_Dt;
+                pitch_off_deg += pitch_rate_deg_per_sec * dt;
+                
+                // Clamp to limits after integration
+                pitch_off_deg = constrain_float(pitch_off_deg, min_pitch_off_deg, max_pitch_off_deg);
+            }
             
             // Set angular velocity and accumulated angle
             AP::ins().set_imu_pitch_rot_rate_deg_per_sec(pitch_rate_deg_per_sec);

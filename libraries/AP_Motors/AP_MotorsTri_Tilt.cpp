@@ -356,11 +356,10 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
         limit.throttle_upper = true;
     }
 
-    // _tilt_angle_rad[0] = -radians(AP::ins().get_imu_pitch_rot_deg());
-    // _tilt_angle_rad[1] = -radians(AP::ins().get_imu_pitch_rot_deg());
-    // _tilt_angle_rad[2] = -radians(AP::ins().get_imu_pitch_rot_deg());
-    _tilt_angle_rad[0] =  _tilt_angle_rad[1] =  _tilt_angle_rad[2] =  - radians(AP::ins().get_imu_pitch_rot_deg());
 
+
+    //// 三旋翼基础控制
+    _tilt_angle_rad[0] =  _tilt_angle_rad[1] =  _tilt_angle_rad[2] =  - radians(AP::ins().get_imu_pitch_rot_deg());
 
     float _thrust_rear, _thrust_right, _thrust_left;
 
@@ -381,16 +380,46 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _thrust_left = constrain_float(_thrust_left, 0.0f, 1.0f);
     _thrust_rear = constrain_float(_thrust_rear, 0.0f, 1.0f);
 
-
     _thrust[0] = _thrust_right;
     _thrust[1] = _thrust_rear;
-
     _thrust[2] = _thrust_left;
-    // _thrust[3] = _thrust_rear;
 
+    // 双旋翼叠加
+    float _thrust_rear_bicopter, _thrust_right_bicopter, _thrust_left_bicopter;
+    float _tilt_left_bicopter, _tilt_right_bicopter, _tilt_rear_bicopter;
+    // calculate left and right throttle outputs
+    _thrust_left_bicopter  = throttle_thrust + roll_thrust * 0.5f;
+    _thrust_right_bicopter = throttle_thrust - roll_thrust * 0.5f;
+    _thrust_rear_bicopter = throttle_thrust ;
+
+    // thrust vectoring
+    _tilt_left_bicopter  = pitch_thrust*0.5f;
+    _tilt_right_bicopter = pitch_thrust*0.5f;
+    _tilt_rear_bicopter = -pitch_thrust*0.5f;
+
+    // constrain all outputs to 0.0f to 1.0f
+    // test code should be run with these lines commented out as they should not do anything
+    // _thrust_left_bicopter = constrain_float(_thrust_left_bicopter, 0.0f, 1.0f);
+    // _thrust_right_bicopter = constrain_float(_thrust_right_bicopter, 0.0f, 1.0f);
+    // _thrust_rear_bicopter = constrain_float(_thrust_rear_bicopter, 0.0f, 1.0f);
+    // _tilt_left_bicopter = constrain_float(_tilt_left_bicopter, 0.0f, 1.0f);
+    // _tilt_right_bicopter = constrain_float(_tilt_right_bicopter, 0.0f, 1.0f);
+    // _tilt_rear_bicopter = constrain_float(_tilt_rear_bicopter, 0.0f, 1.0f);
+
+    // _thrust[3] = _thrust_rear;
     // _thrust[4] = _thrust_left;
     // _thrust[5] = _thrust_left;
+    
+    float ahrs_pitch = AP::ins().get_imu_pitch_rot_deg() /90.0f;
 
+    // add tilt angle for each motor
+    _tilt_angle_rad[0] = _tilt_angle_rad[0] + _tilt_right_bicopter*(ahrs_pitch);
+    _tilt_angle_rad[1] = _tilt_angle_rad[1] + _tilt_rear_bicopter*(ahrs_pitch);
+    _tilt_angle_rad[2] = _tilt_angle_rad[2] + _tilt_left_bicopter*(ahrs_pitch);
+
+    _thrust[0] =  _thrust[0] * (1.0f-ahrs_pitch) + _thrust_right_bicopter*(ahrs_pitch);
+    _thrust[1] =  _thrust[1] * (1.0f-ahrs_pitch) + _thrust_rear_bicopter*(ahrs_pitch);
+    _thrust[2] =  _thrust[2] * (1.0f-ahrs_pitch) + _thrust_left_bicopter*(ahrs_pitch);
 
 
     // rotate the thrust into bodyframe
