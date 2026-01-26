@@ -502,64 +502,43 @@ void Copter::update_flight_mode()
     attitude_control->landed_gain_reduction(copter.ap.land_complete); // Adjust gains when landed to attenuate ground oscillation
 
 #if AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
-    // TriTilt: use RC7 to command pitch attitude offset while RC2 is repurposed for forward thrust
+    // TriTilt: use RC7 to command pitch rotation rate while RC2 is repurposed for forward thrust
     if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_TRI &&
         (AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT) {
 
         // Read RC7 PWM directly (SERVO output CH_7 macro is 0-based channel index 6)
         const uint16_t pwm7 = RC_Channels::get_radio_in(CH_7);
+        
+        // Maximum pitch rotation rate (degrees per second) - adjustable parameter
+        const float max_rate_deg_per_sec = 10.0f;  // TODO: make this a configurable parameter
+        
+        float pitch_rate_deg_per_sec = 0.0f;
+        
+        // Only process if RC7 is in valid range
         if (pwm7 >= 900 && pwm7 <= 2100) {
-            // Map 1000..2000 -> -1..+1 (1500 -> 0)
-            float norm = (float(pwm7) - 1000.0f) * (1.0f / 1000.0f);
-            norm = constrain_float(norm, -1.0f, 1.0f);
-
-            const auto *tri_tilt = static_cast<const AP_MotorsTri_Tilt*>(motors);
-            const float max_deg = tri_tilt->tilt_pitch_offset_max_deg();
-            const float pitch_off_deg_target = norm * max_deg;
-
-            // Static variables for smooth transition and sudden change detection
-            static float last_pitch_off_deg = 0.0f;
-            static float last_pitch_off_deg_target = 0.0f;
-            static bool initialized = false;
-
-            // Initialize on first run
-            if (!initialized) {
-                last_pitch_off_deg = pitch_off_deg_target;
-                last_pitch_off_deg_target = pitch_off_deg_target;
-                initialized = true;
+            // RC7 <= 1000 or >= 2000: angular velocity is 0
+            // 1000 < RC7 < 2000: map to angular velocity (-max_rate to +max_rate, 1500 -> 0)
+            if (pwm7 > 1000 && pwm7 < 2000) {
+                // Map 1000..2000 -> -1..+1 (1500 -> 0)
+                float norm = (float(pwm7) - 1500.0f) * (1.0f / 500.0f);
+                norm = constrain_float(norm, -1.0f, 1.0f);
+                pitch_rate_deg_per_sec = norm * max_rate_deg_per_sec;
             }
-
-            // Detect sudden change in target (threshold: 5 degrees)
-            // Check before rate limiting to catch actual user input changes
-            const float sudden_change_threshold = 5.0f;
-            const float change_magnitude = fabsf(pitch_off_deg_target - last_pitch_off_deg_target);
-            if (change_magnitude > sudden_change_threshold) {
-                // Reset attitude controller I terms to prevent accumulated error from causing large correction
-                attitude_control->reset_rate_controller_I_terms();
-            }
-
-            // Rate limiter: limit change rate to 8 degrees/second (adjustable)
-            const float max_rate_deg_per_sec = 8.0f;
+            
+            // Static variable to store accumulated pitch offset angle
+            static float pitch_off_deg = 0.0f;
+            
+            // Integrate angular velocity to get pitch offset angle
             const float dt = copter.G_Dt;
-            const float max_change = max_rate_deg_per_sec * dt;
-            float pitch_off_deg = constrain_float(pitch_off_deg_target,
-                                                   last_pitch_off_deg - max_change,
-                                                   last_pitch_off_deg + max_change);
-
-            // Update last values
-            last_pitch_off_deg = pitch_off_deg;
-            last_pitch_off_deg_target = pitch_off_deg_target;
-
-            // AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
-            // if (att6 != nullptr) {
-            //     att6->set_offset_roll_pitch(0.0f, pitch_off_deg);
-            // }
-
-            // if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
-            //     ahrs_view->set_desired_pitch_deg(pitch_off_deg);
-            // }
+            pitch_off_deg += pitch_rate_deg_per_sec * dt;
+            
+            // Set angular velocity and accumulated angle
+            AP::ins().set_imu_pitch_rot_rate_deg_per_sec(pitch_rate_deg_per_sec);
             AP::ins().set_imu_pitch_rot_deg(pitch_off_deg);
             AP::compass().set_imu_pitch_rot_deg(pitch_off_deg);
+        } else {
+            // RC7 out of valid range, set angular velocity to 0
+            AP::ins().set_imu_pitch_rot_rate_deg_per_sec(0.0f);
         }
     }
 #endif // AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED

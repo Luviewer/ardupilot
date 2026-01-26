@@ -174,6 +174,14 @@ void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vecto
         gyro -= _imu._gyro_offset(instance);
     }
 
+    // Compensate for pitch rotation rate (angular velocity compensation)
+    const float pitch_rot_rate_deg_per_sec = _imu.get_imu_pitch_rot_rate_deg_per_sec();
+    if (!is_zero(pitch_rot_rate_deg_per_sec)) {
+        // Subtract the pitch rotation rate from gyro.y to compensate for the rotation
+        // Convert from deg/s to rad/s
+        gyro.y -= radians(pitch_rot_rate_deg_per_sec);
+    }
+
     // optional additional rotation around Y axis (degrees)
     const float pitch_rot_deg = _imu.get_imu_pitch_rot_deg();
     if (!is_zero(pitch_rot_deg)) {

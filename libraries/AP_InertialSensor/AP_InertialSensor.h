@@ -317,6 +317,10 @@ public:
     void set_imu_pitch_rot_deg(float pitch_deg) { _imu_pitch_rot_deg = pitch_deg; }
     float get_imu_pitch_rot_deg() const { return _imu_pitch_rot_deg; }
 
+    // IMU pitch rotation rate (degrees per second)
+    void set_imu_pitch_rot_rate_deg_per_sec(float pitch_rate_deg_per_sec) { _imu_pitch_rot_rate_deg_per_sec = pitch_rate_deg_per_sec; }
+    float get_imu_pitch_rot_rate_deg_per_sec() const { return _imu_pitch_rot_rate_deg_per_sec; }
+
     // for killing an IMU for testing purposes
     void kill_imu(uint8_t imu_idx, bool kill_it);
 
@@ -746,6 +750,8 @@ private:
 
     // additional IMU rotation (degrees, around Y axis)
     float _imu_pitch_rot_deg = 0.0f;
+    // IMU pitch rotation rate (degrees per second)
+    float _imu_pitch_rot_rate_deg_per_sec = 0.0f;
 
     bool _accel_cal_requires_reboot;
 

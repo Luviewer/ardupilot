@@ -117,7 +117,7 @@ private:
 
     // Calculated outputs
     float _thrust[3];           // Thrust for each rotor pair [F1, F2, F3]
-    float _tilt_angle[3];       // Tilt angle for each rotor pair [a1, a2, a3] in radians
+    float _tilt_angle_rad[3];       // Tilt angle for each rotor pair [a1, a2, a3] in radians
 
     // Intermediate variables from allocation matrix
     float _intermediate[6];     // [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]

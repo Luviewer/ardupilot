@@ -491,7 +491,7 @@ void Copter::allocate_motors(void)
     if ((frame_class == AP_Motors::MOTOR_FRAME_TRI) && (frame_type == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT)) {
         AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
         if (att6 != nullptr) {
-            att6->set_forward_enable(true);
+            att6->set_forward_enable(false);
             att6->set_lateral_enable(false);
         }
     }
