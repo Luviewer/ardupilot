@@ -234,15 +234,9 @@ void AP_MotorsTri_Tilt::setup_motors(motor_frame_class frame_class, motor_frame_
     motor_enabled[AP_MOTORS_MOT_6] = true;
 
     // 矩阵清零
-    memset(_alloc_matrix, 0, sizeof(_alloc_matrix));
-    memset(_alloc_matrix_pinv, 0, sizeof(_alloc_matrix_pinv));
     memset(_thrust, 0, sizeof(_thrust));
     memset(_tilt_angle_rad, 0, sizeof(_tilt_angle_rad));
-    memset(_intermediate, 0, sizeof(_intermediate));
-
-    // 计算分配矩阵及其伪逆
-    calculate_allocation_matrix();
-    calculate_allocation_matrix_pinv();
+    memset(_rpy_out, 0, sizeof(_rpy_out));
 
     _frame_class_string = "TRI_TILT";
     _frame_type_string = "Coaxial-Y6B";
@@ -324,225 +318,191 @@ void AP_MotorsTri_Tilt::set_roll_pitch(float roll_deg, float pitch_deg)
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AP_MotorsTri_Tilt::output_armed_stabilizing()
 {
-    // uint8_t i;            // general purpose counter
     float   roll_thrust;     // roll thrust input value, +/- 1.0
     float   pitch_thrust;    // pitch thrust input value, +/- 1.0
     float   yaw_thrust;      // yaw thrust input value, +/- 1.0
     float   throttle_thrust; // throttle thrust input value, 0.0 - 1.0
-    // float   forward_thrust;             // forward thrust input value, +/- 1.0
+    float   forward_thrust;  // forward thrust input value, +/- 1.0
 
-    // 获取电压与高度补偿增益
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第1层：基础补偿 - 电压与高度补偿增益
+    /////////////////////////////////////////////////////////////////////////////////////////////////
     const float compensation_gain = thr_lin.get_compensation_gain();
 
     roll_thrust = (_roll_in + _roll_in_ff) * compensation_gain;
     pitch_thrust = (_pitch_in + _pitch_in_ff) * compensation_gain;
     yaw_thrust = (_yaw_in + _yaw_in_ff) * compensation_gain;
-    
-    // - Fx（前向力）必须来自 get_forward()（由 AP_Motors::set_forward 写入），不是 _pitch_in。
-    // - _pitch_in 是俯仰力矩请求（My）。
     throttle_thrust = get_throttle() * compensation_gain;
-    // 前向力随油门缩放（与 6DoF 脚本混控行为一致）
-    // forward_thrust = get_forward() * throttle_thrust;
 
-    // set throttle limit flags
-    if (throttle_thrust <= 0) {
-        throttle_thrust = 0;
-        // we cant thrust down, the vehicle can do it, but it would break a lot of assumptions further up the control stack
-        // 1G decent probably plenty anyway....
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第2层：Throttle 补偿和限制
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    // Throttle 平均最大值补偿
+    float throttle_avg_max = _throttle_avg_max * compensation_gain;
+    
+    // Throttle 最大值限制
+    const float throttle_thrust_max = _throttle_thrust_max * compensation_gain;
+    
+    // Throttle 下限检查
+    if (throttle_thrust <= 0.0f) {
+        throttle_thrust = 0.0f;
         limit.throttle_lower = true;
     }
-    if (throttle_thrust >= 1) {
-        throttle_thrust = 1;
+    
+    // Throttle 上限检查
+    if (throttle_thrust >= throttle_thrust_max) {
+        throttle_thrust = throttle_thrust_max;
+        limit.throttle_upper = true;
+    }
+    
+    // 确保 throttle_avg_max 在合理范围内
+    throttle_avg_max = constrain_float(throttle_avg_max, throttle_thrust, throttle_thrust_max);
+    
+    // 计算提供最大 RPY 控制范围的最佳油门
+    float throttle_thrust_best_rpy = MIN(0.5f, throttle_avg_max);
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第3层：三旋翼基础控制分配
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 初始化倾转角度
+    _tilt_angle_rad[0] = _tilt_angle_rad[1] = _tilt_angle_rad[2] = -radians(AP::ins().get_imu_pitch_rot_deg());
+
+    // 三旋翼 RPY 控制分配（不含 throttle）
+    _thrust_right_tricopter = roll_thrust * -0.5f + pitch_thrust * 0.5f;
+    _thrust_left_tricopter = roll_thrust * 0.5f + pitch_thrust * 0.5f;
+    _thrust_rear_tricopter = pitch_thrust * -0.5f;
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第4层：双旋翼控制分配
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 双旋翼推力分配（不含 throttle）
+    _thrust_right_bicopter = -roll_thrust * 0.5f;
+    _thrust_left_bicopter = roll_thrust * 0.5f;
+    _thrust_rear_bicopter = 0.0f;
+
+    // 双旋翼倾转控制
+    _tilt_right_bicopter = pitch_thrust * 0.5f;
+    _tilt_left_bicopter = pitch_thrust * 0.5f;
+    _tilt_rear_bicopter = -pitch_thrust * 0.5f;
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第6层：前向力控制
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    forward_thrust = _forward_in;
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第7层：计算 RPY 组合输出范围（用于缩放补偿）
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    float rpy_low = 1.0f;   // 最低推力值
+    float rpy_high = -1.0f; // 最高推力值
+
+    // 互补控制融合权重
+    float ahrs_pitch = AP::ins().get_imu_pitch_rot_deg() / 90.0f;
+    ahrs_pitch = constrain_float(ahrs_pitch, 0.0f, 1.0f);
+    
+    // 右侧电机（0,1）
+    float thrust_right_mixed = _thrust_right_tricopter * (1.0f - ahrs_pitch) + _thrust_right_bicopter * ahrs_pitch;
+    _rpy_out[FR_UP] = thrust_right_mixed + yaw_thrust * 0.5f;
+    _rpy_out[FR_DOWN] = thrust_right_mixed - yaw_thrust * 0.5f; // 反向差分
+    
+    // 后侧电机（2,3）
+    float thrust_rear_mixed = _thrust_rear_tricopter * (1.0f - ahrs_pitch) + _thrust_rear_bicopter * ahrs_pitch;
+    _rpy_out[REAR_UP] = thrust_rear_mixed + yaw_thrust * 0.5f;
+    _rpy_out[REAR_DOWN] = thrust_rear_mixed - yaw_thrust * 0.5f;
+    
+    // 左侧电机（4,5）
+    float thrust_left_mixed = _thrust_left_tricopter * (1.0f - ahrs_pitch) + _thrust_left_bicopter * ahrs_pitch;
+    _rpy_out[FL_UP] = thrust_left_mixed + yaw_thrust * 0.5f;
+    _rpy_out[FL_DOWN] = thrust_left_mixed - yaw_thrust * 0.5f;
+
+    // 找出最高和最低 RPY 输出
+    for (uint8_t i = 0; i < 6; i++) {
+        if (_rpy_out[i] < rpy_low) {
+            rpy_low = _rpy_out[i];
+        }
+        if (_rpy_out[i] > rpy_high) {
+            rpy_high = _rpy_out[i];
+        }
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第8层：RPY 缩放补偿
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    float rpy_scale = 1.0f;
+    
+    // 如果 RPY 范围超出 1.0，需要缩放
+    if (rpy_high - rpy_low > 1.0f) {
+        rpy_scale = 1.0f / (rpy_high - rpy_low);
+    }
+    
+    // 如果下限会导致负值，也需要缩放
+    if (throttle_avg_max + rpy_low < 0.0f) {
+        rpy_scale = MIN(rpy_scale, -throttle_avg_max / rpy_low);
+    }
+
+    // 应用缩放
+    rpy_high *= rpy_scale;
+    rpy_low *= rpy_scale;
+    
+    // 应用缩放到所有 RPY 输出
+    for (uint8_t i = 0; i < 6; i++) {
+        _rpy_out[i] *= rpy_scale;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第9层：Throttle 调整补偿
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    throttle_thrust_best_rpy = -rpy_low;
+    float thr_adj = throttle_thrust - throttle_thrust_best_rpy;
+    
+    if (rpy_scale < 1.0f) {
+        // RPY 占满了全部范围
+        limit.roll = true;
+        limit.pitch = true;
+        limit.yaw = true;
+        if (thr_adj > 0.0f) {
+            limit.throttle_upper = true;
+        }
+        thr_adj = 0.0f;
+    } else if (thr_adj < 0.0f) {
+        // Throttle 不能降低到期望值
+        thr_adj = 0.0f;
+    } else if (thr_adj > 1.0f - (throttle_thrust_best_rpy + rpy_high)) {
+        // Throttle 不能提升到期望值
+        thr_adj = 1.0f - (throttle_thrust_best_rpy + rpy_high);
         limit.throttle_upper = true;
     }
 
-
-
-    //// 三旋翼基础控制
-    _tilt_angle_rad[0] =  _tilt_angle_rad[1] =  _tilt_angle_rad[2] =  - radians(AP::ins().get_imu_pitch_rot_deg());
-
-    float _thrust_rear, _thrust_right, _thrust_left;
-
-    (void)yaw_thrust;
-
-    _thrust_right = roll_thrust * -0.5f + pitch_thrust * 0.5f;
-    _thrust_left = roll_thrust * 0.5f + pitch_thrust * 0.5f;
-    _thrust_rear = pitch_thrust * -0.5f;
-
-    // add scaled roll, pitch, constrained yaw and throttle for each motor
-    _thrust_right = throttle_thrust + _thrust_right;
-    _thrust_left = throttle_thrust + _thrust_left;
-    _thrust_rear = throttle_thrust +  _thrust_rear;
-
-    // constrain all outputs to 0.0f to 1.0f
-    // test code should be run with these lines commented out as they should not do anything
-    _thrust_right = constrain_float(_thrust_right, 0.0f, 1.0f);
-    _thrust_left = constrain_float(_thrust_left, 0.0f, 1.0f);
-    _thrust_rear = constrain_float(_thrust_rear, 0.0f, 1.0f);
-
-    _thrust[0] = _thrust_right;
-    _thrust[1] = _thrust_rear;
-    _thrust[2] = _thrust_left;
-
-    // 双旋翼叠加
-    float _thrust_rear_bicopter, _thrust_right_bicopter, _thrust_left_bicopter;
-    float _tilt_left_bicopter, _tilt_right_bicopter, _tilt_rear_bicopter;
-    // calculate left and right throttle outputs
-    _thrust_left_bicopter  = throttle_thrust + roll_thrust * 0.5f;
-    _thrust_right_bicopter = throttle_thrust - roll_thrust * 0.5f;
-    _thrust_rear_bicopter = throttle_thrust ;
-
-    // thrust vectoring
-    _tilt_left_bicopter  = pitch_thrust*0.5f;
-    _tilt_right_bicopter = pitch_thrust*0.5f;
-    _tilt_rear_bicopter = -pitch_thrust*0.5f;
-
-    // constrain all outputs to 0.0f to 1.0f
-    // test code should be run with these lines commented out as they should not do anything
-    // _thrust_left_bicopter = constrain_float(_thrust_left_bicopter, 0.0f, 1.0f);
-    // _thrust_right_bicopter = constrain_float(_thrust_right_bicopter, 0.0f, 1.0f);
-    // _thrust_rear_bicopter = constrain_float(_thrust_rear_bicopter, 0.0f, 1.0f);
-    // _tilt_left_bicopter = constrain_float(_tilt_left_bicopter, 0.0f, 1.0f);
-    // _tilt_right_bicopter = constrain_float(_tilt_right_bicopter, 0.0f, 1.0f);
-    // _tilt_rear_bicopter = constrain_float(_tilt_rear_bicopter, 0.0f, 1.0f);
-
-    // _thrust[3] = _thrust_rear;
-    // _thrust[4] = _thrust_left;
-    // _thrust[5] = _thrust_left;
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第10层：最终推力输出
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    const float throttle_thrust_best_plus_adj = throttle_thrust_best_rpy + thr_adj;
     
-    // 互补控制融合
-    float ahrs_pitch = AP::ins().get_imu_pitch_rot_deg() /90.0f;
+    for (uint8_t i = 0; i < 6; i++) {
+        _thrust[i] = throttle_thrust_best_plus_adj + _rpy_out[i];
+        // 安全约束（正常情况下不应该触发）
+        _thrust[i] = constrain_float(_thrust[i], 0.0f, 1.0f);
+    }
 
-    // add tilt angle for each motor
-    _tilt_angle_rad[0] = _tilt_angle_rad[0] + _tilt_right_bicopter*(ahrs_pitch);
-    _tilt_angle_rad[1] = _tilt_angle_rad[1] + _tilt_rear_bicopter*(ahrs_pitch);
-    _tilt_angle_rad[2] = _tilt_angle_rad[2] + _tilt_left_bicopter*(ahrs_pitch);
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第11层：倾转角度混合
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    float tilt_right_mixed = _tilt_right_bicopter * ahrs_pitch;
+    float tilt_rear_mixed = _tilt_rear_bicopter * ahrs_pitch;
+    float tilt_left_mixed = _tilt_left_bicopter * ahrs_pitch;
 
-    _thrust[0] =  _thrust[0] * (1.0f-ahrs_pitch) + _thrust_right_bicopter*(ahrs_pitch);
-    _thrust[1] =  _thrust[1] * (1.0f-ahrs_pitch) + _thrust_rear_bicopter*(ahrs_pitch);
-    _thrust[2] =  _thrust[2] * (1.0f-ahrs_pitch) + _thrust_left_bicopter*(ahrs_pitch);
+    float yaw_enable = 1;
 
+    _tilt_angle_rad[FR] += tilt_right_mixed - forward_thrust*0.5f + yaw_thrust * 0.5f * yaw_enable;
+    _tilt_angle_rad[REAR] += tilt_rear_mixed - forward_thrust*0.5f;
+    _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust*0.5f - yaw_thrust * 0.5f * yaw_enable;
 
-    // rotate the thrust into bodyframe
-    // Matrix3f rot;
-    // Vector3f thrust_vec;
-    // // rot.from_euler312(0, -_pitch_offset, 0.0f);
-    // rot.from_euler312(0, 0.0f, 0.0f);
-
-//     thrust_vec.x = forward_thrust;
-//     thrust_vec.y = 0.0f;
-//     thrust_vec.z = -throttle_thrust;
-//     thrust_vec = rot * thrust_vec;
-
-//     // 重要符号约定（与 cal_alloc_tri.m 一致）：
-//     // 推导使用机体系 Z 轴向下为正（NED）。
-//     // 转子推力指向“上”，因此机体系的 Fz 为负。
-//     // 所以对常规多旋翼向上油门，期望 Fz 必须为负。
-//     //
-//     // 同时 Fx 行定义为 Fx = -(F1*sin(a1)+F2*sin(a2)+F3*sin(a3))，
-//     // 因此前向正向推力指令需要在这里取负号。
-//     desired[0] = thrust_vec.x; // Fx（前向力，+x 向前）
-//     desired[1] = thrust_vec.z; // Fz（向下为正，所以上推力为负）
-//     // Mx（滚转力矩）
-//     desired[2] = roll_thrust;
-//     // My（俯仰力矩）
-//     desired[3] = pitch_thrust;
-//     // Mz（偏航力矩）：由 output_to_motors() 中共轴差分推力处理
-//     desired[4] = yaw_thrust;
-
-//     float desired_transformed[5];
-//     // AP_AHRS_View *ahrs_view = AP::ahrs().get_view();
-//     float pitch_rad = 0.0f;  // 默认pitch=0（单位矩阵）
-    
-//     // if (ahrs_view != nullptr && ahrs_view->is_pitch_compensation_enabled()) {
-//     //     // Get desired pitch angle in degrees and convert to radians
-//     //     float desired_pitch_deg = ahrs_view->get_desired_pitch_deg();
-//     //     pitch_rad = radians(desired_pitch_deg);
-//     // }else{
-//     // }
-//     pitch_rad = radians(AP::ins().get_imu_pitch_rot_deg());
-
-// #ifdef AP_MOTORS_TRI_TILT_USE_113E6D0_ALLOC
-//     // Pre-compute cos and sin for efficiency
-//     float cp = cosf(pitch_rad);
-//     float sp = sinf(pitch_rad);
-
-//     // 113e6d0 分支：可在此替换为你自己的 T_pitch_pinv 矩阵
-//     const float t_pitch_pinv[5][5] = {
-//         { cp, -sp, 0.0f, 0.0f, 0.0f },
-//         { sp,  cp, 0.0f, 0.0f, 0.0f },
-//         { 0.0f, 0.0f,  cp, 0.0f, -sp },
-//         { 0.0f, 0.0f, 0.0f, 1.0f, 0.0f },
-//         { 0.0f, 0.0f,  sp, 0.0f,  cp }
-//     };
-//     for (uint8_t i = 0; i < 5; i++) {
-//         desired_transformed[i] = 0.0f;
-//         for (uint8_t j = 0; j < 5; j++) {
-//             desired_transformed[i] += t_pitch_pinv[i][j] * desired[j];
-//         }
-//     }
-// #else
-//     // Apply pinv(T_pitch) transformation matrix from MATLAB var_cal_tri.m:243-251
-//     // This transforms from pitch-compensated frame to base frame (pitch=0)
-//     // When pitch=0, this becomes identity matrix, matching old version behavior
-//     desired_transformed[0] = desired[0];  // Fx
-//     desired_transformed[1] = desired[1];  // Fz
-//     desired_transformed[2] = desired[2];  // Mx
-//     desired_transformed[3] = desired[3];  // My (unchanged)
-//     desired_transformed[4] = desired[4];  // Mz
-// #endif
-
-//     // 使用伪逆矩阵计算 6 个中间变量
-//     // _intermediate = [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-//     for (uint8_t i = 0; i < 6; i++) {
-//         _intermediate[i] = 0.0f;
-//         for (uint8_t j = 0; j < 5; j++) {
-//             _intermediate[i] += _alloc_matrix_pinv[i][j] * desired_transformed[j];
-//         }
-//     }
-
-//     // 根据中间变量求解推力与倾转角
-//     for (uint8_t i = 0; i < 3; i++) {
-//          f_sin[i] = _intermediate[2*i];
-//          f_cos[i] = _intermediate[2*i + 1];
-//         _thrust[i] = sqrtf(f_sin[i] * f_sin[i] + f_cos[i] * f_cos[i]);
-//         _tilt_angle_rad[i] = atan2f(f_sin[i], f_cos[i]);
-//     } 
-
-//     // 施加约束
-//     // 若 _servo_angle_max == 0，则倾转角不做软件限幅
-//     // const bool clamp_tilt = (_servo_angle_max > 0.0f);
-//     // const float max_angle_rad = clamp_tilt ? radians(_servo_angle_max) : radians(float(AP_MOTORS_TRI_TILT_ANGLE_MAX));
-
-//     for (uint8_t i = 0; i < 3; i++) {
-//         // 约束推力 [0, 1]
-//         _thrust[i] = constrain_float(_thrust[i], 0.0f, 1.0f);
-
-//         // 限幅标记
-//         if (_thrust[i] >= 1.0f) {
-//             limit.throttle_upper = true;
-//         }
-//         if (_thrust[i] <= 0.0f) {
-//             limit.throttle_lower = true;
-//         }
-//     }
-
-//     // 若存在电机饱和则做推力缩放
-//     float max_thrust = 0.0f;
-//     for (uint8_t i = 0; i < 3; i++) {
-//         if (_thrust[i] > max_thrust) {
-//             max_thrust = _thrust[i];
-//         }
-//     }
-
-//     // 超限则缩放
-//     if (max_thrust > 1.0f) {
-//         float scale = 1.0f / max_thrust;
-//         for (uint8_t i = 0; i < 3; i++) {
-//             _thrust[i] *= scale;
-//         }
-//         limit.throttle_upper = true;
-//     }
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第12层：记录输出用于谐波陷波滤波器
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // compensation_gain 不会为零
+    _throttle_out = throttle_thrust_best_plus_adj / compensation_gain;
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -587,9 +547,9 @@ void AP_MotorsTri_Tilt::output_to_motors()
         case SpoolState::SPOOLING_UP:
         case SpoolState::THROTTLE_UNLIMITED:
         case SpoolState::SPOOLING_DOWN: 
-            for (uint8_t i = 0; i < 3; i++) {
-                set_actuator_with_slew(_actuator[2*i], thr_lin.thrust_to_actuator(_thrust[i]));
-                set_actuator_with_slew(_actuator[2*i+1], thr_lin.thrust_to_actuator(_thrust[i]));
+            for (uint8_t i = 0; i < 6; i++) {
+                set_actuator_with_slew(_actuator[i], thr_lin.thrust_to_actuator(_thrust[i]));
+                // set_actuator_with_slew(_actuator[2*i+1], thr_lin.thrust_to_actuator(_thrust[i]));
             }
 
             // 输出倾转舵机角度（厘度）
@@ -653,126 +613,6 @@ void AP_MotorsTri_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
     if (motor_enabled[motor_num]) {
         rc_write(motor_num, pwm);
     }
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 计算静态分配矩阵 F_alloc[5][6]
-// 基于 tricopter_allocation/cal_alloc_tri.m 的 MATLAB 推导
-// 将 [Fx, Fz, Mx, My, Mz] 映射为 [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void AP_MotorsTri_Tilt::calculate_allocation_matrix()
-{
-    float lx = _lfront_x;
-    float ly = _lfront_y;
-    float lr = _lrear;
-
-    // 第 0 行：Fx（前向力）
-    // Fx = -(F1*sin(a1) + F2*sin(a2) + F3*sin(a3))
-    _alloc_matrix[0][0] = -1.0f;  // F1*sin(a1)
-    _alloc_matrix[0][1] = 0.0f;   // F1*cos(a1)
-    _alloc_matrix[0][2] = -1.0f;  // F2*sin(a2)
-    _alloc_matrix[0][3] = 0.0f;   // F2*cos(a2)
-    _alloc_matrix[0][4] = -1.0f;  // F3*sin(a3)
-    _alloc_matrix[0][5] = 0.0f;   // F3*cos(a3)
-
-    // 第 1 行：Fz（垂向力/油门）
-    // Fz = -(F1*cos(a1) + F2*cos(a2) + F3*cos(a3))
-    _alloc_matrix[1][0] = 0.0f;   // F1*sin(a1)
-    _alloc_matrix[1][1] = -1.0f;  // F1*cos(a1)
-    _alloc_matrix[1][2] = 0.0f;   // F2*sin(a2)
-    _alloc_matrix[1][3] = -1.0f;  // F2*cos(a2)
-    _alloc_matrix[1][4] = 0.0f;   // F3*sin(a3)
-    _alloc_matrix[1][5] = -1.0f;  // F3*cos(a3)
-
-    // 第 2 行：Mx（滚转力矩）
-    // Mx = -ly*F1*cos(a1) + ly*F3*cos(a3)
-    _alloc_matrix[2][0] = 0.0f;       // F1*sin(a1)
-    _alloc_matrix[2][1] = -ly;        // F1*cos(a1)
-    _alloc_matrix[2][2] = 0.0f;       // F2*sin(a2)
-    _alloc_matrix[2][3] = 0.0f;       // F2*cos(a2)
-    _alloc_matrix[2][4] = 0.0f;       // F3*sin(a3)
-    _alloc_matrix[2][5] = ly;         // F3*cos(a3)
-
-    // 第 3 行：My（俯仰力矩）
-    // My = lx*F1*cos(a1) - lr*F2*cos(a2) + lx*F3*cos(a3)
-    _alloc_matrix[3][0] = 0.0f;       // F1*sin(a1)
-    _alloc_matrix[3][1] = lx;         // F1*cos(a1)
-    _alloc_matrix[3][2] = 0.0f;       // F2*sin(a2)
-    _alloc_matrix[3][3] = -lr;        // F2*cos(a2)
-    _alloc_matrix[3][4] = 0.0f;       // F3*sin(a3)
-    _alloc_matrix[3][5] = lx;         // F3*cos(a3)
-
-    // 第 4 行：Mz（偏航力矩）
-    // Mz = ly*F1*sin(a1) - ly*F3*sin(a3)
-    _alloc_matrix[4][0] = ly;         // F1*sin(a1)
-    _alloc_matrix[4][1] = 0.0f;       // F1*cos(a1)
-    _alloc_matrix[4][2] = 0.0f;       // F2*sin(a2)
-    _alloc_matrix[4][3] = 0.0f;       // F2*cos(a2)
-    _alloc_matrix[4][4] = -ly;        // F3*sin(a3)
-    _alloc_matrix[4][5] = 0.0f;       // F3*cos(a3)
-}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// 计算分配矩阵的伪逆
-// 基于 MATLAB：simplify(pinv(F_alloc))
-// 将 [Fx, Fz, Mx, My, Mz] 映射为 [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void AP_MotorsTri_Tilt::calculate_allocation_matrix_pinv()
-{
-    float lx = _lfront_x;
-    float ly = _lfront_y;
-    float lr = _lrear;
-
-    // 防止除零
-    const float sum_x_r = lx + lr;
-    if (fabsf(ly) < 0.01f || fabsf(sum_x_r) < 0.01f) {
-        // 参数无效时使用安全默认值
-        lx = 1.0f;
-        ly = 0.5f;
-        lr = 1.0f;
-    }
-
-    // 第 0 行：F1*sin(a1)
-    _alloc_matrix_pinv[0][0] = -1.0f/3.0f;              // Fx
-    _alloc_matrix_pinv[0][1] = 0.0f;                    // Fz
-    _alloc_matrix_pinv[0][2] = 0.0f;                    // Mx
-    _alloc_matrix_pinv[0][3] = 0.0f;                    // My
-    _alloc_matrix_pinv[0][4] = 1.0f/(2.0f*ly);          // Mz
-
-    // 第 1 行：F1*cos(a1)
-    _alloc_matrix_pinv[1][0] = 0.0f;                    // Fx
-    _alloc_matrix_pinv[1][1] = -lr/(2.0f*sum_x_r);      // Fz
-    _alloc_matrix_pinv[1][2] = -1.0f/(2.0f*ly);         // Mx
-    _alloc_matrix_pinv[1][3] = 1.0f/(2.0f*sum_x_r);     // My
-    _alloc_matrix_pinv[1][4] = 0.0f;                    // Mz
-
-    // 第 2 行：F2*sin(a2)
-    _alloc_matrix_pinv[2][0] = -1.0f/3.0f;              // Fx
-    _alloc_matrix_pinv[2][1] = 0.0f;                    // Fz
-    _alloc_matrix_pinv[2][2] = 0.0f;                    // Mx
-    _alloc_matrix_pinv[2][3] = 0.0f;                    // My
-    _alloc_matrix_pinv[2][4] = 0.0f;                    // Mz
-
-    // 第 3 行：F2*cos(a2)
-    _alloc_matrix_pinv[3][0] = 0.0f;                    // Fx
-    _alloc_matrix_pinv[3][1] = -lx/sum_x_r;             // Fz
-    _alloc_matrix_pinv[3][2] = 0.0f;                    // Mx
-    _alloc_matrix_pinv[3][3] = -1.0f/sum_x_r;           // My
-    _alloc_matrix_pinv[3][4] = 0.0f;                    // Mz
-
-    // 第 4 行：F3*sin(a3)
-    _alloc_matrix_pinv[4][0] = -1.0f/3.0f;              // Fx
-    _alloc_matrix_pinv[4][1] = 0.0f;                    // Fz
-    _alloc_matrix_pinv[4][2] = 0.0f;                    // Mx
-    _alloc_matrix_pinv[4][3] = 0.0f;                    // My
-    _alloc_matrix_pinv[4][4] = -1.0f/(2.0f*ly);         // Mz
-
-    // 第 5 行：F3*cos(a3)
-    _alloc_matrix_pinv[5][0] = 0.0f;                    // Fx
-    _alloc_matrix_pinv[5][1] = -lr/(2.0f*sum_x_r);      // Fz
-    _alloc_matrix_pinv[5][2] = 1.0f/(2.0f*ly);          // Mx
-    _alloc_matrix_pinv[5][3] = 1.0f/(2.0f*sum_x_r);     // My
-    _alloc_matrix_pinv[5][4] = 0.0f;                    // Mz
 }
 
 #endif  // AP_MOTORS_TRI_TILT_ENABLED

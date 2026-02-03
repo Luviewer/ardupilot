@@ -80,17 +80,30 @@ protected:
     // output_test_seq - spin a motor at the pwm value specified
     virtual void _output_test_seq(uint8_t motor_seq, int16_t pwm) override;
 
-    // Calculate the static allocation matrix F_alloc based on geometry
-    void calculate_allocation_matrix();
-
-    // Calculate the pseudo-inverse of the allocation matrix
-    void calculate_allocation_matrix_pinv();
-
     // Current offset angles, radians
     float _roll_offset;
     float _pitch_offset;
     
 private:
+
+    enum MotorIndex {
+        FR_UP      = 0,
+        FR_DOWN    = 1, // Front-right down motor
+        REAR_UP    = 2, // Rear up motor
+        REAR_DOWN  = 3, // Rear down motor
+        FL_UP      = 4, // Front-left up motor
+        FL_DOWN    = 5, // Front-left down motor
+        MotorIndex_COUNT,
+    };
+
+    enum TiltIndex {
+        FR   = 0, // Front-right tilt motor
+        REAR = 1, // Rear tilt motor
+        FL   = 2, // Front-left tilt motor
+        TiltIndex_COUNT,
+    };
+
+
     // Geometric parameters (normalized arm lengths)
     AP_Float _lfront_x;         // Front arm X distance (normalized)
     AP_Float _lfront_y;         // Front arm Y distance (normalized)
@@ -107,29 +120,22 @@ private:
     AP_Int8  _tilt_servo_fl_rev;   // front-left tilt servo reverse (0 normal, 1 reversed)
     AP_Float _tilt_pitch_off_max_deg; // max pitch offset (deg) commanded by RC7
 
-    // Static allocation matrix F_alloc[5][6]
-    // Maps [Fx, Fz, Mx, My, Mz] -> [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-    float _alloc_matrix[5][6];
+    // 三旋翼推力分配
+    float _thrust_right_tricopter, _thrust_left_tricopter, _thrust_rear_tricopter;
 
-    // Pseudo-inverse of allocation matrix [6][5]
-    // Maps [Fx, Fz, Mx, My, Mz] -> [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-    float _alloc_matrix_pinv[6][5];
+    // 双旋翼推力分配
+    float _thrust_right_bicopter, _thrust_left_bicopter, _thrust_rear_bicopter;
+
+    // 双旋翼倾转控制
+    float _tilt_left_bicopter, _tilt_right_bicopter, _tilt_rear_bicopter;
 
     // Calculated outputs
-    float _thrust[3];           // Thrust for each rotor pair [F1, F2, F3]
-    float _tilt_angle_rad[3];       // Tilt angle for each rotor pair [a1, a2, a3] in radians
-
-    // Intermediate variables from allocation matrix
-    float _intermediate[6];     // [F1*sin(a1), F1*cos(a1), F2*sin(a2), F2*cos(a2), F3*sin(a3), F3*cos(a3)]
-
-    // 准备 5DOF 控制输入
-    float desired[5];
-    float f_sin[3], f_cos[3];
+    float _thrust[MotorIndex_COUNT];           // Thrust for each rotor pair [F1, F2, F3]
+    float _tilt_angle_rad[TiltIndex_COUNT];       // Tilt angle for each rotor pair [a1, a2, a3] in radians
     
-    // Forward thrust input (for 5DOF control)
-    float _forward_thrust;
+    // 临时存储混合后的 RPY 输出（不含 throttle）
+    float _rpy_out[MotorIndex_COUNT];
 
-    // Check if servos are assigned
     bool _servos_assigned;
 };
 
