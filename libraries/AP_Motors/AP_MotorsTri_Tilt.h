@@ -12,6 +12,11 @@
 #include <SRV_Channel/SRV_Channel.h>
 #include "AP_MotorsMatrix.h"
 
+// 是否启用限制警告提示（设置为1启用，0禁用）
+#define AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS 0
+////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////
+
 // Default servo outputs for tilt servos (can be overridden via SERVOx_FUNCTION)
 // Note: CH_7 means SERVO7 (0-based channel index 6)
 #define AP_MOTORS_TRI_TILT_SERVO_FR     CH_7    // Front-right tilt servo (k_tiltMotorRight)
@@ -33,6 +38,9 @@ public:
     /// Constructor
     AP_MotorsTri_Tilt(uint16_t speed_hz = AP_MOTORS_SPEED_DEFAULT) :
         AP_MotorsMatrix(speed_hz)
+#if AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS
+        , _limit_warn_state{}
+#endif
     {
         AP_Param::setup_object_defaults(this, var_info);
     };
@@ -135,6 +143,24 @@ private:
     
     // 临时存储混合后的 RPY 输出（不含 throttle）
     float _rpy_out[MotorIndex_COUNT];
+
+#if AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS
+    // GCS 提示状态记录（记录上次的限制状态和时间戳）
+    struct {
+        uint32_t throttle_lower_ms;
+        uint32_t throttle_upper_ms;
+        uint32_t yaw_ms;
+        uint32_t roll_ms;
+        uint32_t pitch_ms;
+        uint32_t rpy_all_ms;  // RPY同时受限
+        bool throttle_lower_last;
+        bool throttle_upper_last;
+        bool yaw_last;
+        bool roll_last;
+        bool pitch_last;
+        bool rpy_all_last;
+    } _limit_warn_state;
+#endif
 
     bool _servos_assigned;
 };

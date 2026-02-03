@@ -43,6 +43,54 @@
 extern const AP_HAL::HAL& hal;
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// 宏定义：限制警告提示（宏定义在头文件中）
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
+#if AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS
+    // 警告发送间隔（毫秒）
+    #define LIMIT_WARN_INTERVAL_MS 500
+    
+    // 发送限制警告的辅助宏（只在状态从false变为true时发送，且0.5秒内只发送一次）
+    #define SEND_LIMIT_WARNING(type, format, ...) do { \
+        if (!_limit_warn_state.type##_last) { \
+            const uint32_t now_ms = AP_HAL::millis(); \
+            if (now_ms - _limit_warn_state.type##_ms > LIMIT_WARN_INTERVAL_MS) { \
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING, format, ##__VA_ARGS__); \
+                _limit_warn_state.type##_ms = now_ms; \
+            } \
+        } \
+        _limit_warn_state.type##_last = true; \
+    } while(0)
+    
+    // 发送多个限制的警告（用于RPY同时受限）
+    #define SEND_MULTI_LIMIT_WARNING(type, format, ...) do { \
+        if (!_limit_warn_state.type##_last) { \
+            const uint32_t now_ms = AP_HAL::millis(); \
+            if (now_ms - _limit_warn_state.type##_ms > LIMIT_WARN_INTERVAL_MS) { \
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING, format, ##__VA_ARGS__); \
+                _limit_warn_state.type##_ms = now_ms; \
+                /* 同时更新相关的单个限制时间戳和状态，避免重复提示 */ \
+                _limit_warn_state.roll_ms = now_ms; \
+                _limit_warn_state.pitch_ms = now_ms; \
+                _limit_warn_state.yaw_ms = now_ms; \
+                _limit_warn_state.roll_last = true; \
+                _limit_warn_state.pitch_last = true; \
+                _limit_warn_state.yaw_last = true; \
+            } \
+        } \
+        _limit_warn_state.type##_last = true; \
+    } while(0)
+    
+    // 重置限制状态（当限制解除时调用）
+    #define RESET_LIMIT_STATE(type) do { \
+        _limit_warn_state.type##_last = false; \
+    } while(0)
+#else
+    #define SEND_LIMIT_WARNING(type, format, ...) do {} while(0)
+    #define SEND_MULTI_LIMIT_WARNING(type, format, ...) do {} while(0)
+    #define RESET_LIMIT_STATE(type) do {} while(0)
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 参数
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
@@ -174,7 +222,7 @@ void AP_MotorsTri_Tilt::init(motor_frame_class frame_class, motor_frame_type fra
     // 配置电机与分配矩阵
     setup_motors(frame_class, frame_type);
 
-    _mav_type = MAV_TYPE_TRICOPTER;
+    _mav_type = MAV_TYPE_COAXIAL;
 
     // 记录初始化成功
     set_initialised_ok(frame_class == MOTOR_FRAME_TRI && _servos_assigned);
@@ -340,7 +388,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     
     // Throttle 平均最大值补偿
     float throttle_avg_max = _throttle_avg_max * compensation_gain;
-    
+
     // Throttle 最大值限制
     const float throttle_thrust_max = _throttle_thrust_max * compensation_gain;
     
@@ -348,12 +396,18 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     if (throttle_thrust <= 0.0f) {
         throttle_thrust = 0.0f;
         limit.throttle_lower = true;
+        SEND_LIMIT_WARNING(throttle_lower, 
+                          "Throttle limited: lower bound (req: %.2f)", 
+                          get_throttle() * compensation_gain);
     }
     
     // Throttle 上限检查
     if (throttle_thrust >= throttle_thrust_max) {
         throttle_thrust = throttle_thrust_max;
         limit.throttle_upper = true;
+        SEND_LIMIT_WARNING(throttle_upper, 
+                          "Throttle limited: upper bound (req: %.2f, max: %.2f)", 
+                          get_throttle() * compensation_gain, throttle_thrust_max);
     }
     
     // 确保 throttle_avg_max 在合理范围内
@@ -390,14 +444,72 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _tilt_right_bicopter = pitch_thrust * 0.5f * sign_ahrs_pitch;
     _tilt_left_bicopter = pitch_thrust * 0.5f * sign_ahrs_pitch;
     _tilt_rear_bicopter = -pitch_thrust * 0.5f * sign_ahrs_pitch;
-
+    
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第5层：前向力控制
     /////////////////////////////////////////////////////////////////////////////////////////////////
     forward_thrust = _forward_in;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第6层：计算 RPY 组合输出范围（用于缩放补偿）
+    // 第6层：Yaw 可用范围计算和限制（参考 AP_MotorsMatrix）
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    float yaw_allowed = 1.0f; // 可用的yaw控制量
+
+    // 计算每个电机上可用的yaw控制量
+    for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
+        if (motor_enabled[i]) {
+            // 计算roll和pitch的推力输出（不含yaw）
+            float thrust_rp;
+            if (i == FR_UP || i == FR_DOWN) {
+                thrust_rp = _thrust_right_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_right_bicopter * ahrs_pitch_abs;
+            } else if (i == REAR_UP || i == REAR_DOWN) {
+                thrust_rp = _thrust_rear_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_rear_bicopter * ahrs_pitch_abs;
+            } else { // FL_UP || FL_DOWN
+                thrust_rp = _thrust_left_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_left_bicopter * ahrs_pitch_abs;
+            }
+            
+            // 根据电机位置确定yaw_factor
+            float yaw_factor = 0.0f;
+            if (i == FR_UP || i == REAR_UP || i == FL_UP) {
+                yaw_factor = 0.5f;  // 上电机
+            } else if (i == FR_DOWN || i == REAR_DOWN || i == FL_DOWN) {
+                yaw_factor = -0.5f;  // 下电机（反向）
+            }
+            
+            if (!is_zero(yaw_factor)) {
+                const float thrust_rp_best_throttle = throttle_thrust_best_rpy + thrust_rp;
+                float motor_room;
+                if (is_positive(yaw_thrust * yaw_factor)) {
+                    // room to upper limit
+                    motor_room = 1.0f - thrust_rp_best_throttle;
+                } else {
+                    // room to lower limit
+                    motor_room = thrust_rp_best_throttle;
+                }
+                const float motor_yaw_allowed = MAX(motor_room, 0.0f) / fabsf(yaw_factor);
+                yaw_allowed = MIN(yaw_allowed, motor_yaw_allowed);
+            }
+        }
+    }
+
+    // 应用yaw headroom（参考 AP_MotorsMatrix 第300-308行）
+    float yaw_allowed_min = (float)_yaw_headroom * 0.001f;
+    yaw_allowed = MAX(yaw_allowed, yaw_allowed_min);
+
+    // 限制yaw_thrust（参考 AP_MotorsMatrix 第327-331行）
+    if (fabsf(yaw_thrust) > yaw_allowed) {
+        yaw_thrust = constrain_float(yaw_thrust, -yaw_allowed, yaw_allowed);
+        limit.yaw = true;
+#if AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS
+        const float yaw_requested = (_yaw_in + _yaw_in_ff) * compensation_gain;
+        SEND_LIMIT_WARNING(yaw, 
+                          "Yaw limited: %.0f%% (req: %.2f, allowed: %.2f)", 
+                          yaw_allowed * 100.0f, yaw_requested, yaw_allowed);
+#endif
+    }
+    
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第7层：计算 RPY 组合输出范围（用于缩放补偿）
     /////////////////////////////////////////////////////////////////////////////////////////////////
     float rpy_low = 1.0f;   // 最低推力值
     float rpy_high = -1.0f; // 最高推力值
@@ -428,7 +540,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第7层：RPY 缩放补偿
+    // 第8层：RPY 缩放补偿
     /////////////////////////////////////////////////////////////////////////////////////////////////
     float rpy_scale = 1.0f;
     
@@ -452,7 +564,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第8层：Throttle 调整补偿
+    // 第9层：Throttle 调整补偿
     /////////////////////////////////////////////////////////////////////////////////////////////////
     throttle_thrust_best_rpy = -rpy_low;
     float thr_adj = throttle_thrust - throttle_thrust_best_rpy;
@@ -466,6 +578,11 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
             limit.throttle_upper = true;
         }
         thr_adj = 0.0f;
+
+        // RPY同时受限的特殊提示
+        SEND_MULTI_LIMIT_WARNING(rpy_all, 
+                                 "RPY saturated: scale=%.2f (R:%.2f P:%.2f Y:%.2f)", 
+                                 rpy_scale, roll_thrust, pitch_thrust, yaw_thrust);
     } else if (thr_adj < 0.0f) {
         // Throttle 不能降低到期望值
         thr_adj = 0.0f;
@@ -473,10 +590,13 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
         // Throttle 不能提升到期望值
         thr_adj = 1.0f - (throttle_thrust_best_rpy + rpy_high);
         limit.throttle_upper = true;
+        SEND_LIMIT_WARNING(throttle_upper, 
+                          "Throttle limited: RPY range (req: %.2f, adj: %.2f)", 
+                          throttle_thrust, thr_adj);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第9层：最终推力输出
+    // 第10层：最终推力输出
     /////////////////////////////////////////////////////////////////////////////////////////////////
     const float throttle_thrust_best_plus_adj = throttle_thrust_best_rpy + thr_adj;
     
@@ -487,7 +607,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第10层：倾转角度混合
+    // 第11层：倾转角度混合
     /////////////////////////////////////////////////////////////////////////////////////////////////
     float tilt_right_mixed = _tilt_right_bicopter * ahrs_pitch_abs;
     float tilt_rear_mixed = _tilt_rear_bicopter * ahrs_pitch_abs;
@@ -501,10 +621,33 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust*0.5f - yaw_thrust * 0.5f * yaw_enable;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第11层：记录输出用于谐波陷波滤波器
+    // 第12层：记录输出用于谐波陷波滤波器
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // compensation_gain 不会为零
     _throttle_out = throttle_thrust_best_plus_adj / compensation_gain;
+
+#if AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS
+    // 根据limit标志重置状态（如果限制解除，状态会被重置，下次触发时才能再次发送）
+    if (!limit.throttle_lower) {
+        RESET_LIMIT_STATE(throttle_lower);
+    }
+    if (!limit.throttle_upper) {
+        RESET_LIMIT_STATE(throttle_upper);
+    }
+    if (!limit.yaw) {
+        RESET_LIMIT_STATE(yaw);
+    }
+    if (!limit.roll) {
+        RESET_LIMIT_STATE(roll);
+    }
+    if (!limit.pitch) {
+        RESET_LIMIT_STATE(pitch);
+    }
+    // 注意：rpy_all需要检查roll、pitch、yaw都解除
+    if (!limit.roll && !limit.pitch && !limit.yaw) {
+        RESET_LIMIT_STATE(rpy_all);
+    }
+#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -574,6 +717,10 @@ void AP_MotorsTri_Tilt::output_to_motors()
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 void AP_MotorsTri_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
 {
+    float _tilt_out_cd;
+
+    // 电机测试（motor_seq 1-6）
+    if (motor_seq >= 1 && motor_seq <= 6) {
     // 将测试序号映射到实际电机号
     uint8_t motor_num;
     switch (motor_seq) {
@@ -602,6 +749,30 @@ void AP_MotorsTri_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
     // 输出 PWM 到电机
     if (motor_enabled[motor_num]) {
         rc_write(motor_num, pwm);
+    }
+        return;
+    }
+
+    // 舵机测试（motor_seq 7-9）
+    switch (motor_seq) {
+        case 7:
+            // 前右倾转舵机测试
+            _tilt_out_cd = int16_t(constrain_float((pwm-1500)/500.0f*90.0f, -90.0f, 90.0f) * 100);
+
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * _tilt_out_cd);
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * _tilt_out_cd);
+            break;
+            
+        case 8:
+             _tilt_out_cd = int16_t(constrain_float((pwm-1500)/500.0f*90.0f, -90.0f, 90.0f) * 100);
+
+            // 后倾转舵机测试
+            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * _tilt_out_cd);
+            break;
+
+        default:
+            // 无效的测试序号
+            return;
     }
 }
 
