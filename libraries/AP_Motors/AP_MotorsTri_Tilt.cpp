@@ -361,12 +361,17 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     
     // 计算提供最大 RPY 控制范围的最佳油门
     float throttle_thrust_best_rpy = MIN(0.5f, throttle_avg_max);
+    
+    // 互补控制融合权重
+    float ahrs_pitch_abs = fabsf(AP::ins().get_imu_pitch_rot_deg() / 90.0f);
+    float sign_ahrs_pitch = AP::ins().get_imu_pitch_rot_deg() >0.0f ? 1.0f : -1.0f;
+    ahrs_pitch_abs = constrain_float(ahrs_pitch_abs, -1.0f, 1.0f);
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第3层：三旋翼基础控制分配
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 初始化倾转角度
-    _tilt_angle_rad[0] = _tilt_angle_rad[1] = _tilt_angle_rad[2] = -radians(AP::ins().get_imu_pitch_rot_deg());
+    _tilt_angle_rad[FR] = _tilt_angle_rad[REAR] = _tilt_angle_rad[FL] = -radians(AP::ins().get_imu_pitch_rot_deg());
 
     // 三旋翼 RPY 控制分配（不含 throttle）
     _thrust_right_tricopter = roll_thrust * -0.5f + pitch_thrust * 0.5f;
@@ -382,42 +387,38 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _thrust_rear_bicopter = 0.0f;
 
     // 双旋翼倾转控制
-    _tilt_right_bicopter = pitch_thrust * 0.5f;
-    _tilt_left_bicopter = pitch_thrust * 0.5f;
-    _tilt_rear_bicopter = -pitch_thrust * 0.5f;
+    _tilt_right_bicopter = pitch_thrust * 0.5f * sign_ahrs_pitch;
+    _tilt_left_bicopter = pitch_thrust * 0.5f * sign_ahrs_pitch;
+    _tilt_rear_bicopter = -pitch_thrust * 0.5f * sign_ahrs_pitch;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第6层：前向力控制
+    // 第5层：前向力控制
     /////////////////////////////////////////////////////////////////////////////////////////////////
     forward_thrust = _forward_in;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第7层：计算 RPY 组合输出范围（用于缩放补偿）
+    // 第6层：计算 RPY 组合输出范围（用于缩放补偿）
     /////////////////////////////////////////////////////////////////////////////////////////////////
     float rpy_low = 1.0f;   // 最低推力值
     float rpy_high = -1.0f; // 最高推力值
 
-    // 互补控制融合权重
-    float ahrs_pitch = AP::ins().get_imu_pitch_rot_deg() / 90.0f;
-    ahrs_pitch = constrain_float(ahrs_pitch, 0.0f, 1.0f);
-    
     // 右侧电机（0,1）
-    float thrust_right_mixed = _thrust_right_tricopter * (1.0f - ahrs_pitch) + _thrust_right_bicopter * ahrs_pitch;
+    float thrust_right_mixed = _thrust_right_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_right_bicopter * ahrs_pitch_abs;
     _rpy_out[FR_UP] = thrust_right_mixed + yaw_thrust * 0.5f;
     _rpy_out[FR_DOWN] = thrust_right_mixed - yaw_thrust * 0.5f; // 反向差分
     
     // 后侧电机（2,3）
-    float thrust_rear_mixed = _thrust_rear_tricopter * (1.0f - ahrs_pitch) + _thrust_rear_bicopter * ahrs_pitch;
+    float thrust_rear_mixed = _thrust_rear_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_rear_bicopter * ahrs_pitch_abs;
     _rpy_out[REAR_UP] = thrust_rear_mixed + yaw_thrust * 0.5f;
     _rpy_out[REAR_DOWN] = thrust_rear_mixed - yaw_thrust * 0.5f;
     
     // 左侧电机（4,5）
-    float thrust_left_mixed = _thrust_left_tricopter * (1.0f - ahrs_pitch) + _thrust_left_bicopter * ahrs_pitch;
+    float thrust_left_mixed = _thrust_left_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_left_bicopter * ahrs_pitch_abs;
     _rpy_out[FL_UP] = thrust_left_mixed + yaw_thrust * 0.5f;
     _rpy_out[FL_DOWN] = thrust_left_mixed - yaw_thrust * 0.5f;
 
     // 找出最高和最低 RPY 输出
-    for (uint8_t i = 0; i < 6; i++) {
+    for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
         if (_rpy_out[i] < rpy_low) {
             rpy_low = _rpy_out[i];
         }
@@ -427,7 +428,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第8层：RPY 缩放补偿
+    // 第7层：RPY 缩放补偿
     /////////////////////////////////////////////////////////////////////////////////////////////////
     float rpy_scale = 1.0f;
     
@@ -446,12 +447,12 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     rpy_low *= rpy_scale;
     
     // 应用缩放到所有 RPY 输出
-    for (uint8_t i = 0; i < 6; i++) {
+    for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
         _rpy_out[i] *= rpy_scale;
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第9层：Throttle 调整补偿
+    // 第8层：Throttle 调整补偿
     /////////////////////////////////////////////////////////////////////////////////////////////////
     throttle_thrust_best_rpy = -rpy_low;
     float thr_adj = throttle_thrust - throttle_thrust_best_rpy;
@@ -475,23 +476,24 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第10层：最终推力输出
+    // 第9层：最终推力输出
     /////////////////////////////////////////////////////////////////////////////////////////////////
     const float throttle_thrust_best_plus_adj = throttle_thrust_best_rpy + thr_adj;
     
-    for (uint8_t i = 0; i < 6; i++) {
+    for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
         _thrust[i] = throttle_thrust_best_plus_adj + _rpy_out[i];
         // 安全约束（正常情况下不应该触发）
         _thrust[i] = constrain_float(_thrust[i], 0.0f, 1.0f);
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第11层：倾转角度混合
+    // 第10层：倾转角度混合
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    float tilt_right_mixed = _tilt_right_bicopter * ahrs_pitch;
-    float tilt_rear_mixed = _tilt_rear_bicopter * ahrs_pitch;
-    float tilt_left_mixed = _tilt_left_bicopter * ahrs_pitch;
+    float tilt_right_mixed = _tilt_right_bicopter * ahrs_pitch_abs;
+    float tilt_rear_mixed = _tilt_rear_bicopter * ahrs_pitch_abs;
+    float tilt_left_mixed = _tilt_left_bicopter * ahrs_pitch_abs;
 
+    // 是否开启倾转航向控制
     float yaw_enable = 1;
 
     _tilt_angle_rad[FR] += tilt_right_mixed - forward_thrust*0.5f + yaw_thrust * 0.5f * yaw_enable;
@@ -499,7 +501,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust*0.5f - yaw_thrust * 0.5f * yaw_enable;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第12层：记录输出用于谐波陷波滤波器
+    // 第11层：记录输出用于谐波陷波滤波器
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // compensation_gain 不会为零
     _throttle_out = throttle_thrust_best_plus_adj / compensation_gain;
@@ -517,10 +519,6 @@ void AP_MotorsTri_Tilt::output_to_motors()
     int16_t fr_out_cd = 0;
     int16_t fl_out_cd = 0;
     int16_t rear_out_cd = 0;
-    
-    // const bool fr_rev = (_tilt_servo_fr_rev.get() != 0);
-    // const bool rear_rev = (_tilt_servo_rear_rev.get() != 0);
-    // const bool fl_rev = (_tilt_servo_fl_rev.get() != 0);
 
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN: {
@@ -549,7 +547,6 @@ void AP_MotorsTri_Tilt::output_to_motors()
         case SpoolState::SPOOLING_DOWN: 
             for (uint8_t i = 0; i < 6; i++) {
                 set_actuator_with_slew(_actuator[i], thr_lin.thrust_to_actuator(_thrust[i]));
-                // set_actuator_with_slew(_actuator[2*i+1], thr_lin.thrust_to_actuator(_thrust[i]));
             }
 
             // 输出倾转舵机角度（厘度）
@@ -558,9 +555,6 @@ void AP_MotorsTri_Tilt::output_to_motors()
             fr_out_cd = int16_t(constrain_float(degrees(_tilt_angle_rad[0]), -lim_deg, lim_deg) * 100);
             fl_out_cd = int16_t(constrain_float(degrees(_tilt_angle_rad[2]), -lim_deg, lim_deg) * 100);
             rear_out_cd = int16_t(constrain_float(degrees(_tilt_angle_rad[1]), -lim_deg, lim_deg) * 100);
-            // fr_out_cd = fr_rev ? -fr_angle_cd : fr_angle_cd;
-            // rear_out_cd = rear_rev ? -rear_angle_cd : rear_angle_cd;
-            // fl_out_cd = fl_rev ? -fl_angle_cd : fl_angle_cd;
             break;
     }
 
@@ -569,10 +563,6 @@ void AP_MotorsTri_Tilt::output_to_motors()
             rc_write(i, output_to_pwm(_actuator[i]));
         }
     }
-
-    // fr_out_cd = 9000;   
-    // fl_out_cd = 9000;
-    // rear_out_cd = 9000;
 
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);
