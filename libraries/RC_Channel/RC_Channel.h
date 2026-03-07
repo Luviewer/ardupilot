@@ -397,6 +397,8 @@ public:
         TRANSMITTER_TUNING = 219, // use a transmitter knob or slider for in-flight tuning
         TRANSMITTER_TUNING2 = 220, // use another transmitter knob or slider for in-flight tuning
 #endif  // AP_RC_TRANSMITTER_TUNING_ENABLED
+        TRITILT_PITCH_CTRL = 221, // TriTilt pitch rate control input
+        TRITILT_RETURN_TO_ZERO = 222, // TriTilt return-to-zero trigger input
 
         // inputs 248-249 are reserved for the Skybrush fork at
         // https://github.com/skybrush-io/ardupilot

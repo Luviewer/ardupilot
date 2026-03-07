@@ -502,14 +502,15 @@ void Copter::update_flight_mode()
     attitude_control->landed_gain_reduction(copter.ap.land_complete); // Adjust gains when landed to attenuate ground oscillation
 
 #if AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
-    // TriTilt: use RC7 to command pitch rotation rate while RC2 is repurposed for forward thrust
+    // TriTilt: use dedicated RCx_OPTION inputs for pitch rate and return-to-zero
     if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_TRI &&
         (AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT &&
         motors->get_tilt_enable()) {
 
-        // Read RC7/RC8 PWM directly (SERVO output CH_7/CH_8 macros are 0-based channel indices)
-        const uint16_t pwm7 = RC_Channels::get_radio_in(CH_7);
-        const uint16_t pwm8 = RC_Channels::get_radio_in(CH_8);
+        RC_Channel *pitch_ctrl_ch = rc().find_channel_for_option(RC_Channel::AUX_FUNC::TRITILT_PITCH_CTRL);
+        RC_Channel *return_zero_ch = rc().find_channel_for_option(RC_Channel::AUX_FUNC::TRITILT_RETURN_TO_ZERO);
+        const uint16_t pwm_pitch = (pitch_ctrl_ch != nullptr) ? pitch_ctrl_ch->get_radio_in() : 0U;
+        const uint16_t pwm_return_zero = (return_zero_ch != nullptr) ? return_zero_ch->get_radio_in() : 0U;
         
         // Maximum pitch rotation rate (degrees per second) - adjustable parameter
         const float max_rate_deg_per_sec = 10.0f;              // TODO: make this a configurable parameter
@@ -517,32 +518,47 @@ void Copter::update_flight_mode()
         
         // Static variable to store accumulated pitch offset angle
         static float pitch_off_deg = 0.0f;
+        static bool return_to_zero_latched = false;
+        static bool upper_limit_reported = false;
+        static bool lower_limit_reported = false;
 
         float pitch_rate_deg_per_sec = 0.0f;
-        const bool ch8_return_to_zero = (pwm8 > 1800U && pwm8 < 2100U);
-        const bool rc7_valid = (pwm7 >= 900U && pwm7 <= 2100U);
+        const bool pitch_ctrl_valid = (pwm_pitch >= 900U && pwm_pitch <= 2100U);
+        const bool return_zero_valid = (pwm_return_zero >= 900U && pwm_return_zero <= 2100U);
+        const bool return_to_zero_trigger = return_zero_valid && (pwm_return_zero > 1800U && pwm_return_zero < 2100U);
+        // Treat an invalid or disconnected return-to-zero input as a reset condition
+        const bool return_to_zero_reset = !return_zero_valid || (pwm_return_zero < 1500U);
 
-        // Process manual RC7 control or CH8-triggered return-to-zero
-        if (rc7_valid || ch8_return_to_zero) {
+        if (return_to_zero_trigger && !return_to_zero_latched) {
+            return_to_zero_latched = true;
+            gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: return-to-zero triggered");
+        } else if (return_to_zero_latched && return_to_zero_reset) {
+            return_to_zero_latched = false;
+            gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: return-to-zero reset");
+        }
+
+        // Process manual pitch control or latched return-to-zero mode
+        if (pitch_ctrl_valid || return_to_zero_latched) {
             // Limit pitch offset to the smaller of the configured tri-tilt angle and 90 degrees
             const float max_pitch_off_deg = MIN(MAX(0.0f, motors->get_tilt_max_deg()), 90.0f);
             const float min_pitch_off_deg = -max_pitch_off_deg;
             const float dt = copter.G_Dt;
+            const float limit_msg_epsilon_deg = 0.01f;
 
-            if (ch8_return_to_zero) {
-                // CH8 return-to-zero mode has priority over RC7 manual input
+            if (return_to_zero_latched) {
+                // Return-to-zero mode has priority over manual pitch input
                 if (pitch_off_deg > 0.0f) {
                     pitch_rate_deg_per_sec = -return_to_zero_rate_deg_per_sec;
                 } else if (pitch_off_deg < 0.0f) {
                     pitch_rate_deg_per_sec = return_to_zero_rate_deg_per_sec;
                 }
-            } else if (pwm7 > 1000U && pwm7 < 2000U) {
-                // RC7 <= 1000 or >= 2000: angular velocity is 0
-                // 1450 <= RC7 <= 1550: deadzone, angular velocity is 0
+            } else if (pwm_pitch > 1000U && pwm_pitch < 2000U) {
+                // <= 1000 or >= 2000: angular velocity is 0
+                // 1450 <= input <= 1550: deadzone, angular velocity is 0
                 // otherwise map to angular velocity (-max_rate to +max_rate, 1500 -> 0)
-                if (pwm7 < 1450U || pwm7 > 1550U) {
+                if (pwm_pitch < 1450U || pwm_pitch > 1550U) {
                     // Map 1000..2000 -> -1..+1 (1500 -> 0)
-                    float norm = (float(pwm7) - 1500.0f) * (1.0f / 500.0f);
+                    float norm = (float(pwm_pitch) - 1500.0f) * (1.0f / 500.0f);
                     norm = constrain_float(norm, -1.0f, 1.0f);
                     pitch_rate_deg_per_sec = norm * max_rate_deg_per_sec;
                 }
@@ -554,7 +570,7 @@ void Copter::update_flight_mode()
                 (pitch_off_deg <= min_pitch_off_deg && pitch_rate_deg_per_sec < 0.0f)) {
                 // Stop rotation when at limit
                 pitch_rate_deg_per_sec = 0.0f;
-            } else if (ch8_return_to_zero && !is_zero(pitch_rate_deg_per_sec)) {
+            } else if (return_to_zero_latched && !is_zero(pitch_rate_deg_per_sec)) {
                 const float next_pitch_off_deg = pitch_off_deg + pitch_rate_deg_per_sec * dt;
 
                 // Snap to zero when the return step would cross past the center
@@ -577,8 +593,25 @@ void Copter::update_flight_mode()
             AP::ins().set_imu_pitch_rot_rate_deg_per_sec(pitch_rate_deg_per_sec);
             AP::ins().set_imu_pitch_rot_deg(pitch_off_deg);
             AP::compass().set_imu_pitch_rot_deg(pitch_off_deg);
+
+            const bool at_upper_limit = (pitch_off_deg >= max_pitch_off_deg - limit_msg_epsilon_deg);
+            const bool at_lower_limit = (pitch_off_deg <= min_pitch_off_deg + limit_msg_epsilon_deg);
+
+            if (at_upper_limit && !upper_limit_reported) {
+                upper_limit_reported = true;
+                gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: pitch upper limit reached");
+            } else if (!at_upper_limit) {
+                upper_limit_reported = false;
+            }
+
+            if (at_lower_limit && !lower_limit_reported) {
+                lower_limit_reported = true;
+                gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: pitch lower limit reached");
+            } else if (!at_lower_limit) {
+                lower_limit_reported = false;
+            }
         } else {
-            // RC7 out of valid range, set angular velocity to 0
+            // No valid manual input and return-to-zero inactive, set angular velocity to 0
             AP::ins().set_imu_pitch_rot_rate_deg_per_sec(0.0f);
         }
     }

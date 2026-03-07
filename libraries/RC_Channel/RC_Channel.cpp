@@ -262,6 +262,8 @@ const AP_Param::GroupInfo RC_Channel::var_info[] = {
     // @Values{Copter, Rover, Plane, Sub}: 212:Mount1 Roll, 213:Mount1 Pitch, 214:Mount1 Yaw, 215:Mount2 Roll, 216:Mount2 Pitch, 217:Mount2 Yaw
     // @Values{Copter, Rover, Plane, Blimp, Sub}:  218:Loweheiser throttle
     // @Values{Copter}: 219:Transmitter Tuning
+    // @Values{Copter}: 221:TriTilt Pitch Control
+    // @Values{Copter}: 222:TriTilt Return To Zero
     // @Values{All-Vehicles}: 300:Scripting1, 301:Scripting2, 302:Scripting3, 303:Scripting4, 304:Scripting5, 305:Scripting6, 306:Scripting7, 307:Scripting8, 308:Scripting9, 309:Scripting10, 310:Scripting11, 311:Scripting12, 312:Scripting13, 313:Scripting14, 314:Scripting15, 315:Scripting16
     // @Values{All-Vehicles}: 316:Stop-Restart Scripting
     // @User: Standard
@@ -755,6 +757,8 @@ void RC_Channel::init_aux_function(const AUX_FUNC ch_option, const AuxSwitchPos 
 #if HAL_GENERATOR_ENABLED
     case AUX_FUNC::LOWEHEISER_THROTTLE:
 #endif
+    case AUX_FUNC::TRITILT_PITCH_CTRL:
+    case AUX_FUNC::TRITILT_RETURN_TO_ZERO:
         break;
 
     // these functions require explicit initialization
@@ -916,6 +920,8 @@ const RC_Channel::LookupTable RC_Channel::lookuptable[] = {
     { AUX_FUNC::WEATHER_VANE_ENABLE, "Weathervane"},
     { AUX_FUNC::TURBINE_START, "Turbine Start"},
     { AUX_FUNC::FFT_NOTCH_TUNE, "FFT Notch Tuning"},
+    { AUX_FUNC::TRITILT_PITCH_CTRL, "TriTilt Pitch Control"},
+    { AUX_FUNC::TRITILT_RETURN_TO_ZERO, "TriTilt Return To Zero"},
 #if HAL_MOUNT_ENABLED
     { AUX_FUNC::MOUNT_YAW_LOCK, "Mount Yaw Lock"},
     { AUX_FUNC::MOUNT_RP_LOCK, "Mount Roll/Pitch Lock"},
@@ -1993,6 +1999,8 @@ bool RC_Channel::do_aux_function(const AuxFuncTrigger &trigger)
     case AUX_FUNC::SCRIPTING_15:
     case AUX_FUNC::SCRIPTING_16:
 #endif
+    case AUX_FUNC::TRITILT_PITCH_CTRL:
+    case AUX_FUNC::TRITILT_RETURN_TO_ZERO:
         break;
 
 #if HAL_GENERATOR_ENABLED
