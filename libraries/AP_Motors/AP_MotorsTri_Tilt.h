@@ -25,7 +25,7 @@
 
 // Default angle limits
 #define AP_MOTORS_TRI_TILT_ANGLE_MIN    5       // minimum tilt angle in degrees
-#define AP_MOTORS_TRI_TILT_ANGLE_MAX    135     // maximum tilt angle in degrees (physical limit)
+#define AP_MOTORS_TRI_TILT_ANGLE_MAX    270     // maximum tilt angle in degrees (physical limit)
 
 /// @class      AP_MotorsTri_Tilt
 /// @brief      Coaxial Y6B Tricopter with tiltable rotors (5DOF control)
