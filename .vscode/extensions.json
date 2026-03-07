@@ -1,13 +1,18 @@
 {
-    "recommendations": [
-        "augustocdias.tasks-shell-input",
-        "bierner.markdown-mermaid",
-        "ms-vscode.cpptools",
-        "sumneko.lua",
-        "ms-python.python",
-        "ms-python.vscode-pylance",
-        "streetsidesoftware.code-spell-checker",
-        "chiehyu.vscode-astyle",
-        "ardupilot-org.ardupilot-devenv",
-    ]
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "c17",
+            "cppStandard": "gnu++17",
+            "intelliSenseMode": "linux-gcc-x64",
+            "configurationProvider": "ms-vscode.makefile-tools",
+            "compileCommands": "${workspaceFolder}/build/sitl/compile_commands.json"
+        }
+    ],
+    "version": 4
 }

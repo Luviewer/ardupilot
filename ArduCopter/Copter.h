@@ -1011,6 +1011,9 @@ private:
     bool being_tuned(int8_t tuning_param) const;
 #endif  // AP_RC_TRANSMITTER_TUNING_ENABLED
 
+    // tri_tilt.cpp
+    void tritilt_update();
+
     // UserCode.cpp
     void userhook_init();
     void userhook_FastLoop();
