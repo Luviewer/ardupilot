@@ -137,7 +137,7 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @Description: 共轴对差分推力产生偏航力矩的比例因子
     // @Range: 0.0 1.0
     // @User: Advanced
-    AP_GROUPINFO("TILT_YAW_FAC", 8, AP_MotorsTri_Tilt, _yaw_torque_factor, 0.15f),
+    AP_GROUPINFO("TILT_YAW_FAC", 8, AP_MotorsTri_Tilt, _yaw_torque_factor, 1.0f),
 
     // @Param: TRI_TILT_YAW_DIR
     // @DisplayName: 偏航方向
@@ -174,6 +174,8 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @Units: deg
     // @User: Advanced
     AP_GROUPINFO("PIT_OFF_MAX", 14, AP_MotorsTri_Tilt, _tilt_pitch_off_max_deg, 20.0f),
+
+    AP_GROUPINFO("TILT_EN", 15, AP_MotorsTri_Tilt, _tilt_enable, 1),
 
     AP_GROUPEND
 };
@@ -387,10 +389,10 @@ void AP_MotorsTri_Tilt::output_to_motors()
 
             // 输出倾转舵机角度（厘度）
             // 若 _servo_angle_max == 0，则无软件限幅（仍受 SERVOx_MIN/MAX 限制）。
-            const float lim_deg = (_servo_angle_max > 0.0f) ? float(_servo_angle_max) : float(AP_MOTORS_TRI_TILT_ANGLE_MAX);
-            fr_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[0]), -lim_deg, lim_deg) * 100);
-            fl_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[2]), -lim_deg, lim_deg) * 100);
-            rear_out_cd         = int16_t(constrain_float(degrees(_tilt_angle_rad[1]), -lim_deg, lim_deg) * 100);
+            // const float lim_deg = (_servo_angle_max > 0.0f) ? float(_servo_angle_max) : float(AP_MOTORS_TRI_TILT_ANGLE_MAX);
+            // fr_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[0]), -lim_deg, lim_deg) * 100);
+            // fl_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[2]), -lim_deg, lim_deg) * 100);
+            // rear_out_cd         = int16_t(constrain_float(degrees(_tilt_angle_rad[1]), -lim_deg, lim_deg) * 100);
             break;
     }
 
@@ -400,18 +402,32 @@ void AP_MotorsTri_Tilt::output_to_motors()
         }
     }
 
-#if 0
+    const float lim_deg = (_servo_angle_max > 0.0f) ? float(_servo_angle_max) : float(AP_MOTORS_TRI_TILT_ANGLE_MAX);
+    fr_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[0]), -lim_deg, lim_deg) * 100);
+    fl_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[2]), -lim_deg, lim_deg) * 100);
+    rear_out_cd         = int16_t(constrain_float(degrees(_tilt_angle_rad[1]), -lim_deg, lim_deg) * 100);
+    
+# if 0
     (void)fr_out_cd;
     (void)fl_out_cd;
     (void)rear_out_cd;
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * 9000);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * 0);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * 9000);
-#else
+# else
+    // if (get_tilt_enable() == 1) {
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * rear_out_cd);
+    // } else {
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * 0);
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * 0);
+    //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * 0);
+    // }
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);
     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * rear_out_cd);
-#endif
+# endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -497,7 +513,11 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // 第3层：三旋翼基础控制分配
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 初始化倾转角度
-    _tilt_angle_rad[FR] = _tilt_angle_rad[REAR] = _tilt_angle_rad[FL] = -radians(AP::ins().get_imu_pitch_rot_deg());
+    if (get_tilt_enable()) {
+        _tilt_angle_rad[FR] = _tilt_angle_rad[REAR] = _tilt_angle_rad[FL] = -radians(AP::ins().get_imu_pitch_rot_deg());
+    } else {
+        _tilt_angle_rad[FR] = _tilt_angle_rad[REAR] = _tilt_angle_rad[FL] = 0;
+    }
 
     // 三旋翼 RPY 控制分配（不含 throttle）
     _thrust_right_tricopter = roll_thrust * -0.5f + pitch_thrust * 0.5f;
@@ -516,11 +536,6 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _tilt_right_bicopter = pitch_thrust * 0.5f * sign_ahrs_pitch;
     _tilt_left_bicopter  = pitch_thrust * 0.5f * sign_ahrs_pitch;
     _tilt_rear_bicopter  = -pitch_thrust * 0.5f * sign_ahrs_pitch;
-
-    /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第5层：前向力控制
-    /////////////////////////////////////////////////////////////////////////////////////////////////
-    forward_thrust = _forward_in;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第6层：Yaw 可用范围计算和限制（参考 AP_MotorsMatrix）
@@ -690,13 +705,23 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     float tilt_right_mixed = _tilt_right_bicopter * ahrs_pitch_abs;
     float tilt_rear_mixed  = _tilt_rear_bicopter * ahrs_pitch_abs;
     float tilt_left_mixed  = _tilt_left_bicopter * ahrs_pitch_abs;
+    if (get_tilt_enable() != 1) {
+        tilt_right_mixed = tilt_rear_mixed = tilt_left_mixed = 0;
+    }
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第5层：前向力控制
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    if (get_tilt_enable()) {
+        forward_thrust = _forward_in;
+    } else {
+        forward_thrust = 0;
+    }
 
     // 是否开启倾转航向控制
-    float yaw_enable = 1;
-
-    _tilt_angle_rad[FR] += tilt_right_mixed - forward_thrust * 0.5f + yaw_thrust * 0.5f * yaw_enable;
+    _tilt_angle_rad[FR] += tilt_right_mixed - forward_thrust * 0.5f + yaw_thrust * 0.5f  * _yaw_torque_factor;
     _tilt_angle_rad[REAR] += tilt_rear_mixed - forward_thrust * 0.5f;
-    _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust * 0.5f - yaw_thrust * 0.5f * yaw_enable;
+    _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust * 0.5f - yaw_thrust * 0.5f  * _yaw_torque_factor;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第12层：记录输出用于谐波陷波滤波器

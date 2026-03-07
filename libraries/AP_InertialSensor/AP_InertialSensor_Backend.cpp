@@ -140,6 +140,9 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
         accel.z *= accel_scale.z;
     }
 
+    // rotate to body frame
+    accel.rotate(_imu._board_orientation);
+
     // optional additional rotation around Y axis (degrees)
     const float pitch_rot_deg = _imu.get_imu_pitch_rot_deg();
     if (!is_zero(pitch_rot_deg)) {
@@ -147,9 +150,6 @@ void AP_InertialSensor_Backend::_rotate_and_correct_accel(uint8_t instance, Vect
         quat.from_axis_angle(Vector3f{0, 1, 0}, radians(pitch_rot_deg));
         accel = quat * accel;
     }
-
-    // rotate to body frame
-    accel.rotate(_imu._board_orientation);
 }
 
 void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vector3f &gyro) 
@@ -174,6 +174,8 @@ void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vecto
         gyro -= _imu._gyro_offset(instance);
     }
 
+    gyro.rotate(_imu._board_orientation);
+
     // Compensate for pitch rotation rate (angular velocity compensation)
     const float pitch_rot_rate_deg_per_sec = _imu.get_imu_pitch_rot_rate_deg_per_sec();
     if (!is_zero(pitch_rot_rate_deg_per_sec)) {
@@ -189,8 +191,6 @@ void AP_InertialSensor_Backend::_rotate_and_correct_gyro(uint8_t instance, Vecto
         quat.from_axis_angle(Vector3f{0, 1, 0}, radians(pitch_rot_deg));
         gyro = quat * gyro;
     }
-
-    gyro.rotate(_imu._board_orientation);
 }
 
 /*

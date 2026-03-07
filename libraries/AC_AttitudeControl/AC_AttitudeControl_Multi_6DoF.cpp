@@ -85,7 +85,7 @@ void AC_AttitudeControl_Multi_6DoF::input_thrust_vector_heading_rad(const Vector
 void AC_AttitudeControl_Multi_6DoF::set_forward_lateral_rad(float &euler_pitch_angle_rad, float &euler_roll_angle_rad)
 {
     // pitch/forward
-    if (forward_enable) {
+    if (forward_enable && _motors.get_tilt_enable()) {
         _motors.set_forward(-sinf(euler_pitch_angle_rad));
         euler_pitch_angle_rad = radians(pitch_offset_deg);
     } else {

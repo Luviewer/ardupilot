@@ -71,6 +71,9 @@ public:
 
     void set_roll_pitch(float roll_deg, float pitch_deg) override;
 
+    virtual int8_t get_tilt_enable() override { return _tilt_enable.get(); }
+    virtual float get_tilt_max_deg() override { return _tilt_pitch_off_max_deg.get(); }
+
 protected:
     // setup motors - configures the static allocation matrix
     void setup_motors(motor_frame_class frame_class, motor_frame_type frame_type) override;
@@ -127,6 +130,8 @@ private:
     AP_Int8  _tilt_servo_rear_rev; // rear tilt servo reverse (0 normal, 1 reversed)
     AP_Int8  _tilt_servo_fl_rev;   // front-left tilt servo reverse (0 normal, 1 reversed)
     AP_Float _tilt_pitch_off_max_deg; // max pitch offset (deg) commanded by RC7
+
+    AP_Int8 _tilt_enable;
 
     // 三旋翼推力分配
     float _thrust_right_tricopter, _thrust_left_tricopter, _thrust_rear_tricopter;

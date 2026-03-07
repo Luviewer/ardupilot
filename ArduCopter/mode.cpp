@@ -504,43 +504,69 @@ void Copter::update_flight_mode()
 #if AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
     // TriTilt: use RC7 to command pitch rotation rate while RC2 is repurposed for forward thrust
     if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_TRI &&
-        (AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT) {
+        (AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT &&
+        motors->get_tilt_enable()) {
 
-        // Read RC7 PWM directly (SERVO output CH_7 macro is 0-based channel index 6)
+        // Read RC7/RC8 PWM directly (SERVO output CH_7/CH_8 macros are 0-based channel indices)
         const uint16_t pwm7 = RC_Channels::get_radio_in(CH_7);
+        const uint16_t pwm8 = RC_Channels::get_radio_in(CH_8);
         
         // Maximum pitch rotation rate (degrees per second) - adjustable parameter
-        const float max_rate_deg_per_sec = 10.0f;  // TODO: make this a configurable parameter
+        const float max_rate_deg_per_sec = 10.0f;              // TODO: make this a configurable parameter
+        const float return_to_zero_rate_deg_per_sec = 5.0f;   // TODO: make this a configurable parameter
         
+        // Static variable to store accumulated pitch offset angle
+        static float pitch_off_deg = 0.0f;
+
         float pitch_rate_deg_per_sec = 0.0f;
-        
-        // Only process if RC7 is in valid range
-        if (pwm7 >= 900 && pwm7 <= 2100) {
-            // RC7 <= 1000 or >= 2000: angular velocity is 0
-            // 1000 < RC7 < 2000: map to angular velocity (-max_rate to +max_rate, 1500 -> 0)
-            if (pwm7 > 1000 && pwm7 < 2000) {
-                // Map 1000..2000 -> -1..+1 (1500 -> 0)
-                float norm = (float(pwm7) - 1500.0f) * (1.0f / 500.0f);
-                norm = constrain_float(norm, -1.0f, 1.0f);
-                pitch_rate_deg_per_sec = norm * max_rate_deg_per_sec;
+        const bool ch8_return_to_zero = (pwm8 > 1800U && pwm8 < 2100U);
+        const bool rc7_valid = (pwm7 >= 900U && pwm7 <= 2100U);
+
+        // Process manual RC7 control or CH8-triggered return-to-zero
+        if (rc7_valid || ch8_return_to_zero) {
+            // Limit pitch offset to the smaller of the configured tri-tilt angle and 90 degrees
+            const float max_pitch_off_deg = MIN(MAX(0.0f, motors->get_tilt_max_deg()), 90.0f);
+            const float min_pitch_off_deg = -max_pitch_off_deg;
+            const float dt = copter.G_Dt;
+
+            if (ch8_return_to_zero) {
+                // CH8 return-to-zero mode has priority over RC7 manual input
+                if (pitch_off_deg > 0.0f) {
+                    pitch_rate_deg_per_sec = -return_to_zero_rate_deg_per_sec;
+                } else if (pitch_off_deg < 0.0f) {
+                    pitch_rate_deg_per_sec = return_to_zero_rate_deg_per_sec;
+                }
+            } else if (pwm7 > 1000U && pwm7 < 2000U) {
+                // RC7 <= 1000 or >= 2000: angular velocity is 0
+                // 1450 <= RC7 <= 1550: deadzone, angular velocity is 0
+                // otherwise map to angular velocity (-max_rate to +max_rate, 1500 -> 0)
+                if (pwm7 < 1450U || pwm7 > 1550U) {
+                    // Map 1000..2000 -> -1..+1 (1500 -> 0)
+                    float norm = (float(pwm7) - 1500.0f) * (1.0f / 500.0f);
+                    norm = constrain_float(norm, -1.0f, 1.0f);
+                    pitch_rate_deg_per_sec = norm * max_rate_deg_per_sec;
+                }
             }
-            
-            // Static variable to store accumulated pitch offset angle
-            static float pitch_off_deg = 0.0f;
-            
-            // Limit pitch offset to ±90 degrees
-            const float max_pitch_off_deg = 90.0f;
-            const float min_pitch_off_deg = -90.0f;
-            
+
             // Check if integration would exceed limits
             // If already at limit and trying to increase further, stop integration
             if ((pitch_off_deg >= max_pitch_off_deg && pitch_rate_deg_per_sec > 0.0f) ||
                 (pitch_off_deg <= min_pitch_off_deg && pitch_rate_deg_per_sec < 0.0f)) {
                 // Stop rotation when at limit
                 pitch_rate_deg_per_sec = 0.0f;
+            } else if (ch8_return_to_zero && !is_zero(pitch_rate_deg_per_sec)) {
+                const float next_pitch_off_deg = pitch_off_deg + pitch_rate_deg_per_sec * dt;
+
+                // Snap to zero when the return step would cross past the center
+                if ((pitch_off_deg > 0.0f && next_pitch_off_deg <= 0.0f) ||
+                    (pitch_off_deg < 0.0f && next_pitch_off_deg >= 0.0f)) {
+                    pitch_off_deg = 0.0f;
+                    pitch_rate_deg_per_sec = 0.0f;
+                } else {
+                    pitch_off_deg = constrain_float(next_pitch_off_deg, min_pitch_off_deg, max_pitch_off_deg);
+                }
             } else {
                 // Integrate angular velocity to get pitch offset angle
-                const float dt = copter.G_Dt;
                 pitch_off_deg += pitch_rate_deg_per_sec * dt;
                 
                 // Clamp to limits after integration

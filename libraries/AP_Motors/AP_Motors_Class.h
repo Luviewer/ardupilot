@@ -169,6 +169,9 @@ public:
     bool                get_thrust_boost() const { return _thrust_boost; }
     virtual uint8_t     get_lost_motor() const { return 0; }
 
+    virtual int8_t      get_tilt_enable() { return 0; }
+    virtual float       get_tilt_max_deg() { return 0; }
+
     // desired spool states
     enum class DesiredSpoolState : uint8_t {
         SHUT_DOWN = 0,              // all motors should move to stop
