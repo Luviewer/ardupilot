@@ -243,15 +243,29 @@ void AP_QuadRuped_Backend::main_radio_controller()
     }
 
     //////////////////////////////////////////////////////////////////////////////////
-    // 处理横移通道（向右为正，向左为负）
+    // 处理横移通道（保持沿X轴直线行走，约束Y方向偏移）
     if (channel.throttle_y_channel != -1) {
-        throttle_y_travel = _frontend.get_throttle_y() * channel.throttle_y_max;
+        const float y_target = 0.0f;
+        float       y_current = 0.0f;
+        Vector3f    pos_ned;
+        if (_ahrs.get_relative_position_NED_origin(pos_ned)) {
+            y_current = pos_ned.y;
+        }
+
+        // 使用PI控制器计算输出
+        float dt = 0.1f;
+        throttle_y_travel = ctrl.pos_y_pid.update_all(y_target, y_current, dt);
     } else {
         throttle_y_travel = 0.0f;
     }
 
     if (channel.yaw_channel != -1) {
-        yaw_travel = _frontend.get_yaw_rate() * channel.throttle_yaw_max;
+        target_yaw        = _frontend.get_yaw_rate() * channel.throttle_yaw_max;
+        float yaw_current = degrees(_ahrs.yaw);
+
+        // 使用PI控制器计算输出
+        float dt  = 0.1f; // 计算实际时间步长
+        yaw_travel = ctrl.yaw_pid.update_all(0, yaw_current, dt);
     } else {
         yaw_travel = 0.0f;
     }
