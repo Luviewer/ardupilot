@@ -25,6 +25,7 @@ void Copter::tritilt_update()
         static bool zero_position_reported = true;
         static uint32_t wait_pitch_center_warn_ms = 0;
         static uint32_t return_zero_not_low_warn_ms = 0;
+        static uint32_t pitch_off_deg_report_ms = 0;
 
         float pitch_rate_deg_per_sec = 0.0f;
         const uint32_t now_ms = AP_HAL::millis();
@@ -41,7 +42,7 @@ void Copter::tritilt_update()
         if (return_to_zero_trigger && !return_to_zero_latched) {
             if (pitch_in_mid_deadzone) {
                 return_to_zero_latched = true;
-                gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: return-to-zero triggered");
+                gcs().send_text(MAV_SEVERITY_NOTICE, "TriTilt: return-to-zero triggered");
                 wait_pitch_center_warn_ms = 0;
             } else if (now_ms - wait_pitch_center_warn_ms >= 1000U) {
                 gcs().send_text(MAV_SEVERITY_WARNING, "TriTilt: waiting pitch control centered before return-to-zero");
@@ -49,7 +50,7 @@ void Copter::tritilt_update()
             }
         } else if (return_to_zero_latched && return_to_zero_reset) {
             return_to_zero_latched = false;
-            gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: return-to-zero reset");
+            gcs().send_text(MAV_SEVERITY_NOTICE, "TriTilt: return-to-zero reset");
             wait_pitch_center_warn_ms = 0;
         } else if (!return_to_zero_trigger) {
             wait_pitch_center_warn_ms = 0;
@@ -120,27 +121,34 @@ void Copter::tritilt_update()
             AP::ins().set_imu_pitch_rot_deg(pitch_off_deg);
             AP::compass().set_imu_pitch_rot_deg(pitch_off_deg);
 
+            // 每2秒报告一次 pitch_off_deg
+            if (now_ms - pitch_off_deg_report_ms >= 2000U) {
+                gcs().send_text(MAV_SEVERITY_NOTICE, "pitch_off_deg=%.1f",
+                    (double)pitch_off_deg);
+                pitch_off_deg_report_ms = now_ms;
+            }
+
             const bool at_upper_limit = (pitch_off_deg >= max_pitch_off_deg - limit_msg_epsilon_deg);
             const bool at_lower_limit = (pitch_off_deg <= min_pitch_off_deg + limit_msg_epsilon_deg);
             const bool at_zero_position = is_zero(pitch_off_deg);
 
             if (at_upper_limit && !upper_limit_reported) {
                 upper_limit_reported = true;
-                gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: pitch upper limit reached");
+                gcs().send_text(MAV_SEVERITY_NOTICE, "TriTilt: pitch upper limit reached");
             } else if (!at_upper_limit) {
                 upper_limit_reported = false;
             }
 
             if (at_lower_limit && !lower_limit_reported) {
                 lower_limit_reported = true;
-                gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: pitch lower limit reached");
+                gcs().send_text(MAV_SEVERITY_NOTICE, "TriTilt: pitch lower limit reached");
             } else if (!at_lower_limit) {
                 lower_limit_reported = false;
             }
 
             if (at_zero_position && !zero_position_reported) {
                 zero_position_reported = true;
-                gcs().send_text(MAV_SEVERITY_INFO, "TriTilt: pitch returned to zero");
+                gcs().send_text(MAV_SEVERITY_NOTICE, "TriTilt: pitch returned to zero");
             } else if (!at_zero_position) {
                 zero_position_reported = false;
             }

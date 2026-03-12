@@ -55,7 +55,7 @@ extern const AP_HAL::HAL& hal;
           if (!_limit_warn_state.type##_last) {                                    \
               const uint32_t now_ms = AP_HAL::millis();                            \
               if (now_ms - _limit_warn_state.type##_ms > LIMIT_WARN_INTERVAL_MS) { \
-                  GCS_SEND_TEXT(MAV_SEVERITY_WARNING, format, ##__VA_ARGS__);      \
+                  GCS_SEND_TEXT(MAV_SEVERITY_INFO, format, ##__VA_ARGS__);      \
                   _limit_warn_state.type##_ms = now_ms;                            \
               }                                                                    \
           }                                                                        \
@@ -68,7 +68,7 @@ extern const AP_HAL::HAL& hal;
           if (!_limit_warn_state.type##_last) {                                    \
               const uint32_t now_ms = AP_HAL::millis();                            \
               if (now_ms - _limit_warn_state.type##_ms > LIMIT_WARN_INTERVAL_MS) { \
-                  GCS_SEND_TEXT(MAV_SEVERITY_WARNING, format, ##__VA_ARGS__);      \
+                  GCS_SEND_TEXT(MAV_SEVERITY_INFO, format, ##__VA_ARGS__);      \
                   _limit_warn_state.type##_ms = now_ms;                            \
                   /* 同时更新相关的单个限制时间戳和状态，避免重复提示 */           \
                   _limit_warn_state.roll_ms    = now_ms;                           \
@@ -103,6 +103,9 @@ extern const AP_HAL::HAL& hal;
 // 参数
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
+    // 先链入父类 Multicopter 参数（MOT_YAW_HEADROOM、MOT_THST_EXPO 等），再接本类自定义参数
+    AP_NESTEDGROUPINFO(AP_MotorsMulticopter, 0),
+
     // @Param: TRI_TILT_LX
     // @DisplayName: 前臂 X 方向距离（归一化）
     // @Description: 前部转子臂到重心的 X 轴距离（归一化）
@@ -139,13 +142,6 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("TILT_YAW_FAC", 8, AP_MotorsTri_Tilt, _yaw_torque_factor, 1.0f),
 
-    // @Param: TRI_TILT_YAW_DIR
-    // @DisplayName: 偏航方向
-    // @Description: 若偏航响应反向（机体偏航方向与指令相反），设置为 -1
-    // @Values: -1:Reversed, 1:Normal
-    // @User: Advanced
-    AP_GROUPINFO("TILT_YAW_DIR", 9, AP_MotorsTri_Tilt, _yaw_dir, 1),
-
     // @Param: TRI_TILT_SVO_FR_REV
     // @DisplayName: 前右倾转舵机反向
     // @Description: 设为 1 以反向前右倾转舵机方向
@@ -176,6 +172,13 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     AP_GROUPINFO("PIT_OFF_MAX", 14, AP_MotorsTri_Tilt, _tilt_pitch_off_max_deg, 20.0f),
 
     AP_GROUPINFO("TILT_EN", 15, AP_MotorsTri_Tilt, _tilt_enable, 1),
+
+    // @Param: FORWARD_FACTOR
+    // @DisplayName: Forward factor
+    // @Description: Forward factor
+    // @Range: 0.0 1.0
+    // @User: Advanced
+    AP_GROUPINFO("FORW_FACT", 16, AP_MotorsTri_Tilt, _forward_factor, 1),
 
     AP_GROUPEND
 };
@@ -538,50 +541,13 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     _tilt_rear_bicopter  = -pitch_thrust * 0.5f * sign_ahrs_pitch;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第6层：Yaw 可用范围计算和限制（参考 AP_MotorsMatrix）
+    // 第6层：Yaw 限制（不按电机余量收紧，仅用 MOT_YAW_HEADROOM 保底，避免与后续缩放耦合导致首次 yaw 窜高）
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    float yaw_allowed = 1.0f; // 可用的yaw控制量
+    float yaw_allowed = 1.0f;
 
-    // 计算每个电机上可用的yaw控制量
-    for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
-        if (motor_enabled[i]) {
-            // 计算roll和pitch的推力输出（不含yaw）
-            float thrust_rp;
-            if (i == FR_UP || i == FR_DOWN) {
-                thrust_rp = _thrust_right_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_right_bicopter * ahrs_pitch_abs;
-            } else if (i == REAR_UP || i == REAR_DOWN) {
-                thrust_rp = _thrust_rear_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_rear_bicopter * ahrs_pitch_abs;
-            } else { // FL_UP || FL_DOWN
-                thrust_rp = _thrust_left_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_left_bicopter * ahrs_pitch_abs;
-            }
-
-            // 根据电机位置确定yaw_factor
-            float yaw_factor = 0.0f;
-            if (i == FR_UP || i == REAR_UP || i == FL_UP) {
-                yaw_factor = 0.5f; // 上电机
-            } else if (i == FR_DOWN || i == REAR_DOWN || i == FL_DOWN) {
-                yaw_factor = -0.5f; // 下电机（反向）
-            }
-
-            if (!is_zero(yaw_factor)) {
-                const float thrust_rp_best_throttle = throttle_thrust_best_rpy + thrust_rp;
-                float       motor_room;
-                if (is_positive(yaw_thrust * yaw_factor)) {
-                    // room to upper limit
-                    motor_room = 1.0f - thrust_rp_best_throttle;
-                } else {
-                    // room to lower limit
-                    motor_room = thrust_rp_best_throttle;
-                }
-                const float motor_yaw_allowed = MAX(motor_room, 0.0f) / fabsf(yaw_factor);
-                yaw_allowed                   = MIN(yaw_allowed, motor_yaw_allowed);
-            }
-        }
-    }
-
-    // 应用yaw headroom（参考 AP_MotorsMatrix 第300-308行）
-    float yaw_allowed_min = (float)_yaw_headroom * 0.001f;
-    yaw_allowed           = MAX(yaw_allowed, yaw_allowed_min);
+    // 应用 yaw headroom 保底
+    // float yaw_allowed_min = (float)_yaw_headroom * 0.001f;
+    // yaw_allowed           = MAX(yaw_allowed, yaw_allowed_min);
 
     // 限制yaw_thrust（参考 AP_MotorsMatrix 第327-331行）
     if (fabsf(yaw_thrust) > yaw_allowed) {
@@ -615,8 +581,8 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
 
     // 左侧电机（4,5）
     float thrust_left_mixed = _thrust_left_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_left_bicopter * ahrs_pitch_abs;
-    _rpy_out[FL_UP]         = thrust_left_mixed + yaw_thrust * 0.5f;
-    _rpy_out[FL_DOWN]       = thrust_left_mixed - yaw_thrust * 0.5f;
+    _rpy_out[FL_UP]         = thrust_left_mixed - yaw_thrust * 0.5f;
+    _rpy_out[FL_DOWN]       = thrust_left_mixed + yaw_thrust * 0.5f;
 
     // 找出最高和最低 RPY 输出
     for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
@@ -653,7 +619,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
-    // 第9层：Throttle 调整补偿
+    // 第9层：Throttle 调整补偿（避免首次打 yaw 时基座高于飞行员油门导致窜高）
     /////////////////////////////////////////////////////////////////////////////////////////////////
     throttle_thrust_best_rpy = -rpy_low;
     float thr_adj            = throttle_thrust - throttle_thrust_best_rpy;
@@ -676,8 +642,15 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
                                  pitch_thrust,
                                  yaw_thrust);
     } else if (thr_adj < 0.0f) {
-        // Throttle 不能降低到期望值
-        thr_adj = 0.0f;
+        // 基座需求 (-rpy_low) 高于飞行员油门：若简单将 thr_adj 置 0，总推力会高于指令→窜高。
+        // 改为以飞行员油门为总推力，缩放 RPY 使最低电机刚好≥0，总推力不超指令。
+        if ((-rpy_low) > 1e-6f) {
+            const float scale2 = MIN(1.0f, throttle_thrust / (-rpy_low));
+            for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
+                _rpy_out[i] *= scale2;
+            }
+        }
+        thr_adj = throttle_thrust - throttle_thrust_best_rpy;  // 保持 base+thr_adj = throttle_thrust
     } else if (thr_adj > 1.0f - (throttle_thrust_best_rpy + rpy_high)) {
         // Throttle 不能提升到期望值
         thr_adj              = 1.0f - (throttle_thrust_best_rpy + rpy_high);
@@ -713,15 +686,15 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // 第5层：前向力控制
     /////////////////////////////////////////////////////////////////////////////////////////////////
     if (get_tilt_enable()) {
-        forward_thrust = _forward_in;
+        forward_thrust = _forward_in * _forward_factor;
     } else {
         forward_thrust = 0;
     }
 
-    // 是否开启倾转航向控制
-    _tilt_angle_rad[FR] += tilt_right_mixed - forward_thrust * 0.5f + yaw_thrust * 0.5f  * _yaw_torque_factor;
+    // 倾转角度混合（Yaw 控制：FR 和 FL 差速倾转，REAR 不参与）
+    _tilt_angle_rad[FR] += tilt_right_mixed - forward_thrust * 0.5f + yaw_thrust * 0.5f * _yaw_torque_factor;
+    _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust * 0.5f - yaw_thrust * 0.5f * _yaw_torque_factor;
     _tilt_angle_rad[REAR] += tilt_rear_mixed - forward_thrust * 0.5f;
-    _tilt_angle_rad[FL] += tilt_left_mixed - forward_thrust * 0.5f - yaw_thrust * 0.5f  * _yaw_torque_factor;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第12层：记录输出用于谐波陷波滤波器

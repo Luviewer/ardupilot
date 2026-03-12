@@ -13,7 +13,7 @@
 #include "AP_MotorsMatrix.h"
 
 // 是否启用限制警告提示（设置为1启用，0禁用）
-#define AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS 1
+#define AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS 0
 ////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////
 
@@ -125,13 +125,14 @@ private:
 
     // Coaxial yaw parameters
     AP_Float _yaw_torque_factor; // Factor for yaw torque via differential thrust
-    AP_Int8  _yaw_dir;          // +1 normal yaw direction, -1 reversed
     AP_Int8  _tilt_servo_fr_rev;   // front-right tilt servo reverse (0 normal, 1 reversed)
     AP_Int8  _tilt_servo_rear_rev; // rear tilt servo reverse (0 normal, 1 reversed)
     AP_Int8  _tilt_servo_fl_rev;   // front-left tilt servo reverse (0 normal, 1 reversed)
     AP_Float _tilt_pitch_off_max_deg; // max pitch offset (deg) commanded by RC7
 
     AP_Int8 _tilt_enable;
+
+    AP_Float _forward_factor;
 
     // 三旋翼推力分配
     float _thrust_right_tricopter, _thrust_left_tricopter, _thrust_rear_tricopter;
