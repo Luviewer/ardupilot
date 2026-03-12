@@ -45,6 +45,25 @@ public:
         AP_Param::setup_object_defaults(this, var_info);
     };
 
+    
+    enum MotorIndex {
+        FR_UP      = 0,
+        FR_DOWN    = 1, // Front-right down motor
+        REAR_UP    = 2, // Rear up motor
+        REAR_DOWN  = 3, // Rear down motor
+        FL_UP      = 4, // Front-left up motor
+        FL_DOWN    = 5, // Front-left down motor
+        MotorIndex_COUNT,
+    };
+
+    enum TiltIndex {
+        FR   = 0, // Front-right tilt motor
+        REAR = 1, // Rear tilt motor
+        FL   = 2, // Front-left tilt motor
+        TiltIndex_COUNT,
+    };
+
+    
     // init
     void init(motor_frame_class frame_class, motor_frame_type frame_type) override;
 
@@ -74,6 +93,8 @@ public:
     virtual int8_t get_tilt_enable() override { return _tilt_enable.get(); }
     virtual float get_tilt_max_deg() override { return _tilt_pitch_off_max_deg.get(); }
 
+    void servoOutput(enum TiltIndex servo_index, float svo_out_cd);
+
 protected:
     // setup motors - configures the static allocation matrix
     void setup_motors(motor_frame_class frame_class, motor_frame_type frame_type) override;
@@ -97,23 +118,6 @@ protected:
     
 private:
 
-    enum MotorIndex {
-        FR_UP      = 0,
-        FR_DOWN    = 1, // Front-right down motor
-        REAR_UP    = 2, // Rear up motor
-        REAR_DOWN  = 3, // Rear down motor
-        FL_UP      = 4, // Front-left up motor
-        FL_DOWN    = 5, // Front-left down motor
-        MotorIndex_COUNT,
-    };
-
-    enum TiltIndex {
-        FR   = 0, // Front-right tilt motor
-        REAR = 1, // Rear tilt motor
-        FL   = 2, // Front-left tilt motor
-        TiltIndex_COUNT,
-    };
-
 
     // Geometric parameters (normalized arm lengths)
     AP_Float _lfront_x;         // Front arm X distance (normalized)
@@ -129,10 +133,9 @@ private:
     AP_Int8  _tilt_servo_rear_rev; // rear tilt servo reverse (0 normal, 1 reversed)
     AP_Int8  _tilt_servo_fl_rev;   // front-left tilt servo reverse (0 normal, 1 reversed)
     AP_Float _tilt_pitch_off_max_deg; // max pitch offset (deg) commanded by RC7
-
     AP_Int8 _tilt_enable;
-
     AP_Float _forward_factor;
+    AP_Float _svo_fr_offset, _svo_rear_offset, _svo_fl_offset;
 
     // 三旋翼推力分配
     float _thrust_right_tricopter, _thrust_left_tricopter, _thrust_rear_tricopter;

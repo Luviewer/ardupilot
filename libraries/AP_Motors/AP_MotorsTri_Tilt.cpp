@@ -180,6 +180,11 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("FORW_FACT", 16, AP_MotorsTri_Tilt, _forward_factor, 1),
 
+    AP_GROUPINFO("SVO_FR_OFF", 17, AP_MotorsTri_Tilt, _svo_fr_offset, 0),
+    AP_GROUPINFO("SVO_REAR_OFF", 18, AP_MotorsTri_Tilt, _svo_rear_offset, 0),
+    AP_GROUPINFO("SVO_FL_OFF", 19, AP_MotorsTri_Tilt, _svo_fl_offset, 0),
+
+
     AP_GROUPEND
 };
 
@@ -348,6 +353,17 @@ bool AP_MotorsTri_Tilt::arming_checks(size_t buflen, char* buffer) const
     return true;
 }
 
+void AP_MotorsTri_Tilt::servoOutput(enum TiltIndex servo_index, float svo_out_cd)
+{
+    if(servo_index == FR) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, (float)_tilt_servo_fr_rev.get() * svo_out_cd  + (float)_svo_fr_offset.get());
+    } else if(servo_index == REAR) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, (float)_tilt_servo_rear_rev.get() * svo_out_cd  + (float)_svo_rear_offset.get());
+    } else if(servo_index == FL) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, (float)_tilt_servo_fl_rev.get() * svo_out_cd  + (float)_svo_fl_offset.get());
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // output_to_motors - 发送电机与舵机指令
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -427,9 +443,13 @@ void AP_MotorsTri_Tilt::output_to_motors()
     //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * 0);
     //     SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * 0);
     // }
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * rear_out_cd);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * fr_out_cd);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * fl_out_cd);
+    // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * rear_out_cd);
+
+    servoOutput(FR, fr_out_cd);
+    servoOutput(FL, fl_out_cd);
+    servoOutput(REAR, rear_out_cd);
 # endif
 }
 
@@ -773,8 +793,10 @@ void AP_MotorsTri_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             // 前右倾转舵机测试
             _tilt_out_cd = int16_t(constrain_float((pwm - 1500) / 500.0f * 90.0f, -90.0f, 90.0f) * 100);
 
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * _tilt_out_cd);
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * _tilt_out_cd);
+            // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * _tilt_out_cd);
+            // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * _tilt_out_cd);
+            servoOutput(FR, _tilt_out_cd);
+            servoOutput(FL, _tilt_out_cd);
             // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_servo_fr_rev.get() * 9000);
             // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_servo_fl_rev.get() * 9000);
             break;
@@ -783,7 +805,8 @@ void AP_MotorsTri_Tilt::_output_test_seq(uint8_t motor_seq, int16_t pwm)
             _tilt_out_cd = int16_t(constrain_float((pwm - 1500) / 500.0f * 90.0f, -90.0f, 90.0f) * 100);
 
             // 后倾转舵机测试
-            SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * _tilt_out_cd);
+            // SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, _tilt_servo_rear_rev.get() * _tilt_out_cd);
+            servoOutput(REAR, _tilt_out_cd);
             break;
 
         default:
