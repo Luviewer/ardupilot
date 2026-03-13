@@ -140,9 +140,8 @@ Vector3f AP_QuadRuped_Backend::body_forward_kinematics(uint8_t leg_index)
 
     // 添加重心偏移补偿
     // 减去 center_offset 是因为：当重心偏移时，机体参考点改变，所有腿的相对位置需要重新计算
-    if (abs(throttle_x_travel) <= 0.01 && abs(throttle_y_travel) <= 0.01 && abs(yaw_travel) <= 0.01) {
-        center_offset = { 0, 0, 0 };
-    }
+    // 注意：center_offset 的管理由子类的步态生成器负责（如 AP_QuadRuped_Wave_COG 中的 cog_generation）
+    // 这里只负责应用 center_offset，不再直接修改它
     totaldist_xyz -= center_offset;
 
     // 添加Z轴高度偏移（机体升降）
@@ -244,28 +243,25 @@ void AP_QuadRuped_Backend::main_radio_controller()
 
     //////////////////////////////////////////////////////////////////////////////////
     // 处理横移通道（保持沿X轴直线行走，约束Y方向偏移）
-    if (channel.throttle_y_channel != -1) {
-        const float y_target = 0.0f;
-        float       y_current = 0.0f;
-        Vector3f    pos_ned;
-        if (_ahrs.get_relative_position_NED_origin(pos_ned)) {
-            y_current = pos_ned.y;
-        }
+    // if (channel.throttle_y_channel != -1) {
+    //     const float y_target = 0.0f;
+    //     float       y_current = 0.0f;
+    //     Vector3f    pos_ned;
+    //     if (_ahrs.get_relative_position_NED_origin(pos_ned)) {
+    //         y_current = pos_ned.y;
+    //     }
 
-        // 使用PI控制器计算输出
-        float dt = 0.1f;
-        throttle_y_travel = ctrl.pos_y_pid.update_all(y_target, y_current, dt);
-    } else {
-        throttle_y_travel = 0.0f;
-    }
+    //     // 使用PI控制器计算输出
+    //     float dt = 0.1f;
+    //     throttle_y_travel = ctrl.pos_y_pid.update_all(y_target, y_current, dt);
+    // } else {
+    //     throttle_y_travel = 0.0f;
+    // }
 
+    //////////////////////////////////////////////////////////////////////////////////
+    // 处理偏航通道
     if (channel.yaw_channel != -1) {
-        target_yaw        = _frontend.get_yaw_rate() * channel.throttle_yaw_max;
-        float yaw_current = degrees(_ahrs.yaw);
-
-        // 使用PI控制器计算输出
-        float dt  = 0.1f; // 计算实际时间步长
-        yaw_travel = ctrl.yaw_pid.update_all(0, yaw_current, dt);
+        yaw_travel = _frontend.get_yaw_rate() * channel.throttle_yaw_max;
     } else {
         yaw_travel = 0.0f;
     }

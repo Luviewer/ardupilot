@@ -24,6 +24,9 @@ const AP_Param::GroupInfo AP_QuadRuped_Wave_COG::var_info[] = {
     AP_GROUPINFO("BCTRL_H", 5, AP_QuadRuped_Wave_COG, bezier_control_height, 0.3f),
     AP_GROUPINFO("BCTRL_F", 6, AP_QuadRuped_Wave_COG, bezier_control_forward, 0.2f),
 
+    // ==================== 重心平滑过渡参数 ====================
+    AP_GROUPINFO("COG_TIME", 7, AP_QuadRuped_Wave_COG, cog_transition_time, 0.3f),  // 过渡时间（秒）
+
     AP_GROUPEND
 };
 
@@ -90,6 +93,22 @@ void AP_QuadRuped_Wave_COG::update_leg()
     }
 }
 
+// 主更新函数 - 确保重心过渡始终执行
+void AP_QuadRuped_Wave_COG::update()
+{
+    // 先执行父类的 main_inverse_kinematics，这会设置 move_requested
+    // 但我们跳过父类的 update，自己控制调用顺序
+    main_inverse_kinematics();
+    output_leg_angle();
+    send_servo_cmd();
+
+    // 如果正在过渡中且没有移动请求，需要单独调用重心生成
+    // 因为 update_leg() 只在 move_requested == true 时被调用
+    if (cog_transitioning && !move_requested) {
+        cog_generation(AP_QUADRUPED_LEG_RF);
+    }
+}
+
 void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
 {
     (void)leg_index;
@@ -107,5 +126,49 @@ void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
     const float    radius = centre_offset_ratio.get();
     const Vector2f cog_xy_target(radius * cosf(angle + M_PI), radius * sinf(angle + M_PI));
 
-    set_center_offset(cog_xy_target);
+    // 平滑过渡处理：只在开始和结束时平滑
+    const uint32_t now_ms = AP_HAL::millis();
+    const float transition_duration_ms = cog_transition_time.get() * 1000.0f;
+
+    // 检测移动请求状态变化
+    if (move_requested && !cog_last_move_requested) {
+        // 开始移动：启动进入过渡
+        cog_transitioning = true;
+        cog_transition_start = {0.0f, 0.0f};  // 从中心开始
+        cog_transition_end = cog_xy_target;    // 目标是当前圆轨迹点
+        cog_transition_start_ms = now_ms;
+    } else if (!move_requested && cog_last_move_requested) {
+        // 停止移动：启动退出过渡
+        cog_transitioning = true;
+        cog_transition_start = cog_xy_target;  // 从当前圆轨迹点开始
+        cog_transition_end = {0.0f, 0.0f};      // 目标是中心
+        cog_transition_start_ms = now_ms;
+    }
+    cog_last_move_requested = move_requested;
+
+    Vector2f cog_output;
+
+    if (cog_transitioning) {
+        // 正在过渡中
+        const float elapsed = (float)(now_ms - cog_transition_start_ms);
+        float t = constrain_value(elapsed / transition_duration_ms, 0.0f, 1.0f);
+
+        // smoothstep 平滑插值
+        t = t * t * (3.0f - 2.0f * t);
+
+        cog_output = cog_transition_start * (1.0f - t) + cog_transition_end * t;
+
+        // 过渡完成
+        if (elapsed >= transition_duration_ms) {
+            cog_transitioning = false;
+        }
+    } else if (move_requested) {
+        // 正常移动中，直接使用圆轨迹
+        cog_output = cog_xy_target;
+    } else {
+        // 静止状态
+        cog_output = {0.0f, 0.0f};
+    }
+
+    set_center_offset(cog_output);
 }
