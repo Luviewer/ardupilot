@@ -97,16 +97,14 @@ void AP_QuadRuped_Wave_COG::update_leg()
 void AP_QuadRuped_Wave_COG::update()
 {
     // 先执行父类的 main_inverse_kinematics，这会设置 move_requested
-    // 但我们跳过父类的 update，自己控制调用顺序
     main_inverse_kinematics();
+
+    // 无论 move_requested 状态如何，都需要调用 cog_generation
+    // 这样才能检测状态变化并启动停止时的过渡
+    cog_generation(AP_QUADRUPED_LEG_RF);
+
     output_leg_angle();
     send_servo_cmd();
-
-    // 如果正在过渡中且没有移动请求，需要单独调用重心生成
-    // 因为 update_leg() 只在 move_requested == true 时被调用
-    if (cog_transitioning && !move_requested) {
-        cog_generation(AP_QUADRUPED_LEG_RF);
-    }
 }
 
 void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
