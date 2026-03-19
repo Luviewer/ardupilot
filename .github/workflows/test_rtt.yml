@@ -1,0 +1,58 @@
+# RT-Thread rtt_fmuv2 板级 CI：校验 RTT 路径与 BSP 部署，至少执行 waf configure（可选 waf build）
+name: test rtt_fmuv2
+
+on:
+  push:
+    paths:
+      - 'libraries/AP_HAL_RTT/**'
+      - 'Tools/ardupilotwaf/**'
+      - 'modules/rt-thread/**'
+  pull_request:
+    paths:
+      - 'libraries/AP_HAL_RTT/**'
+      - 'Tools/ardupilotwaf/**'
+      - 'modules/rt-thread/**'
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  rtt-configure-build:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Ensure rt-thread submodule
+        run: |
+          git submodule update --init --recursive modules/rt-thread
+
+      - name: Install arm-none-eabi and scons
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-arm-none-eabi scons python3
+
+      - name: Configure rtt_fmuv2
+        run: |
+          git config --global --add safe.directory ${GITHUB_WORKSPACE}
+          ./waf configure --board rtt_fmuv2
+
+      # 可选：BSP 目录存在且已有 packages 时执行 waf build；否则仅提示本地需 pkgs --update
+      - name: Build (optional)
+        run: |
+          RTT_ROOT="${GITHUB_WORKSPACE}/modules/rt-thread"
+          BSP_DIR="${RTT_ROOT}/bsp/stm32/stm32f427-fmuv2"
+          if [ ! -d "$BSP_DIR" ]; then
+            echo "BSP dir not found, skipping build."
+            exit 0
+          fi
+          echo "BSP deployed at $BSP_DIR"
+          if [ -d "$BSP_DIR/packages/CMSIS-Core-latest" ]; then
+            ./waf build
+          else
+            echo "BSP packages not present; run 'pkgs --update' in $BSP_DIR locally for full build (see Tools/ardupilotwaf/RTT_BUILD_FMUV2.md)."
+          fi

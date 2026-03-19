@@ -1,0 +1,12 @@
+# Minimal hwdef for RT-Thread board (rtt_fmu_mini)
+# Used by rtt_hwdef.py to generate hwdef.h / ldscript.ld
+
+BOARD_NAME rtt_fmu_mini
+MCU STM32F4xx
+
+# Serial ports (order / list)
+SERIAL_ORDER USART1 USART2
+
+# Optional
+OSCILLATOR_HZ 24000000
+FLASH_SIZE_KB 512

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include "AP_HAL_Namespace.h"
 
 #define RC_INPUT_MIN_PULSEWIDTH 900

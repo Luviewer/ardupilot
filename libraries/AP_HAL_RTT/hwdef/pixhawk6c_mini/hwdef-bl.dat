@@ -1,0 +1,20 @@
+# Pixhawk6C-Mini - Bootloader hwdef (RT-Thread)
+# For documentation / future RTT bootloader build. Matches ChibiOS Pixhawk6C layout.
+# Bootloader occupies 0x08000000..0x0801FFFF (128KB), app at 0x08020000.
+
+BOARD_NAME pixhawk6c_mini
+MCU STM32H7xx STM32H743xx
+
+OSCILLATOR_HZ 16000000
+APJ_BOARD_ID TARGET_HW_PX4_FMU_V6C
+
+# bootloader is installed at zero offset
+FLASH_RESERVE_START_KB 0
+
+# the location where the bootloader will put the firmware
+FLASH_BOOTLOADER_LOAD_KB 128
+
+FLASH_SIZE_KB 2048
+
+# minimal serial for bootloader
+SERIAL_ORDER UART7 UART5 USART3

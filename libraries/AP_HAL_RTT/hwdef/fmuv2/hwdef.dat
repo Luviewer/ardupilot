@@ -1,0 +1,15 @@
+# FMUv2 (Pixhawk 1) - RT-Thread build
+# Same MCU as fmuv3 (STM32F427), 1M flash. RTT BSP: stm32/stm32f427-robomaster-a (see Tools/ardupilotwaf/RTT_BUILD_FMUV2.md).
+
+BOARD_NAME fmuv2
+MCU STM32F4xx STM32F427xx
+
+# 1M flash (fmuv2 uses 1M to avoid 2nd half issues on early F427)
+FLASH_SIZE_KB 1024
+OSCILLATOR_HZ 24000000
+
+# Serial order for RTT device names (match BSP: uart1=USART1, uart2=USART2, ...)
+SERIAL_ORDER USART1 USART2 USART3 USART4 USART6 USART7
+
+# Optional: APJ board ID for bootloader/GCS (same as ChibiOS fmuv2)
+APJ_BOARD_ID TARGET_HW_CUBE_F4

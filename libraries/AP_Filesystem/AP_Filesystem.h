@@ -28,7 +28,7 @@
 #define MAX_NAME_LEN 255
 #endif
 
-#if (CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS) || (CONFIG_HAL_BOARD == HAL_BOARD_ESP32)
+#if (CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS) || (CONFIG_HAL_BOARD == HAL_BOARD_ESP32) || (CONFIG_HAL_BOARD == HAL_BOARD_RTT)
 #define DT_REG 0
 #define DT_DIR 1
 #define DT_LNK 10
@@ -48,6 +48,14 @@ struct dirent {
 };
 
 #endif // HAL_BOARD_CHIBIOS
+
+#if CONFIG_HAL_BOARD == HAL_BOARD_RTT
+/* RTT: same minimal dirent as ChibiOS; no FATFS/LittleFS includes for generic port */
+struct dirent {
+   char    d_name[MAX_NAME_LEN]; /* filename */
+   uint8_t d_type;
+};
+#endif // HAL_BOARD_RTT
 
 #include <fcntl.h>
 #include <errno.h>

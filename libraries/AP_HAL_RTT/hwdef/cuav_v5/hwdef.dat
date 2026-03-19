@@ -1,0 +1,17 @@
+# CUAV V5 - RT-Thread build
+# CUAV V5: STM32F765/F767, 2MB flash. RTT BSP: stm32/stm32f765-cuav-v5.
+# ArduPilot bootloader uses first 32KB; app at 0x08008000.
+
+BOARD_NAME cuav_v5
+MCU STM32F7xx STM32F765xx
+
+# 2M flash, 32KB reserved for ArduPilot bootloader
+FLASH_SIZE_KB 2048
+FLASH_RESERVE_START_KB 32
+OSCILLATOR_HZ 8000000
+
+# Serial order for RTT (match CUAV V5 UART layout; adjust as needed)
+SERIAL_ORDER USART3
+
+# APJ board ID for bootloader/GCS (same as ChibiOS fmuv5 / CUAV V5)
+APJ_BOARD_ID TARGET_HW_PX4_FMU_V5

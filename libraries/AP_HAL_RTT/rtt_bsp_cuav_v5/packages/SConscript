@@ -1,0 +1,17 @@
+# Build BSP packages (HAL, CMSIS) so they are linked. RTT package manager
+# would generate this; we provide a minimal one for scons-only build.
+import os
+from building import *
+
+cwd = GetCurrentDir()
+group = None
+for name in ['CMSIS-Core-latest', 'stm32f7_cmsis_driver-latest', 'stm32f7_hal_driver-latest']:
+    script = os.path.join(cwd, name, 'SConscript')
+    if os.path.isfile(script):
+        g = SConscript(os.path.join(name, 'SConscript'))
+        group = g if group is None else group + g
+if group is None:
+    group = DefineGroup('Packages', [], depend = [''], CPPPATH = [],
+        LOCAL_CFLAGS = '', LOCAL_CXXFLAGS = '', LOCAL_CCFLAGS = '',
+        LOCAL_CPPPATH = [], LOCAL_CPPDEFINES = [], LOCAL_ASFLAGS = '')
+Return('group')

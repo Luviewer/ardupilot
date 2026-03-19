@@ -627,6 +627,24 @@ def add_dynamic_boards_linux():
     '''add boards based on existence of hwdef.dat in subdirectories for '''
     add_dynamic_boards_from_hwdef_dir(linux, 'libraries/AP_HAL_Linux/hwdef')
 
+def add_dynamic_boards_rtt():
+    '''add boards based on existence of hwdef.dat in subdirectories for RT-Thread.
+    RTT boards are registered with prefix "rtt_" (e.g. rtt_fmuv2) to avoid name
+    clash with ChibiOS/Linux boards (e.g. fmuv2).'''
+    hwdef_dir = 'libraries/AP_HAL_RTT/hwdef'
+    if not os.path.isdir(hwdef_dir):
+        return
+    dirname, dirlist, _ = next(os.walk(hwdef_dir))
+    for d in dirlist:
+        rtt_board_name = 'rtt_' + d
+        if rtt_board_name in _board_classes:
+            continue
+        hwdef = os.path.join(dirname, d, 'hwdef.dat')
+        hwdef_bl = os.path.join(dirname, d, 'hwdef-bl.dat')
+        if os.path.exists(hwdef) or os.path.exists(hwdef_bl):
+            # name = rtt_board_name for get_name()/variant; hwdef_board = d for hwdef path
+            type(rtt_board_name, (rtt,), {'name': rtt_board_name, 'hwdef_board': d})
+
 def add_dynamic_boards_from_hwdef_dir(base_type, hwdef_dir):
     '''add boards based on existence of hwdef.dat in subdirectory'''
     dirname, dirlist, filenames = next(os.walk(hwdef_dir))
@@ -656,6 +674,7 @@ def get_boards_names():
     add_dynamic_boards_chibios()
     add_dynamic_boards_esp32()
     add_dynamic_boards_linux()
+    add_dynamic_boards_rtt()
 
     return sorted(list(_board_classes.keys()), key=str.lower)
 
@@ -1451,6 +1470,108 @@ class chibios(Board):
         if fun:
             fun(bld)
         super(chibios, self).pre_build(bld)
+
+    def get_name(self):
+        return self.name
+
+class rtt(Board):
+    abstract = True
+    toolchain = 'arm-none-eabi'
+
+    def configure_env(self, cfg, env):
+        if hasattr(self, 'hwdef'):
+            cfg.env.HWDEF = self.hwdef
+        else:
+            # hwdef_board = hwdef subdir (e.g. fmuv2); name = board id (e.g. rtt_fmuv2)
+            hwdef_subdir = getattr(self, 'hwdef_board', getattr(self, 'name', None))
+            if hwdef_subdir:
+                cfg.env.HWDEF = os.path.join(cfg.srcnode.abspath(), 'libraries', 'AP_HAL_RTT', 'hwdef', hwdef_subdir, 'hwdef.dat')
+        super(rtt, self).configure_env(cfg, env)
+
+        env.BOARD = self.name
+        env.BOARD_CLASS = "RTT"
+
+        env.DEFINES.update(
+            CONFIG_HAL_BOARD='HAL_BOARD_RTT',
+        )
+        hwdef_subdir = getattr(self, 'hwdef_board', getattr(self, 'name', ''))
+        is_h7 = (hwdef_subdir == 'pixhawk6c_mini' or self.name == 'rtt_pixhawk6c_mini')
+        if is_h7:
+            env.DEFINES.update(
+                USE_HAL_DRIVER=1, STM32H743xx=1, BSP_USING_GPIO=1, RT_USING_SERIAL=1, SOC_SERIES_STM32H7=1,
+                USE_FLASH_ECC=0, USE_SDIO_TRANSCEIVER=0, USE_MULTI_CORE_SHARED_CODE=0, USE_SPI_CRC=0,
+                LSI_VALUE=32000,  # HAL optional macros, avoid -Werror=undef / undeclared
+                HAL_WITH_RAMTRON=1, HAL_STORAGE_SIZE=32768
+            )
+        else:
+            env.DEFINES.update(USE_HAL_DRIVER=1, STM32F427xx=1, BSP_USING_GPIO=1, RT_USING_SERIAL=1, SOC_SERIES_STM32F4=1)
+        # f4/h7 usbd_config.h uses #if BSP_USBD_*; not using USB device
+        env.DEFINES.update(BSP_USBD_SPEED_HSINFS=0, BSP_USBD_PHY_UTMI=0)
+        # board.h uses #if __ICCARM__; we use GCC
+        env.DEFINES.update(__ICCARM__=0)
+        # RTT HAL_Drivers use casts that trigger -Wcast-align; allow so build completes
+        env.CFLAGS += ['-Wno-cast-align']
+        # HAL headers use #if USE_HAL_*_REGISTER_CALLBACKS == 1; define to 0 to avoid -Werror=undef when not in hal_conf
+        env.DEFINES.update(
+            USE_HAL_ADC_REGISTER_CALLBACKS=0,
+            USE_HAL_CAN_REGISTER_CALLBACKS=0,
+            USE_HAL_CEC_REGISTER_CALLBACKS=0,
+            USE_HAL_CRYP_REGISTER_CALLBACKS=0,
+            USE_HAL_DAC_REGISTER_CALLBACKS=0,
+            USE_HAL_DCMI_REGISTER_CALLBACKS=0,
+            USE_HAL_DFSDM_REGISTER_CALLBACKS=0,
+            USE_HAL_DMA2D_REGISTER_CALLBACKS=0,
+            USE_HAL_DSI_REGISTER_CALLBACKS=0,
+            USE_HAL_ETH_REGISTER_CALLBACKS=0,
+            USE_HAL_FMPI2C_REGISTER_CALLBACKS=0,
+            USE_HAL_FMPSMBUS_REGISTER_CALLBACKS=0,
+            USE_HAL_HASH_REGISTER_CALLBACKS=0,
+            USE_HAL_HCD_REGISTER_CALLBACKS=0,
+            USE_HAL_I2C_REGISTER_CALLBACKS=0,
+            USE_HAL_I2S_REGISTER_CALLBACKS=0,
+            USE_HAL_IRDA_REGISTER_CALLBACKS=0,
+            USE_HAL_LPTIM_REGISTER_CALLBACKS=0,
+            USE_HAL_LTDC_REGISTER_CALLBACKS=0,
+            USE_HAL_MMC_REGISTER_CALLBACKS=0,
+            USE_HAL_NAND_REGISTER_CALLBACKS=0,
+            USE_HAL_NOR_REGISTER_CALLBACKS=0,
+            USE_HAL_PCCARD_REGISTER_CALLBACKS=0,
+            USE_HAL_PCD_REGISTER_CALLBACKS=0,
+            USE_HAL_QSPI_REGISTER_CALLBACKS=0,
+            USE_HAL_RNG_REGISTER_CALLBACKS=0,
+            USE_HAL_RTC_REGISTER_CALLBACKS=0,
+            USE_HAL_SAI_REGISTER_CALLBACKS=0,
+            USE_HAL_SDRAM_REGISTER_CALLBACKS=0,
+            USE_HAL_SD_REGISTER_CALLBACKS=0,
+            USE_HAL_SMARTCARD_REGISTER_CALLBACKS=0,
+            USE_HAL_SMBUS_REGISTER_CALLBACKS=0,
+            USE_HAL_SPDIFRX_REGISTER_CALLBACKS=0,
+            USE_HAL_SPI_REGISTER_CALLBACKS=0,
+            USE_HAL_SRAM_REGISTER_CALLBACKS=0,
+            USE_HAL_TIM_REGISTER_CALLBACKS=0,
+            USE_HAL_UART_REGISTER_CALLBACKS=0,
+            USE_HAL_USART_REGISTER_CALLBACKS=0,
+            USE_HAL_WWDG_REGISTER_CALLBACKS=0,
+        )
+
+        env.AP_LIBRARIES += [
+            'AP_HAL_RTT',
+        ]
+
+        cfg.load('rtt')
+
+    def pre_build(self, bld):
+        '''pre-build hook: run rtt tool pre_build (e.g. ensure hwdef.h).'''
+        from waflib.Context import load_tool
+        module = load_tool('rtt', [], with_sys_path=True)
+        fun = getattr(module, 'pre_build', None)
+        if fun:
+            fun(bld)
+        super(rtt, self).pre_build(bld)
+
+    def build(self, bld):
+        super(rtt, self).build(bld)
+        bld.load('rtt')
 
     def get_name(self):
         return self.name

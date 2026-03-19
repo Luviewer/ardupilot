@@ -1,0 +1,38 @@
+import os
+from building import *
+
+cwd = GetCurrentDir()
+bsp_root = os.path.dirname(cwd)
+
+# add general drivers; startup (Reset_Handler) is provided by package stm32f4_cmsis_driver
+src = Split('''
+board.c
+rt_board_init.c
+CubeMX_Config/Src/stm32f4xx_hal_msp.c
+''')
+path =  [cwd]
+path += [os.path.join(cwd, 'CubeMX_Config', 'Inc')]
+
+# BSP-local packages (required by bsp_pkg_check): add Include paths for stm32f4xx.h etc.
+pkgs_dir = os.path.join(bsp_root, 'packages')
+if os.path.isdir(pkgs_dir):
+    for pkg_inc in [
+        os.path.join(pkgs_dir, 'CMSIS-Core-latest', 'Include'),
+        os.path.join(pkgs_dir, 'stm32f4_cmsis_driver-latest', 'Include'),
+        os.path.join(pkgs_dir, 'stm32f4_hal_driver-latest', 'Inc'),
+    ]:
+        if os.path.isdir(pkg_inc):
+            path += [pkg_inc]
+
+group = DefineGroup('Drivers', src, depend = [''], CPPPATH = path)
+
+
+if os.path.isfile(os.path.join(cwd, "ports", 'SConscript')):
+    group = group + SConscript(os.path.join("ports", 'SConscript'))
+
+list = os.listdir(cwd)
+for item in list:
+    if os.path.isfile(os.path.join(cwd, item, 'SConscript')):
+        group = group + SConscript(os.path.join(item, 'SConscript'))
+
+Return('group')

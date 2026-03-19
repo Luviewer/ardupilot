@@ -157,6 +157,10 @@ build.tmp.binaries/
 tasklist.json
 modules/esp_idf
 
+# pogo-apm RTT deploy-only BSPs (generated from AP_HAL_RTT, keep rt-thread pure)
+modules/rt-thread/bsp/stm32/stm32h743-pixhawk6c-mini/
+modules/rt-thread/bsp/stm32/stm32f765-cuav-v5/
+
 # lua-language-server linter
 ScriptingDocs.md
 /lua-language-server/

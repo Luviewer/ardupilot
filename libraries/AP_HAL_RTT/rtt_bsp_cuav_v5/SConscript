@@ -1,0 +1,65 @@
+# for module compiling
+import os
+import sys
+import subprocess
+Import('RTT_ROOT')
+Import('env')
+from building import *
+
+cwd = GetCurrentDir()
+objs = []
+dirlist = os.listdir(cwd)
+
+# Package include paths so kernel/board can find stm32f7xx.h, core_cm7.h
+env.Append(CPPPATH = [
+    os.path.join(cwd, 'packages', 'CMSIS-Core-latest', 'Include'),
+    os.path.join(cwd, 'packages', 'stm32f7_cmsis_driver-latest', 'Include'),
+    os.path.join(cwd, 'packages', 'stm32f7_hal_driver-latest', 'Inc'),
+])
+env.Append(CPPDEFINES = ['STM32F767xx', 'USE_HAL_DRIVER'])
+
+# Full ArduPilot build: ARDUPILOT_FULL=1 => skip applications, add ArduPilot sources and link once
+ARDUPILOT_FULL = os.environ.get('ARDUPILOT_FULL', '0') == '1'
+
+if ARDUPILOT_FULL:
+    AP_ROOT = os.environ.get('AP_ROOT', '')
+    if not AP_ROOT or not os.path.isfile(os.path.join(AP_ROOT, 'Tools', 'scripts', 'scons_ardupilot_sources.py')):
+        AP_ROOT = os.path.abspath(os.path.join(cwd, '..', '..', '..', '..', '..'))
+    env.Append(LINKFLAGS=' -Wl,--start-group -lstdc++ -lsupc++ -lgcc -Wl,--end-group')
+    env.Append(LIBS=['stdc++', 'supc++', 'gcc'])
+    env.Append(LINKFLAGS=' -Wl,--allow-multiple-definition')
+    config_py = os.path.join(cwd, 'scons_ardupilot_config.py')
+    if not os.path.isfile(config_py):
+        script = os.path.join(AP_ROOT, 'Tools', 'scripts', 'scons_ardupilot_sources.py')
+        if os.path.isfile(script):
+            subprocess.check_call([sys.executable, script, AP_ROOT, '--board', 'rtt_cuav_v5', '--bsp-dir', cwd, '--output', cwd])
+    if os.path.isfile(config_py):
+        with open(config_py) as f:
+            exec(f.read())
+        env.Append(CPPPATH=ap_cpppath)
+        # Do not append ap_defines to global env (e.g. __ICCARM__=0 would make RTT finsh use IAR branch)
+        ap_force_include = os.path.join(cwd, 'board', 'ardupilot_posix_include.h') if os.path.isfile(os.path.join(cwd, 'board', 'ardupilot_posix_include.h')) else ''
+        ap_obj_root = os.path.join(AP_ROOT, 'build', 'rtt_cuav_v5', 'ap_objects')
+        ap_objs = SConscript(os.path.join(AP_ROOT, 'SConscript_ardupilot'), exports=['env', 'ap_sources', 'ap_cpppath', 'ap_defines', 'ap_force_include', 'ap_obj_root'], duplicate=0)
+        objs.extend(list(ap_objs))
+
+for d in dirlist:
+    if ARDUPILOT_FULL and d == 'applications':
+        continue
+    path = os.path.join(cwd, d)
+    if os.path.isfile(os.path.join(path, 'SConscript')):
+        objs = objs + SConscript(os.path.join(path, 'SConscript'))
+
+def _flatten_objs(lst):
+    out = []
+    for item in lst:
+        if type(item) == type([]):
+            out.extend(_flatten_objs(item))
+        elif hasattr(item, '__iter__') and not hasattr(item, 'abspath'):
+            out.extend(_flatten_objs(list(item)))
+        else:
+            out.append(item)
+    return out
+objs = _flatten_objs(objs)
+
+Return('objs')

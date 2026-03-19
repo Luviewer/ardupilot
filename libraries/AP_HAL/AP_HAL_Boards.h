@@ -16,6 +16,7 @@
 // #define HAL_BOARD_F4LIGHT  11 // reserved
 #define HAL_BOARD_ESP32	   12
 #define HAL_BOARD_QURT     13
+#define HAL_BOARD_RTT      14
 #define HAL_BOARD_EMPTY    99
 // @LoggerEnumEnd
 
@@ -76,6 +77,8 @@
 #define HAL_BOARD_SUBTYPE_ESP32_S3EMPTY         6008
 #define HAL_BOARD_SUBTYPE_ESP32_S3M5STAMPFLY    6009
 #define HAL_BOARD_SUBTYPE_ESP32_IMU_MODULE_V11  6010
+/* HAL RTT sub-types, starting at 7000 */
+#define HAL_BOARD_SUBTYPE_RTT_GENERIC          7000
 // @LoggerEnumEnd
 
 /* InertialSensor driver types */
@@ -140,6 +143,8 @@
     #include <AP_HAL/board/esp32.h>
 #elif CONFIG_HAL_BOARD == HAL_BOARD_QURT
     #include <AP_HAL/board/qurt.h>
+#elif CONFIG_HAL_BOARD == HAL_BOARD_RTT
+    #include <AP_HAL/board/rtt.h>
 #else
 #error "Unknown CONFIG_HAL_BOARD type"
 #endif

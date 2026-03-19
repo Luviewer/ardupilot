@@ -51,6 +51,28 @@ It is continually being expanded to provide support for new emerging vehicle typ
 
 - Developer chat: <https://discord.com/channels/ardupilot>
 
+## RTT/fmuv2 构建 (Building for RT-Thread fmuv2) ##
+
+若需为 **fmuv2** 目标在 **RT-Thread** 上构建固件：
+
+1. **配置与编译**：在仓库根目录执行  
+   `waf configure --board rtt_fmuv2`，然后 `waf build`。
+2. **首次构建前**：若 scons 报缺包，需在部署后的 BSP 目录执行依赖安装，例如 `pkgs --update`；完整步骤见下方详细文档。
+3. **详细说明**：
+   - [Tools/ardupilotwaf/RTT_BUILD_FMUV2.md](Tools/ardupilotwaf/RTT_BUILD_FMUV2.md) — 从零到可链接固件的完整流程；
+   - [libraries/AP_HAL_RTT/rtt_bsp_fmuv2/README.md](libraries/AP_HAL_RTT/rtt_bsp_fmuv2/README.md) — fmuv2 专用 BSP 使用与维护说明。
+
+## RTT scons 构建与上传 (scons RTT build and upload) ##
+
+在仓库根目录可用 **scons** 指定目标并上传固件（无需 waf）：
+
+- **编译**：进入对应 BSP 目录后执行 `scons`（需设置 `RTT_ROOT` 指向 `modules/rt-thread`）；或先由 waf/deploy 生成 BSP 再在 BSP 目录编译。
+- **上传**：`scons --target=pixhawk6c_mini --upload` 或 `scons --target=cuav_v5 --upload`。若当前无 `rtthread.bin` 会先在该 BSP 目录触发 scons 编译，再调用 `Tools/scripts/rtt_bin_to_apj.py` 生成 .apj 并执行 `Tools/scripts/uploader.py`。可选：`--port /dev/ttyACM0` 指定串口。
+
+### rt-thread 子模块保持纯净的约定 ###
+
+`modules/rt-thread/bsp/stm32/stm32h743-pixhawk6c-mini` 与 `modules/rt-thread/bsp/stm32/stm32f765-cuav-v5` 为 **构建时从 AP_HAL_RTT 部署生成** 的 BSP，不提交到 rt-thread 上游，以保持 rt-thread 子模块与官方一致、纯净。源 BSP 位于 `libraries/AP_HAL_RTT/rtt_bsp_pixhawk6c_mini` 与 `libraries/AP_HAL_RTT/rtt_bsp_cuav_v5`（或 hwdef 对应路径）。详见 [modules/rt-thread/POGO_APM_BSP_DEPLOY.md](modules/rt-thread/POGO_APM_BSP_DEPLOY.md)。
+
 ## Top Contributors ##
 
 - [Flight code contributors](https://github.com/ArduPilot/ardupilot/graphs/contributors)

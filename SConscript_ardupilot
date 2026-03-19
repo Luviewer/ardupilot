@@ -1,0 +1,38 @@
+# Build ArduPilot object files for RTT full-link. Called from BSP SConscript with
+# Export(env, ap_sources, ap_cpppath, ap_defines, ap_force_include, ap_obj_root).
+# Sources are relative to this file's directory (AP_ROOT).
+import os
+
+Import('env', 'ap_sources', 'ap_cpppath', 'ap_defines', 'ap_force_include', 'ap_obj_root')
+
+env.Append(CPPPATH=ap_cpppath)
+
+def _flags_to_list(v):
+    if isinstance(v, str):
+        return v.split() if v else []
+    return [f for s in v for f in (s.split() if isinstance(s, str) else [s])]
+
+# Pass CCFLAGS/CXXFLAGS as list of single flags; include CFLAGS (device -mcpu, -mfloat-abi) so C++ objs match BSP ABI (VFP)
+_cc = _flags_to_list(env.get('CFLAGS', '')) + _flags_to_list(env.get('CCFLAGS', '')) + ['-fsingle-precision-constant', '-Os', '-Wno-trigraphs']
+_cxx = _flags_to_list(env.get('CFLAGS', '')) + _flags_to_list(env.get('CXXFLAGS', '')) + ['-Os', '-Wno-trigraphs']
+if ap_force_include:
+    _cc = _cc + ['-include', ap_force_include]
+    _cxx = _cxx + ['-include', ap_force_include]
+
+ap_root = Dir('.').abspath
+
+def _source_abspath(src):
+    return src if os.path.isabs(src) else os.path.join(ap_root, src)
+
+def _object_abspath(src):
+    src_abs = _source_abspath(src)
+    rel = os.path.relpath(src_abs, ap_root)
+    obj_rel = os.path.splitext(rel)[0] + '.o'
+    return os.path.join(ap_obj_root, obj_rel)
+
+objs = [
+    env.Object(target=_object_abspath(s), source=_source_abspath(s),
+               CCFLAGS=_cc, CXXFLAGS=_cxx, CPPDEFINES=ap_defines)
+    for s in ap_sources
+]
+Return('objs')
