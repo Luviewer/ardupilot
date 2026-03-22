@@ -473,7 +473,16 @@ void AC_AttitudeControl_Multi::rate_controller_run_dt(const Vector3f& gyro_rads,
     _motors.set_roll(get_rate_roll_pid().update_all(ang_vel_body.x, gyro_rads.x,  dt, _motors.limit.roll, _pd_scale.x, _i_scale.x) + _actuator_sysid.x);
     _motors.set_roll_ff(get_rate_roll_pid().get_ff());
 
-    _motors.set_pitch(get_rate_pitch_pid().update_all(ang_vel_body.y, gyro_rads.y,  dt, _motors.limit.pitch, _pd_scale.y, _i_scale.y) + _actuator_sysid.y);
+    // Scale pitch rate P only for this iteration; do not leave a modified AP_Float (avoids
+    // compounding every cycle and accidental param save of a scaled value).
+    AC_PID &pitch_pid = get_rate_pitch_pid();
+    const float pitch_kp_saved = pitch_pid.kP().get();
+    const float pitch_P_factor = _motors.get_bicopter_pitch_P_factor();
+    pitch_pid.set_kP(pitch_kp_saved + pitch_P_factor);
+    _motors.set_pitch(pitch_pid.update_all(ang_vel_body.y, gyro_rads.y,  dt, _motors.limit.pitch, _pd_scale.y, _i_scale.y) + _actuator_sysid.y);
+    pitch_pid.set_kP(pitch_kp_saved);
+
+    // _motors.set_pitch(get_rate_pitch_pid().update_all(ang_vel_body.y, gyro_rads.y,  dt, _motors.limit.pitch, _pd_scale.y, _i_scale.y) + _actuator_sysid.y);
     _motors.set_pitch_ff(get_rate_pitch_pid().get_ff());
 
     _motors.set_yaw(get_rate_yaw_pid().update_all(ang_vel_body.z, gyro_rads.z,  dt, _motors.limit.yaw, _pd_scale.z, _i_scale.z) + _actuator_sysid.z);

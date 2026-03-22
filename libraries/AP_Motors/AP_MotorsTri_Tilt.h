@@ -92,6 +92,7 @@ public:
 
     virtual int8_t get_tilt_enable() override { return _tilt_enable.get(); }
     virtual float get_tilt_max_deg() override { return _tilt_pitch_off_max_deg.get(); }
+    virtual float get_bicopter_pitch_P_factor() override;
 
     void servoOutput(enum TiltIndex servo_index, float svo_out_cd);
 
@@ -136,7 +137,9 @@ private:
     AP_Int8 _tilt_enable;
     AP_Float _forward_factor;
     AP_Float _svo_fr_offset, _svo_rear_offset, _svo_fl_offset;
-
+    AP_Float _anti_yaw_factor;
+    AP_Float _bicopter_pitch_P_factor;
+    
     // 三旋翼推力分配
     float _thrust_right_tricopter, _thrust_left_tricopter, _thrust_rear_tricopter;
 

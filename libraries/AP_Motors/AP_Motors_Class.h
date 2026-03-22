@@ -171,6 +171,7 @@ public:
 
     virtual int8_t      get_tilt_enable() { return 0; }
     virtual float       get_tilt_max_deg() { return 0; }
+    virtual float       get_bicopter_pitch_P_factor() { return 0; }
 
     // desired spool states
     enum class DesiredSpoolState : uint8_t {

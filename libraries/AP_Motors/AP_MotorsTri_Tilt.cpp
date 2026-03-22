@@ -55,7 +55,7 @@ extern const AP_HAL::HAL& hal;
           if (!_limit_warn_state.type##_last) {                                    \
               const uint32_t now_ms = AP_HAL::millis();                            \
               if (now_ms - _limit_warn_state.type##_ms > LIMIT_WARN_INTERVAL_MS) { \
-                  GCS_SEND_TEXT(MAV_SEVERITY_INFO, format, ##__VA_ARGS__);      \
+                  GCS_SEND_TEXT(MAV_SEVERITY_INFO, format, ##__VA_ARGS__);         \
                   _limit_warn_state.type##_ms = now_ms;                            \
               }                                                                    \
           }                                                                        \
@@ -68,7 +68,7 @@ extern const AP_HAL::HAL& hal;
           if (!_limit_warn_state.type##_last) {                                    \
               const uint32_t now_ms = AP_HAL::millis();                            \
               if (now_ms - _limit_warn_state.type##_ms > LIMIT_WARN_INTERVAL_MS) { \
-                  GCS_SEND_TEXT(MAV_SEVERITY_INFO, format, ##__VA_ARGS__);      \
+                  GCS_SEND_TEXT(MAV_SEVERITY_INFO, format, ##__VA_ARGS__);         \
                   _limit_warn_state.type##_ms = now_ms;                            \
                   /* 同时更新相关的单个限制时间戳和状态，避免重复提示 */           \
                   _limit_warn_state.roll_ms    = now_ms;                           \
@@ -184,6 +184,14 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     AP_GROUPINFO("SVO_REAR_OFF", 18, AP_MotorsTri_Tilt, _svo_rear_offset, 0),
     AP_GROUPINFO("SVO_FL_OFF", 19, AP_MotorsTri_Tilt, _svo_fl_offset, 0),
 
+    AP_GROUPINFO("ANTI_YAW_FAC", 20, AP_MotorsTri_Tilt, _anti_yaw_factor, 1),
+
+    // @Param: PITCH_FAC
+    // @DisplayName: Pitch factor
+    // @Description: Pitch factor for bicopter tilt control
+    // @Range: 1.0~2.0
+    // @User: Advanced
+    AP_GROUPINFO("Bi_PIT_FAC", 21, AP_MotorsTri_Tilt, _bicopter_pitch_P_factor, 0.0f),
 
     AP_GROUPEND
 };
@@ -235,7 +243,9 @@ void AP_MotorsTri_Tilt::init(motor_frame_class frame_class, motor_frame_type fra
     SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_tiltMotorLeft, 500, 2500);
 
     // 检查舵机是否已分配（默认或用户映射）
-    _servos_assigned = (ok_fr || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRight)) && (ok_rear || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRear)) && (ok_fl || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeft));
+    _servos_assigned = (ok_fr || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRight))
+        && (ok_rear || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorRear))
+        && (ok_fl || SRV_Channels::function_assigned(SRV_Channel::k_tiltMotorLeft));
 
     // 配置电机与分配矩阵
     setup_motors(frame_class, frame_type);
@@ -270,7 +280,13 @@ void AP_MotorsTri_Tilt::set_update_rate(uint16_t speed_hz)
     _speed_hz = speed_hz;
 
     // 为全部 6 个电机设置更新频率
-    uint32_t mask = 1U << AP_MOTORS_MOT_1 | 1U << AP_MOTORS_MOT_2 | 1U << AP_MOTORS_MOT_3 | 1U << AP_MOTORS_MOT_4 | 1U << AP_MOTORS_MOT_5 | 1U << AP_MOTORS_MOT_6;
+    uint32_t mask = 1U << AP_MOTORS_MOT_1
+        | 1U << AP_MOTORS_MOT_2
+        | 1U << AP_MOTORS_MOT_3
+        | 1U << AP_MOTORS_MOT_4
+        | 1U << AP_MOTORS_MOT_5
+        | 1U << AP_MOTORS_MOT_6;
+
     rc_set_freq(mask, _speed_hz);
 }
 
@@ -355,12 +371,12 @@ bool AP_MotorsTri_Tilt::arming_checks(size_t buflen, char* buffer) const
 
 void AP_MotorsTri_Tilt::servoOutput(enum TiltIndex servo_index, float svo_out_cd)
 {
-    if(servo_index == FR) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, (float)_tilt_servo_fr_rev.get() * svo_out_cd  + (float)_svo_fr_offset.get());
-    } else if(servo_index == REAR) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, (float)_tilt_servo_rear_rev.get() * svo_out_cd  + (float)_svo_rear_offset.get());
-    } else if(servo_index == FL) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, (float)_tilt_servo_fl_rev.get() * svo_out_cd  + (float)_svo_fl_offset.get());
+    if (servo_index == FR) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, (float)_tilt_servo_fr_rev.get() * svo_out_cd + (float)_svo_fr_offset.get());
+    } else if (servo_index == REAR) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, (float)_tilt_servo_rear_rev.get() * svo_out_cd + (float)_svo_rear_offset.get());
+    } else if (servo_index == FL) {
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, (float)_tilt_servo_fl_rev.get() * svo_out_cd + (float)_svo_fl_offset.get());
     }
 }
 
@@ -425,7 +441,7 @@ void AP_MotorsTri_Tilt::output_to_motors()
     fr_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[0]), -lim_deg, lim_deg) * 100);
     fl_out_cd           = int16_t(constrain_float(degrees(_tilt_angle_rad[2]), -lim_deg, lim_deg) * 100);
     rear_out_cd         = int16_t(constrain_float(degrees(_tilt_angle_rad[1]), -lim_deg, lim_deg) * 100);
-    
+
 # if 0
     (void)fr_out_cd;
     (void)fl_out_cd;
@@ -468,6 +484,12 @@ void AP_MotorsTri_Tilt::set_roll_pitch(float roll_deg, float pitch_deg)
 {
     _roll_offset  = radians(roll_deg);
     _pitch_offset = radians(pitch_deg);
+}
+
+float AP_MotorsTri_Tilt::get_bicopter_pitch_P_factor()
+{
+    float ahrs_pitch_abs = constrain_value(fabsf(AP::ins().get_imu_pitch_rot_deg() / 90.0f), 0.0f, 1.0f);
+    return constrain_value(_bicopter_pitch_P_factor.get() * ahrs_pitch_abs, -0.1f, 0.1f);
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -545,7 +567,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     // 三旋翼 RPY 控制分配（不含 throttle）
     _thrust_right_tricopter = roll_thrust * -0.5f + pitch_thrust * 0.5f;
     _thrust_left_tricopter  = roll_thrust * 0.5f + pitch_thrust * 0.5f;
-    _thrust_rear_tricopter  = pitch_thrust * -0.5f;
+    _thrust_rear_tricopter  = -0.5f * pitch_thrust;
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第4层：双旋翼控制分配
@@ -589,20 +611,21 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     float rpy_low  = 1.0f;  // 最低推力值
     float rpy_high = -1.0f; // 最高推力值
 
-    // 右侧电机（0,1）
+    // Yaw 共轴差分：正 yaw 时前右/后臂 上+yaw 下-yaw；前左 上-yaw 下+yaw（与 Mz 符号一致）
+    // 前右（0,1）：上 CW 下 CCW
     float thrust_right_mixed = _thrust_right_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_right_bicopter * ahrs_pitch_abs;
-    _rpy_out[FR_UP]          = thrust_right_mixed + yaw_thrust * 0.5f;
-    _rpy_out[FR_DOWN]        = thrust_right_mixed - yaw_thrust * 0.5f; // 反向差分
+    _rpy_out[FR_UP]          = thrust_right_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[FR_DOWN]        = thrust_right_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
 
-    // 后侧电机（2,3）
+    // 后（2,3）：上 CW 下 CCW
     float thrust_rear_mixed = _thrust_rear_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_rear_bicopter * ahrs_pitch_abs;
-    _rpy_out[REAR_UP]       = thrust_rear_mixed + yaw_thrust * 0.5f;
-    _rpy_out[REAR_DOWN]     = thrust_rear_mixed - yaw_thrust * 0.5f;
+    _rpy_out[REAR_UP]       = thrust_rear_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[REAR_DOWN]     = thrust_rear_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
 
-    // 左侧电机（4,5）
+    // 前左（4,5）：上 CW 下 CCW，yaw 符号与前右/后相反
     float thrust_left_mixed = _thrust_left_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_left_bicopter * ahrs_pitch_abs;
-    _rpy_out[FL_UP]         = thrust_left_mixed - yaw_thrust * 0.5f;
-    _rpy_out[FL_DOWN]       = thrust_left_mixed + yaw_thrust * 0.5f;
+    _rpy_out[FL_UP]         = thrust_left_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[FL_DOWN]       = thrust_left_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
 
     // 找出最高和最低 RPY 输出
     for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
@@ -670,7 +693,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
                 _rpy_out[i] *= scale2;
             }
         }
-        thr_adj = throttle_thrust - throttle_thrust_best_rpy;  // 保持 base+thr_adj = throttle_thrust
+        thr_adj = throttle_thrust - throttle_thrust_best_rpy; // 保持 base+thr_adj = throttle_thrust
     } else if (thr_adj > 1.0f - (throttle_thrust_best_rpy + rpy_high)) {
         // Throttle 不能提升到期望值
         thr_adj              = 1.0f - (throttle_thrust_best_rpy + rpy_high);

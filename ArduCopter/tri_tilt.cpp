@@ -123,8 +123,8 @@ void Copter::tritilt_update()
 
             // 每2秒报告一次 pitch_off_deg
             if (now_ms - pitch_off_deg_report_ms >= 2000U) {
-                gcs().send_text(MAV_SEVERITY_NOTICE, "pitch_off_deg=%.1f",
-                    (double)pitch_off_deg);
+                gcs().send_text(MAV_SEVERITY_NOTICE, "pitch off=%d",
+                    (int)pitch_off_deg);
                 pitch_off_deg_report_ms = now_ms;
             }
 
