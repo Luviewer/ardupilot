@@ -392,6 +392,12 @@ void AC_Loiter::calc_desired_velocity(bool avoidance_on)
     }
 #endif // !APM_BUILD_ArduPlane
 
+    desired_vel_ne_ms += _vel_offset_ne_ms;
+    desired_vel_ms = desired_vel_ne_ms.length();
+    if (desired_vel_ms > gnd_speed_limit_ms) {
+        desired_vel_ne_ms *= gnd_speed_limit_ms / desired_vel_ms;
+    }
+
     // Retrieve current desired position
     Vector2p desired_pos_ned_m = _pos_control.get_pos_desired_NED_m().xy();
 

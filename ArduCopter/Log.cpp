@@ -314,6 +314,36 @@ void Copter::Log_Write_SysID_Setup(uint8_t systemID_axis, float waveform_magnitu
 #endif
 }
 
+struct PACKED log_Impedance {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float force_ref;
+    float force_est;
+    float force_err;
+    float vel_body_x;
+    float vel_ne_n;
+    float vel_ne_e;
+    float virtual_pitch_rad;
+};
+
+void Copter::Log_Write_Impedance(float force_ref, float force_est, float force_err,
+                                  float vel_body_x, float vel_ne_n, float vel_ne_e,
+                                  float virtual_pitch_rad)
+{
+    struct log_Impedance pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_IMPEDANCE_MSG),
+        time_us             : AP_HAL::micros64(),
+        force_ref           : force_ref,
+        force_est           : force_est,
+        force_err           : force_err,
+        vel_body_x          : vel_body_x,
+        vel_ne_n            : vel_ne_n,
+        vel_ne_e            : vel_ne_e,
+        virtual_pitch_rad   : virtual_pitch_rad
+    };
+    logger.WriteBlock(&pkt, sizeof(pkt));
+}
+
 // guided position target logging
 struct PACKED log_Guided_Position_Target {
     LOG_PACKET_HEADER;
@@ -571,6 +601,20 @@ const struct LogStructure Copter::log_structure[] = {
 
     { LOG_RATE_THREAD_DT_MSG, sizeof(log_Rate_Thread_Dt),
       "RTDT", "Qffff", "TimeUS,dt,dtAvg,dtMax,dtMin", "sssss", "F----" , true },
+
+// @LoggerMessage: IMPD
+// @Description: Impedance mode admittance control data
+// @Field: TimeUS: Time since system startup
+// @Field: FRef: Force reference from pitch stick
+// @Field: FEst: Estimated body-X thrust ratio
+// @Field: FErr: Force error (FRef - FEst)
+// @Field: VBx: Admittance velocity in body-X (m/s)
+// @Field: VN: Admittance velocity offset North (m/s)
+// @Field: VE: Admittance velocity offset East (m/s)
+// @Field: VPit: Virtual pitch angle fed to Loiter (rad)
+
+    { LOG_IMPEDANCE_MSG, sizeof(log_Impedance),
+      "IMPD", "Qfffffff", "TimeUS,FRef,FEst,FErr,VBx,VN,VE,VPit", "s-------", "F-------" , true },
 
 };
 

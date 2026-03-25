@@ -703,6 +703,8 @@ public:
     void *mode_poshold_ptr;
 #endif
 
+    void *mode_impedance_ptr;
+
 };
 
 extern const AP_Param::Info        var_info[];

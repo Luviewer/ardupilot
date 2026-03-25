@@ -45,6 +45,9 @@ public:
     // Clears any pilot-requested acceleration by setting roll and pitch inputs to zero.
     void clear_pilot_desired_acceleration() { set_pilot_desired_acceleration_rad(0.0, 0.0); }
 
+    void set_vel_offset_NE_ms(const Vector2f& vel_offset) { _vel_offset_ne_ms = vel_offset; }
+    void clear_vel_offset_NE_ms() { _vel_offset_ne_ms.zero(); }
+
     // Calculates the expected stopping point based on current velocity and position in the NE frame.
     // Result is returned in meters.
     // Uses the position controller’s deceleration model.
@@ -73,6 +76,7 @@ public:
 
     // Sets the maximum allowed horizontal loiter speed in m/s.
     void set_speed_max_NE_ms(float speed_max_NE_ms);
+    float get_speed_max_NE_ms() const { return _speed_max_ne_ms; }
 
     // Returns the desired roll angle in centidegrees from the loiter controller.
     float get_roll_cd() const { return rad_to_cd(get_roll_rad()); }
@@ -135,4 +139,6 @@ protected:
     Vector2f    _predicted_euler_accel;     // Predicted roll/pitch angular rates (in rad/s) for pilot acceleration shaping.
     uint32_t    _brake_timer_ms;            // Timestamp (in ms) when braking logic was last triggered (sticks released).
     float       _brake_accel_mss;           // Current braking acceleration in m/s², updated using jerk limits over time.
+
+    Vector2f    _vel_offset_ne_ms;
 };

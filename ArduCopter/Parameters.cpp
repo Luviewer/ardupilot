@@ -1169,6 +1169,10 @@ const AP_Param::GroupInfo ParametersG2::var_info2[] = {
     // @Increment: 0.1
     AP_GROUPINFO("PILOT_TKO_ALT_M", 20, ParametersG2, pilot_takeoff_alt_m, PILOT_TKO_ALT_M_DEFAULT),
 
+    // @Group: IMPD_
+    // @Path: mode_impedance.cpp
+    AP_SUBGROUPPTR(mode_impedance_ptr, "IMPD_", 21, ParametersG2, ModeImpedance),
+
     // ID 62 is reserved for the AP_SUBGROUPEXTENSION
 
     AP_GROUPEND
@@ -1238,6 +1242,7 @@ ParametersG2::ParametersG2(void) :
 #if MODE_POSHOLD_ENABLED
     ,mode_poshold_ptr(&copter.mode_poshold)
 #endif
+    ,mode_impedance_ptr(&copter.mode_impedance)
 {
     AP_Param::setup_object_defaults(this, var_info);
     AP_Param::setup_object_defaults(this, var_info2);
