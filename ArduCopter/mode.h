@@ -101,8 +101,10 @@ public:
         AUTOROTATE =   26,  // Autonomous autorotation
         AUTO_RTL =     27,  // Auto RTL, this is not a true mode, AUTO will report as this mode if entered to perform a DO_LAND_START Landing sequence
         TURTLE =       28,  // Flip over after crash
+        IMPEDANCE =    29,  // Loiter with admittance (force→velocity) control on forward axis
+        TILT_LOITER =  30,  // Loiter with body-frame pitch control for tilt tricopter
 
-        // Mode number 30 reserved for "offboard" for external/lua control.
+        // Mode number 31 reserved for "offboard" for external/lua control.
 
         // Mode number 127 reserved for the "drone show mode" in the Skybrush
         // fork at https://github.com/skybrush-io/ardupilot
@@ -1395,6 +1397,84 @@ private:
     bool _precision_loiter_active; // true if user has switched on prec loiter
 #endif
 
+};
+
+
+class ModeImpedance : public Mode {
+
+public:
+    ModeImpedance();
+    Number mode_number() const override { return Number::IMPEDANCE; }
+
+    static const struct AP_Param::GroupInfo var_info[];
+
+    bool init(bool ignore_checks) override;
+    void run() override;
+
+    bool requires_position() const override { return true; }
+    bool has_manual_throttle() const override { return false; }
+    bool allows_arming(AP_Arming::Method method) const override { return true; };
+    bool is_autopilot() const override { return false; }
+    bool has_user_takeoff(bool must_navigate) const override { return true; }
+
+protected:
+
+    const char *name() const override { return "Impedance"; }
+    const char *name4() const override { return "IMPD"; }
+
+    float wp_distance_m() const override;
+    float wp_bearing_deg() const override;
+    float crosstrack_error_m() const override { return pos_control->crosstrack_error_m(); }
+
+private:
+
+    float _adm_v_body_x = 0.0f;
+    float _adm_force_ref = 0.0f;
+    float _adm_force_est = 0.0f;
+    float _virtual_pitch_rad = 0.0f;
+    Vector2f _vel_offset_ne;
+
+    AP_Float _adm_gain;
+    AP_Float _adm_tau;
+    AP_Float _adm_vmax;
+    AP_Float _adm_dz;
+    AP_Float _adm_fmax;
+    AP_Float _adm_fest_lpf_hz;
+    AP_Float _adm_damp;
+    float _adm_force_est_filt = 0.0f;
+    float _prev_force_err = 0.0f;
+
+    void admittance_reset();
+    void admittance_update(float dt);
+};
+
+
+class ModeTiltLoiter : public Mode {
+
+public:
+    using Mode::Mode;
+    Number mode_number() const override { return Number::TILT_LOITER; }
+
+    bool init(bool ignore_checks) override;
+    void run() override;
+
+    bool requires_position() const override { return true; }
+    bool has_manual_throttle() const override { return false; }
+    bool allows_arming(AP_Arming::Method method) const override { return true; };
+    bool is_autopilot() const override { return false; }
+    bool has_user_takeoff(bool must_navigate) const override { return true; }
+
+protected:
+
+    const char *name() const override { return "TiltLoiter"; }
+    const char *name4() const override { return "TLOI"; }
+
+    float wp_distance_m() const override;
+    float wp_bearing_deg() const override;
+    float crosstrack_error_m() const override { return pos_control->crosstrack_error_m(); }
+
+private:
+    bool _pilot_has_vel_cmd;  // 上一周期是否有水平速度指令
 };
 
 

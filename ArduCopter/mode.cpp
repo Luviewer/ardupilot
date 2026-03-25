@@ -54,6 +54,12 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             return &mode_circle;
 #endif
 
+        case Mode::Number::IMPEDANCE:
+            return &mode_impedance;
+
+        case Mode::Number::TILT_LOITER:
+            return &mode_tilt_loiter;
+
 #if MODE_LOITER_ENABLED
         case Mode::Number::LOITER:
             return &mode_loiter;
@@ -229,6 +235,7 @@ uint32_t Copter::get_available_mode_enabled_mask() const
 #if MODE_CIRCLE_ENABLED
         &copter.mode_circle,
 #endif
+        &copter.mode_impedance,
 #if MODE_LOITER_ENABLED
         &copter.mode_loiter,
 #endif

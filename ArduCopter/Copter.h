@@ -215,6 +215,8 @@ public:
     friend class ModeFollow;
     friend class ModeGuided;
     friend class ModeLand;
+    friend class ModeImpedance;
+    friend class ModeTiltLoiter;
     friend class ModeLoiter;
     friend class ModePosHold;
     friend class ModeRTL;
@@ -915,6 +917,7 @@ private:
     void Log_Write_SysID_Data(float waveform_time, float waveform_sample, float waveform_freq_hz, float angle_x_degs, float angle_y_degs, float angle_z_degs, float accel_x_mss, float accel_y_mss, float accel_z_mss);
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Write_Rate_Thread_Dt(float dt, float dtAvg, float dtMax, float dtMin);
+    void Log_Write_Impedance(float force_ref, float force_est, float force_err, float vel_body_x, float vel_ne_n, float vel_ne_e, float virtual_pitch_rad);
 #endif  // HAL_LOGGING_ENABLED
 
     // mode.cpp
@@ -1062,6 +1065,8 @@ private:
 #endif
 #endif
     ModeLand mode_land;
+    ModeImpedance mode_impedance;
+    ModeTiltLoiter mode_tilt_loiter;
 #if MODE_LOITER_ENABLED
     ModeLoiter mode_loiter;
 #endif
