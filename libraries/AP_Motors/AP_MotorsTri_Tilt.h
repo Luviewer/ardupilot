@@ -93,7 +93,7 @@ public:
     virtual int8_t get_tilt_enable() override { return _tilt_enable.get(); }
     virtual float get_tilt_max_deg() override { return _tilt_pitch_off_max_deg.get(); }
     virtual float get_bicopter_pitch_P_factor() override;
-
+    float get_est_body_x_thrust_ratio() const override { return _est_body_x_thrust_ratio; }
     void servoOutput(enum TiltIndex servo_index, float svo_out_cd);
 
 protected:
@@ -155,6 +155,8 @@ private:
     
     // 临时存储混合后的 RPY 输出（不含 throttle）
     float _rpy_out[MotorIndex_COUNT];
+
+    float _est_body_x_thrust_ratio;
 
 #if AP_MOTORS_TRI_TILT_ENABLE_LIMIT_WARNINGS
     // GCS 提示状态记录（记录上次的限制状态和时间戳）

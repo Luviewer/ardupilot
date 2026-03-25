@@ -767,6 +767,21 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
         RESET_LIMIT_STATE(rpy_all);
     }
 # endif
+
+    const float F_fr   = (_thrust[FR_UP]   + _thrust[FR_DOWN]);
+    const float F_rear = (_thrust[REAR_UP] + _thrust[REAR_DOWN]);
+    const float F_fl   = (_thrust[FL_UP]   + _thrust[FL_DOWN]);
+
+    const float F_sum = F_fr + F_rear + F_fl;
+
+    float Fx_model = F_fr * -sinf(_tilt_angle_rad[FR]) + F_rear * -sinf(_tilt_angle_rad[REAR]) + F_fl * -sinf(_tilt_angle_rad[FL]);
+    _est_body_x_thrust_ratio = Fx_model / MAX(F_sum,  1.0e-4f);
+
+    static int count = 0;
+    count++;
+    if (count % 400 == 0) {
+        gcs().send_text(MAV_SEVERITY_INFO, "estimated force: %.2f", _est_body_x_thrust_ratio);
+    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////

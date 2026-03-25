@@ -163,6 +163,7 @@ public:
     float               get_forward() const { return _forward_in; }
     float               get_lateral() const { return _lateral_in; }
     virtual float       get_throttle_hover() const = 0;
+    virtual float       get_est_body_x_thrust_ratio() const { return 0.0f;}
 
     // motor failure handling
     void                set_thrust_boost(bool enable) { _thrust_boost = enable; }
