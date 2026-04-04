@@ -58,12 +58,37 @@ void Copter::tritilt_update()
     float  pitch_rate    = 0.0f;
 
     // -----------------------------------------------------------------------
-    // MAVLink command pre-processing (overrides FSM state when present)
+    // MAVLink command pre-processing
+    //   Lowest priority: only accepted when RTZ low + stick centred +
+    //   current state is HOLD, IDLE or GOTO_TARGET.
     // -----------------------------------------------------------------------
     if (_tritilt.cmd_pending) {
         _tritilt.cmd_pending = false;
-        // Both modes move smoothly to target; cmd_rate==0 means use TTLT_RATE_MAX
-        _tritilt.state = State::GOTO_TARGET;
+        if (return_zero_is_low && pitch_in_mid_dz &&
+            (_tritilt.state == State::HOLD || _tritilt.state == State::IDLE ||
+             _tritilt.state == State::GOTO_TARGET)) {
+            _tritilt.state = State::GOTO_TARGET;
+        }
+    }
+
+    // -----------------------------------------------------------------------
+    // Global preemption (checked every frame, priority high → low)
+    //   0. RC lost          → RTZ_ACTIVE  (safety fallback)
+    //   1. RTZ switch high  → RTZ_WAIT    (overrides MANUAL & GOTO_TARGET)
+    //   2. Stick deflected  → MANUAL      (overrides GOTO_TARGET; needs RTZ low)
+    // -----------------------------------------------------------------------
+    if (!pitch_ctrl_valid) {
+        if (_tritilt.state != State::IDLE) {
+            _tritilt.state = State::RTZ_ACTIVE;
+        }
+    } else if (rtz_trigger && !_tritilt.rtz_needs_reset) {
+        if (_tritilt.state == State::MANUAL || _tritilt.state == State::GOTO_TARGET) {
+            _tritilt.state = State::RTZ_WAIT;
+        }
+    } else if (pitch_manual_active && _tritilt.pitch_stick_armed && return_zero_is_low) {
+        if (_tritilt.state == State::GOTO_TARGET) {
+            _tritilt.state = State::MANUAL;
+        }
     }
 
     // -----------------------------------------------------------------------
@@ -72,7 +97,6 @@ void Copter::tritilt_update()
     switch (_tritilt.state) {
 
     case State::IDLE:
-        // Arm the stick when it is first seen centered
         if (pitch_ctrl_valid) {
             if (pitch_in_mid_dz) {
                 _tritilt.pitch_stick_armed = true;
@@ -88,7 +112,6 @@ void Copter::tritilt_update()
             _tritilt.state = State::RTZ_WAIT;
         } else if (pitch_manual_active) {
             if (!_tritilt.pitch_stick_armed) {
-                // Stick was not at center at power-on; wait for it to be centered first
                 throttled_warn(_tritilt.warn_stick_not_armed_ms,
                                "Tilt servo center pitch stick to enable");
             } else if (return_zero_is_low) {
@@ -98,21 +121,16 @@ void Copter::tritilt_update()
                                "Tilt servo lower return switch for manual pitch");
             }
         } else if (pitch_in_mid_dz) {
-            // Record centering so future deflections are allowed
             _tritilt.pitch_stick_armed = true;
         }
-        // pitch_rate stays 0 — hold current angle
         break;
 
     case State::MANUAL:
-        if (!pitch_ctrl_valid) {
-            _tritilt.state = State::IDLE;
-        } else if (!pitch_manual_active) {
+        if (!pitch_manual_active) {
             _tritilt.state = State::HOLD;
         } else if (!return_zero_is_low) {
             throttled_warn(_tritilt.warn_switch_low_ms,
                            "Tilt servo lower return switch for manual pitch");
-            // pitch_rate stays 0 — refuse to move
         } else {
             pitch_rate = pitch_norm * _tritilt.rate_max.get();
         }
@@ -140,7 +158,7 @@ void Copter::tritilt_update()
         } else if (is_zero(pitch_off_deg)) {
             _tritilt.state                  = State::HOLD;
             _tritilt.rtz_needs_reset        = true;
-            _tritilt.zero_position_reported = true;  // suppress duplicate from boundary check
+            _tritilt.zero_position_reported = true;
             gcs().send_text(MAV_SEVERITY_NOTICE, "Tilt servo pitch at zero");
         } else {
             pitch_rate = (pitch_off_deg > 0.0f) ? -_tritilt.rtz_rate.get() : _tritilt.rtz_rate.get();
@@ -148,30 +166,17 @@ void Copter::tritilt_update()
         break;
 
     case State::GOTO_TARGET: {
-        if (!pitch_ctrl_valid) {
-            // RC lost: return to zero immediately (no stick to confirm RTZ_WAIT)
-            _tritilt.state = State::RTZ_ACTIVE;
-        } else if (rtz_trigger && !_tritilt.rtz_needs_reset) {
-            // RTZ switch: interrupt goto, require stick-centre confirmation
-            _tritilt.state = State::RTZ_WAIT;
-        } else if (pitch_manual_active && _tritilt.pitch_stick_armed && return_zero_is_low) {
-            // Pilot takes over manually
-            _tritilt.state = State::MANUAL;
+        const float target = constrain_float(_tritilt.cmd_value, min_pitch_off, max_pitch_off);
+        const float goto_rate = is_positive(_tritilt.cmd_rate)
+                                ? constrain_float(_tritilt.cmd_rate, 0.1f, _tritilt.rate_max.get())
+                                : _tritilt.rate_max.get();
+        const float err = target - pitch_off_deg;
+        if (fabsf(err) <= goto_rate * dt) {
+            pitch_off_deg  = target;
+            _tritilt.state = State::HOLD;
+            _tritilt.zero_position_reported = is_zero(target);
         } else {
-            const float target = constrain_float(_tritilt.cmd_value, min_pitch_off, max_pitch_off);
-            // cmd_rate == 0: use TTLT_RATE_MAX default; otherwise clamp to [0.1, rate_max]
-            const float goto_rate = is_positive(_tritilt.cmd_rate)
-                                    ? constrain_float(_tritilt.cmd_rate, 0.1f, _tritilt.rate_max.get())
-                                    : _tritilt.rate_max.get();
-            const float err = target - pitch_off_deg;
-            if (fabsf(err) <= goto_rate * dt) {
-                // Close enough: snap to target and hold
-                pitch_off_deg  = target;
-                _tritilt.state = State::HOLD;
-                _tritilt.zero_position_reported = is_zero(target);
-            } else {
-                pitch_rate = (err > 0.0f) ? goto_rate : -goto_rate;
-            }
+            pitch_rate = (err > 0.0f) ? goto_rate : -goto_rate;
         }
         break;
     }

@@ -554,14 +554,27 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_int_packet(const mavlink_command_i
         return MAV_RESULT_FAILED;
 #endif
 
-    case MAV_CMD_USER_1:
-        // TriTilt pitch control (Guided mode only):
-        //   param1=0  angle:      param2=target_deg  (rate = TTLT_RATE_MAX default)
-        //   param1=1  goto:       param2=target_deg, param3=rate_deg_s
+    case MAV_CMD_USER_1: {
+        // TriTilt pitch control:
+        //   param1=0  angle:  param2=target_deg  (rate = TTLT_RATE_MAX)
+        //   param1=1  goto:   param2=target_deg, param3=rate_deg_s
+        // Prerequisite: RTZ switch low + pitch stick centred
+        RC_Channel *rtz_ch = rc().find_channel_for_option(
+            RC_Channel::AUX_FUNC::TRITILT_RETURN_TO_ZERO);
+        RC_Channel *pitch_ch = rc().find_channel_for_option(
+            RC_Channel::AUX_FUNC::TRITILT_PITCH_CTRL);
+        const uint16_t rtz_pwm = (rtz_ch != nullptr) ? rtz_ch->get_radio_in() : 0U;
+        if (rtz_pwm >= 1500U) {
+            return MAV_RESULT_TEMPORARILY_REJECTED;
+        }
+        if (pitch_ch != nullptr && !is_zero(pitch_ch->norm_input_dz())) {
+            return MAV_RESULT_TEMPORARILY_REJECTED;
+        }
         copter._tritilt.cmd_value   = packet.param2;
         copter._tritilt.cmd_rate    = (packet.param1 >= 1.0f) ? packet.param3 : 0.0f;
         copter._tritilt.cmd_pending = true;
         return MAV_RESULT_ACCEPTED;
+    }
 
     default:
         return GCS_MAVLINK::handle_command_int_packet(packet, msg);
