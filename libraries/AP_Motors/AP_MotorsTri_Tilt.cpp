@@ -106,27 +106,6 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // 先链入父类 Multicopter 参数（MOT_YAW_HEADROOM、MOT_THST_EXPO 等），再接本类自定义参数
     AP_NESTEDGROUPINFO(AP_MotorsMulticopter, 0),
 
-    // @Param: TRI_TILT_LX
-    // @DisplayName: 前臂 X 方向距离（归一化）
-    // @Description: 前部转子臂到重心的 X 轴距离（归一化）
-    // @Range: 0.1 2.0
-    // @User: Advanced
-    AP_GROUPINFO("TILT_LX", 1, AP_MotorsTri_Tilt, _lfront_x, 0.5f),
-
-    // @Param: TRI_TILT_LY
-    // @DisplayName: 前臂 Y 方向距离（归一化）
-    // @Description: 前部转子臂到重心的 Y 轴距离（归一化）
-    // @Range: 0.1 2.0
-    // @User: Advanced
-    AP_GROUPINFO("TILT_LY", 2, AP_MotorsTri_Tilt, _lfront_y, 0.5f),
-
-    // @Param: TRI_TILT_LREAR
-    // @DisplayName: 后臂长度（归一化）
-    // @Description: 后部转子臂到重心的长度（归一化）
-    // @Range: 0.1 2.0
-    // @User: Advanced
-    AP_GROUPINFO("TILT_LREAR", 3, AP_MotorsTri_Tilt, _lrear, 1.0f),
-
     // @Param: TRI_TILT_ANG_MAX
     // @DisplayName: 最大倾转角
     // @Description: 转子允许的最大倾转角（度）
@@ -171,6 +150,11 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("PIT_OFF_MAX", 14, AP_MotorsTri_Tilt, _tilt_pitch_off_max_deg, 20.0f),
 
+    // @Param: TILT_EN
+    // @DisplayName: Tilt enable
+    // @Description: Tilt enable
+    // @Values: 0:Disable, 1:Enable
+    // @User: Advanced
     AP_GROUPINFO("TILT_EN", 15, AP_MotorsTri_Tilt, _tilt_enable, 1),
 
     // @Param: FORWARD_FACTOR
@@ -180,10 +164,32 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("FORW_FACT", 16, AP_MotorsTri_Tilt, _forward_factor, 1),
 
+    // @Param: SVO_FR_OFF
+    // @DisplayName: Front-right tilt servo offset
+    // @Description: Front-right tilt servo offset
+    // @Range: 0.0 1.0
+    // @User: Advanced
     AP_GROUPINFO("SVO_FR_OFF", 17, AP_MotorsTri_Tilt, _svo_fr_offset, 0),
+
+    // @Param: SVO_REAR_OFF
+    // @DisplayName: Rear tilt servo offset
+    // @Description: Rear tilt servo offset
+    // @Range: 0.0 1.0
+    // @User: Advanced
     AP_GROUPINFO("SVO_REAR_OFF", 18, AP_MotorsTri_Tilt, _svo_rear_offset, 0),
+
+    // @Param: SVO_FL_OFF
+    // @DisplayName: Front-left tilt servo offset
+    // @Description: Front-left tilt servo offset
+    // @Range: 0.0 1.0
+    // @User: Advanced
     AP_GROUPINFO("SVO_FL_OFF", 19, AP_MotorsTri_Tilt, _svo_fl_offset, 0),
 
+    // @Param: ANTI_YAW_FAC
+    // @DisplayName: Anti-yaw factor
+    // @Description: Anti-yaw factor
+    // @Range: 0.0 1.0
+    // @User: Advanced
     AP_GROUPINFO("ANTI_YAW_FAC", 20, AP_MotorsTri_Tilt, _anti_yaw_factor, 1),
 
     // @Param: PITCH_FAC
@@ -191,7 +197,7 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @Description: Pitch factor for bicopter tilt control
     // @Range: 1.0~2.0
     // @User: Advanced
-    AP_GROUPINFO("Bi_PIT_FAC", 21, AP_MotorsTri_Tilt, _bicopter_pitch_P_factor, 0.0f),
+    AP_GROUPINFO("BI_PIT_FAC", 21, AP_MotorsTri_Tilt, _bicopter_pitch_P_factor, 0.0f),
 
     // @Param: LAT_FACT
     // @DisplayName: Lateral factor
@@ -355,12 +361,6 @@ bool AP_MotorsTri_Tilt::arming_checks(size_t buflen, char* buffer) const
     // 检查舵机是否已分配
     if (!_servos_assigned) {
         hal.util->snprintf(buffer, buflen, "TRI_TILT: Servos not assigned");
-        return false;
-    }
-
-    // 检查几何参数是否有效
-    if (_lfront_x <= 0.0f || _lfront_y <= 0.0f || _lrear <= 0.0f) {
-        hal.util->snprintf(buffer, buflen, "TRI_TILT: Invalid geometry params");
         return false;
     }
 
@@ -801,11 +801,11 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     float Fx_model = F_fr * -sinf(_tilt_angle_rad[FR]) + F_rear * -sinf(_tilt_angle_rad[REAR]) + F_fl * -sinf(_tilt_angle_rad[FL]);
     _est_body_x_thrust_ratio = Fx_model / MAX(F_sum,  1.0e-4f);
 
-    static int count = 0;
-    count++;
-    if (count % 400 == 0) {
-        gcs().send_text(MAV_SEVERITY_INFO, "estimated force: %.2f", _est_body_x_thrust_ratio);
-    }
+    // static int count = 0;
+    // count++;
+    // if (count % 400 == 0) {
+    //     gcs().send_text(MAV_SEVERITY_INFO, "estimated force: %.2f", _est_body_x_thrust_ratio);
+    // }
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
