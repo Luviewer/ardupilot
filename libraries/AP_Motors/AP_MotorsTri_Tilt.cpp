@@ -193,6 +193,13 @@ const AP_Param::GroupInfo AP_MotorsTri_Tilt::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("Bi_PIT_FAC", 21, AP_MotorsTri_Tilt, _bicopter_pitch_P_factor, 0.0f),
 
+    // @Param: LAT_FACT
+    // @DisplayName: Lateral factor
+    // @Description: Lateral factor
+    // @Range: 0.0 1.0
+    // @User: Advanced
+    AP_GROUPINFO("LAT_FACT", 22, AP_MotorsTri_Tilt, _lateral_factor, 1),
+
     AP_GROUPEND
 };
 
@@ -503,6 +510,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     float yaw_thrust;      // yaw thrust input value, +/- 1.0
     float throttle_thrust; // throttle thrust input value, 0.0 - 1.0
     float forward_thrust;  // forward thrust input value, +/- 1.0
+    float lateral_thrust;  // lateral thrust input value, +/- 1.0
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第1层：基础补偿 - 电压与高度补偿增益
@@ -619,13 +627,27 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
 
     // 后（2,3）：上 CW 下 CCW
     float thrust_rear_mixed = _thrust_rear_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_rear_bicopter * ahrs_pitch_abs;
-    _rpy_out[REAR_UP]       = thrust_rear_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
-    _rpy_out[REAR_DOWN]     = thrust_rear_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[REAR_UP]       = thrust_rear_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[REAR_DOWN]     = thrust_rear_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
 
     // 前左（4,5）：上 CW 下 CCW，yaw 符号与前右/后相反
     float thrust_left_mixed = _thrust_left_tricopter * (1.0f - ahrs_pitch_abs) + _thrust_left_bicopter * ahrs_pitch_abs;
-    _rpy_out[FL_UP]         = thrust_left_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
-    _rpy_out[FL_DOWN]       = thrust_left_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[FL_UP]         = thrust_left_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[FL_DOWN]       = thrust_left_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+
+
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    // 第12层：侧向力控制
+    /////////////////////////////////////////////////////////////////////////////////////////////////
+    lateral_thrust = _lateral_in;
+
+    // 侧向力混合
+    _rpy_out[FR_UP] += lateral_thrust * _lateral_factor;
+    _rpy_out[FR_DOWN] -= lateral_thrust * _lateral_factor;
+    
+    _rpy_out[FL_UP] -= lateral_thrust * _lateral_factor;
+    _rpy_out[FL_DOWN] += lateral_thrust * _lateral_factor;
+
 
     // 找出最高和最低 RPY 输出
     for (uint8_t i = 0; i < MotorIndex_COUNT; i++) {
@@ -636,6 +658,8 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
             rpy_high = _rpy_out[i];
         }
     }
+
+
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第8层：RPY 缩放补偿

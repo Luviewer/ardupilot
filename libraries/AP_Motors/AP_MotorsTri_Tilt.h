@@ -139,6 +139,7 @@ private:
     AP_Float _svo_fr_offset, _svo_rear_offset, _svo_fl_offset;
     AP_Float _anti_yaw_factor;
     AP_Float _bicopter_pitch_P_factor;
+    AP_Float _lateral_factor;
     
     // 三旋翼推力分配
     float _thrust_right_tricopter, _thrust_left_tricopter, _thrust_rear_tricopter;

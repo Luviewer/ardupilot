@@ -492,7 +492,7 @@ void Copter::allocate_motors(void)
         AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
         if (att6 != nullptr) {
             att6->set_forward_enable(true);
-            att6->set_lateral_enable(false);
+            att6->set_lateral_enable(true);
         }
     }
 #endif // AP_SCRIPTING_ENABLED
