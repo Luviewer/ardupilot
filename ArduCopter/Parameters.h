@@ -4,6 +4,7 @@
 
 #include <AP_Common/AP_Common.h>
 #include "RC_Channel_Copter.h"
+#include "tri_tilt.h"
 #include <AP_Proximity/AP_Proximity.h>
 
 class ModeRTL;
@@ -704,6 +705,9 @@ public:
 #endif
 
     void *mode_impedance_ptr;
+
+    // tri_tilt parameters (prefix TTLT_)
+    void *tritilt_ptr;
 
 };
 

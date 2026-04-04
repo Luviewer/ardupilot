@@ -1018,12 +1018,7 @@ private:
 
     // tri_tilt.cpp
     void tritilt_update();
-    struct {
-        float pitch_off_deg;
-        bool  cmd_pending;
-        bool  cmd_is_rate;
-        float cmd_value;
-    } _tritilt {};
+    TriTiltState _tritilt;
 
     // UserCode.cpp
     void userhook_init();
