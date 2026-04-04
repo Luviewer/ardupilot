@@ -344,6 +344,34 @@ void Copter::Log_Write_Impedance(float force_ref, float force_est, float force_e
     logger.WriteBlock(&pkt, sizeof(pkt));
 }
 
+struct PACKED log_TriTilt {
+    LOG_PACKET_HEADER;
+    uint64_t time_us;
+    float pitch_off_deg;
+    float pitch_virt_deg;
+    float pitch_ahrs_deg;
+    float pitch_true_deg;
+    float pitch_rate_degs;
+    float gyro_pitch_degs;
+};
+
+void Copter::Log_Write_TriTilt(float pitch_off_deg, float pitch_virt_deg,
+                                float pitch_ahrs_deg, float pitch_true_deg,
+                                float pitch_rate_degs, float gyro_pitch_degs)
+{
+    struct log_TriTilt pkt = {
+        LOG_PACKET_HEADER_INIT(LOG_TRITILT_MSG),
+        time_us          : AP_HAL::micros64(),
+        pitch_off_deg    : pitch_off_deg,
+        pitch_virt_deg   : pitch_virt_deg,
+        pitch_ahrs_deg   : pitch_ahrs_deg,
+        pitch_true_deg   : pitch_true_deg,
+        pitch_rate_degs  : pitch_rate_degs,
+        gyro_pitch_degs  : gyro_pitch_degs
+    };
+    logger.WriteBlock(&pkt, sizeof(pkt));
+}
+
 // guided position target logging
 struct PACKED log_Guided_Position_Target {
     LOG_PACKET_HEADER;
@@ -615,6 +643,18 @@ const struct LogStructure Copter::log_structure[] = {
 
     { LOG_IMPEDANCE_MSG, sizeof(log_Impedance),
       "IMPD", "Qfffffff", "TimeUS,FRef,FEst,FErr,VBx,VN,VE,VPit", "s-------", "F-------" , true },
+
+// @LoggerMessage: TTLT
+// @Description: TriTilt pitch offset and virtual/true pitch angles
+// @Field: TimeUS: Time since system startup
+// @Field: PitOff: Tilt pitch offset angle
+// @Field: PitVirt: Virtual pitch seen by EKF (IMU correction)
+// @Field: PitAHRS: AHRS estimated pitch
+// @Field: PitTrue: True body pitch (PitAHRS + PitVirt)
+// @Field: PitRate: Tilt pitch rate
+// @Field: GyroPit: AHRS gyro pitch rate
+    { LOG_TRITILT_MSG, sizeof(log_TriTilt),
+      "TTLT", "Qffffff", "TimeUS,PitOff,PitVirt,PitAHRS,PitTrue,PitRate,GyroPit", "sddddd?", "F000000" , true },
 
 };
 

@@ -554,6 +554,13 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_int_packet(const mavlink_command_i
         return MAV_RESULT_FAILED;
 #endif
 
+    case MAV_CMD_USER_1:
+        // TriTilt pitch control: param1=mode (0=abs deg, 1=rate deg/s), param2=value
+        copter._tritilt.cmd_is_rate  = (packet.param1 >= 1.0f);
+        copter._tritilt.cmd_value    = packet.param2;
+        copter._tritilt.cmd_pending  = true;
+        return MAV_RESULT_ACCEPTED;
+
     default:
         return GCS_MAVLINK::handle_command_int_packet(packet, msg);
     }

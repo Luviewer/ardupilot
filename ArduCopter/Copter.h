@@ -918,6 +918,8 @@ private:
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Write_Rate_Thread_Dt(float dt, float dtAvg, float dtMax, float dtMin);
     void Log_Write_Impedance(float force_ref, float force_est, float force_err, float vel_body_x, float vel_ne_n, float vel_ne_e, float virtual_pitch_rad);
+    void Log_Write_TriTilt(float pitch_off_deg, float pitch_virt_deg, float pitch_ahrs_deg,
+                           float pitch_true_deg, float pitch_rate_degs, float gyro_pitch_degs);
 #endif  // HAL_LOGGING_ENABLED
 
     // mode.cpp
@@ -1016,6 +1018,12 @@ private:
 
     // tri_tilt.cpp
     void tritilt_update();
+    struct {
+        float pitch_off_deg;
+        bool  cmd_pending;
+        bool  cmd_is_rate;
+        float cmd_value;
+    } _tritilt {};
 
     // UserCode.cpp
     void userhook_init();

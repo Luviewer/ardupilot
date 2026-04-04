@@ -18,16 +18,27 @@ void Copter::tritilt_update()
         const float return_to_zero_rate_deg_per_sec = 5.0f;   // TODO: make this a configurable parameter
 
         // 静态变量：保存累计俯仰偏置角与提示状态
-        static float pitch_off_deg = 0.0f;
+        float& pitch_off_deg = _tritilt.pitch_off_deg;
         static bool return_to_zero_latched = false;
         static bool upper_limit_reported = false;
         static bool lower_limit_reported = false;
         static bool zero_position_reported = true;
         static uint32_t wait_pitch_center_warn_ms = 0;
         static uint32_t return_zero_not_low_warn_ms = 0;
-        static uint32_t pitch_off_deg_report_ms = 0;
 
         float pitch_rate_deg_per_sec = 0.0f;
+
+        // MAVLink 外部命令处理（MAV_CMD_USER_1）
+        if (_tritilt.cmd_pending) {
+            _tritilt.cmd_pending = false;
+            const float max_lim = MIN(MAX(0.0f, motors->get_tilt_max_deg()), 90.0f);
+            if (_tritilt.cmd_is_rate) {
+                pitch_rate_deg_per_sec = _tritilt.cmd_value;
+            } else {
+                pitch_off_deg = constrain_float(_tritilt.cmd_value, -max_lim, max_lim);
+            }
+        }
+
         const uint32_t now_ms = AP_HAL::millis();
         const bool pitch_ctrl_valid = (pwm_pitch >= 900U && pwm_pitch <= 2100U);
         const bool return_zero_valid = (pwm_return_zero >= 900U && pwm_return_zero <= 2100U);
@@ -121,11 +132,25 @@ void Copter::tritilt_update()
             AP::ins().set_imu_pitch_rot_deg(pitch_off_deg);
             AP::compass().set_imu_pitch_rot_deg(pitch_off_deg);
 
-            // 每2秒报告一次 pitch_off_deg
-            if (now_ms - pitch_off_deg_report_ms >= 2000U) {
-                gcs().send_text(MAV_SEVERITY_NOTICE, "pitch off=%d",
-                    (int)pitch_off_deg);
-                pitch_off_deg_report_ms = now_ms;
+#if HAL_LOGGING_ENABLED
+            {
+                const float pit_virt = AP::ins().get_imu_pitch_rot_deg();
+                const float pit_ahrs = degrees(ahrs.get_pitch());
+                Log_Write_TriTilt(pitch_off_deg, pit_virt, pit_ahrs,
+                                  pit_ahrs + pit_virt,
+                                  pitch_rate_deg_per_sec,
+                                  degrees(ahrs.get_gyro().y));
+            }
+#endif
+
+            // 每 200ms 通过 NAMED_VALUE_FLOAT 发送遥测到地面站
+            static uint32_t named_float_send_ms = 0;
+            if (now_ms - named_float_send_ms >= 200U) {
+                named_float_send_ms = now_ms;
+                const float pit_true = degrees(ahrs.get_pitch()) + AP::ins().get_imu_pitch_rot_deg();
+                gcs().send_named_float("PitOff",  pitch_off_deg);
+                gcs().send_named_float("PitTrue", pit_true);
+                gcs().send_named_float("RTZCh",   return_zero_is_low ? 0.0f : 1.0f);
             }
 
             const bool at_upper_limit = (pitch_off_deg >= max_pitch_off_deg - limit_msg_epsilon_deg);
