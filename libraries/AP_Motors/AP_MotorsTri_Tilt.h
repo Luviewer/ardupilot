@@ -91,6 +91,7 @@ public:
     void set_roll_pitch(float roll_deg, float pitch_deg) override;
 
     virtual int8_t get_tilt_enable() override { return _tilt_enable.get(); }
+    virtual int8_t get_lateral_enable() override { return _lateral_enable.get(); }
     virtual float get_tilt_max_deg() override { return _tilt_pitch_off_max_deg.get(); }
     virtual float get_bicopter_pitch_P_factor() override;
     float get_est_body_x_thrust_ratio() const override { return _est_body_x_thrust_ratio; }
@@ -135,6 +136,7 @@ private:
     AP_Int8  _tilt_servo_fl_rev;   // front-left tilt servo reverse (0 normal, 1 reversed)
     AP_Float _tilt_pitch_off_max_deg; // max pitch offset (deg) commanded by RC7
     AP_Int8 _tilt_enable;
+    AP_Int8 _lateral_enable;
     AP_Float _forward_factor;
     AP_Float _svo_fr_offset, _svo_rear_offset, _svo_fl_offset;
     AP_Float _anti_yaw_factor;

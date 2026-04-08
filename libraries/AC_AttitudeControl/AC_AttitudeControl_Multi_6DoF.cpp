@@ -95,7 +95,7 @@ void AC_AttitudeControl_Multi_6DoF::set_forward_lateral_rad(float &euler_pitch_a
     euler_pitch_angle_rad = wrap_PI(euler_pitch_angle_rad);
 
     // roll/lateral
-    if (lateral_enable) {
+    if (lateral_enable && _motors.get_lateral_enable()) {
         _motors.set_lateral(sinf(euler_roll_angle_rad));
         euler_roll_angle_rad = radians(roll_offset_deg);
     } else {

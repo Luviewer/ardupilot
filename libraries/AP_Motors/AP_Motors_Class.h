@@ -171,6 +171,7 @@ public:
     virtual uint8_t     get_lost_motor() const { return 0; }
 
     virtual int8_t      get_tilt_enable() { return 0; }
+    virtual int8_t      get_lateral_enable() { return 0; }
     virtual float       get_tilt_max_deg() { return 0; }
     virtual float       get_bicopter_pitch_P_factor() { return 0; }
 
