@@ -1,6 +1,6 @@
 #include "Copter.h"
 
-#if AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
+#if AP_SCRIPTING_ENABLED && (AP_MOTORS_TRI_TILT_ENABLED || AP_MOTORS_QUAD_TILT_ENABLED)
 
 // Send a GCS warning message at most once per second.
 static void throttled_warn(uint32_t &last_ms, const char *msg)
@@ -17,8 +17,9 @@ void Copter::tritilt_update()
     using State = TriTiltState::State;
 
     // Early exit: only run for TriTilt frames with tilt enabled
+    const auto ft = (AP_Motors::motor_frame_type)g.frame_type.get();
     if ((AP_Motors::motor_frame_class)g2.frame_class.get() != AP_Motors::MOTOR_FRAME_TRI ||
-        (AP_Motors::motor_frame_type)g.frame_type.get()    != AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT ||
+        (ft != AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT && ft != AP_Motors::MOTOR_FRAME_TYPE_QUAD_TILT) ||
         !motors->get_tilt_enable()) {
         return;
     }
@@ -265,4 +266,4 @@ void Copter::tritilt_update()
     }
 }
 
-#endif  // AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
+#endif  // AP_SCRIPTING_ENABLED && (AP_MOTORS_TRI_TILT_ENABLED || AP_MOTORS_QUAD_TILT_ENABLED)

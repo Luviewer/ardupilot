@@ -1,6 +1,6 @@
 #include "Copter.h"
 
-#if AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
+#if AP_SCRIPTING_ENABLED && (AP_MOTORS_TRI_TILT_ENABLED || AP_MOTORS_QUAD_TILT_ENABLED)
 
 const AP_Param::GroupInfo TriTiltState::var_info[] = {
 
@@ -42,4 +42,4 @@ TriTiltState::TriTiltState()
     AP_Param::setup_object_defaults(this, var_info);
 }
 
-#endif  // AP_SCRIPTING_ENABLED && AP_MOTORS_TRI_TILT_ENABLED
+#endif  // AP_SCRIPTING_ENABLED && (AP_MOTORS_TRI_TILT_ENABLED || AP_MOTORS_QUAD_TILT_ENABLED)

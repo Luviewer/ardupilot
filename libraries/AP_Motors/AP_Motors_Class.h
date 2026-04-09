@@ -97,6 +97,7 @@ public:
         MOTOR_FRAME_TYPE_X_COR = 20, // X8 co-rotating, old motor ordering
         MOTOR_FRAME_TYPE_CW_X_COR = 21, // X8 co-rotating, clockwise motor ordering
         MOTOR_FRAME_TYPE_TRI_TILT = 22, // Coaxial tricopter with tilt servos (AP_MotorsTri_Tilt)
+        MOTOR_FRAME_TYPE_QUAD_TILT = 23, // Coaxial X-frame octocopter with tilt servos (AP_MotorsQuad_Tilt)
     };
 
 

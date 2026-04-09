@@ -11,6 +11,9 @@
 #if AP_MOTORS_TRI_TILT_ENABLED
 #include "AP_MotorsTri_Tilt.h"
 #endif  // AP_MOTORS_TRI_TILT_ENABLED
+#if AP_MOTORS_QUAD_TILT_ENABLED
+#include "AP_MotorsQuad_Tilt.h"
+#endif  // AP_MOTORS_QUAD_TILT_ENABLED
 #include "AP_MotorsHeli_Single.h"
 #include "AP_MotorsHeli_Dual.h"
 #include "AP_MotorsHeli_Quad.h"

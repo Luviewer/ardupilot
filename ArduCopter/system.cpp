@@ -388,6 +388,14 @@ void Copter::allocate_motors(void)
                 break;
             }
 #endif // AP_MOTORS_TRI_TILT_ENABLED
+#if AP_MOTORS_QUAD_TILT_ENABLED
+            if ((AP_Motors::motor_frame_type)g.frame_type.get() == AP_Motors::MOTOR_FRAME_TYPE_QUAD_TILT) {
+                motors = NEW_NOTHROW AP_MotorsQuad_Tilt(copter.scheduler.get_loop_rate_hz());
+                motors_var_info = AP_MotorsQuad_Tilt::var_info;
+                AP_Param::set_frame_type_flags(AP_PARAM_FRAME_TRICOPTER);
+                break;
+            }
+#endif // AP_MOTORS_QUAD_TILT_ENABLED
             motors = NEW_NOTHROW AP_MotorsTri(copter.scheduler.get_loop_rate_hz());
             motors_var_info = AP_MotorsTri::var_info;
             AP_Param::set_frame_type_flags(AP_PARAM_FRAME_TRICOPTER);
@@ -463,8 +471,9 @@ void Copter::allocate_motors(void)
         (frame_class == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING) ||
         (frame_class == AP_Motors::MOTOR_FRAME_6DOF_DYNAMIC_SCRIPTING)
 #if AP_SCRIPTING_ENABLED
-        // TriTilt uses forward input which is only produced by the 6DoF attitude controller
+        // TriTilt/QuadTilt uses forward input which is only produced by the 6DoF attitude controller
         || ((frame_class == AP_Motors::MOTOR_FRAME_TRI) && (frame_type == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT))
+        || ((frame_class == AP_Motors::MOTOR_FRAME_TRI) && (frame_type == AP_Motors::MOTOR_FRAME_TYPE_QUAD_TILT))
 #endif
         ;
 
@@ -487,8 +496,9 @@ void Copter::allocate_motors(void)
     AP_Param::load_object_from_eeprom(attitude_control, attitude_control_var_info);
 
 #if AP_SCRIPTING_ENABLED
-    // Configure 6DoF attitude controller flags for TriTilt (5DoF: forward enabled, lateral disabled)
-    if ((frame_class == AP_Motors::MOTOR_FRAME_TRI) && (frame_type == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT)) {
+    // Configure 6DoF attitude controller flags for TriTilt/QuadTilt
+    if ((frame_class == AP_Motors::MOTOR_FRAME_TRI) &&
+        (frame_type == AP_Motors::MOTOR_FRAME_TYPE_TRI_TILT || frame_type == AP_Motors::MOTOR_FRAME_TYPE_QUAD_TILT)) {
         AC_AttitudeControl_Multi_6DoF *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
         if (att6 != nullptr) {
             att6->set_forward_enable(true);
