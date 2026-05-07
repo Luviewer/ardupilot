@@ -272,6 +272,8 @@ void AP_MotorsQuad_Tilt::init(motor_frame_class frame_class, motor_frame_type fr
     const bool ok_lr = SRV_Channels::set_aux_channel_default(SRV_Channel::k_actuator3, AP_MOTORS_QUAD_TILT_SERVO_LR);
     const bool ok_lf = SRV_Channels::set_aux_channel_default(SRV_Channel::k_actuator4,     AP_MOTORS_QUAD_TILT_SERVO_LF);
 
+    SRV_Channels::set_aux_channel_default(SRV_Channel::k_actuator5, CH_13);
+
     const float    ang_max_deg    = 270.0f / 2.0f;
     const uint16_t servo_range_cd = uint16_t(ang_max_deg * 100.0f);
 
@@ -280,11 +282,15 @@ void AP_MotorsQuad_Tilt::init(motor_frame_class frame_class, motor_frame_type fr
     SRV_Channels::set_angle(SRV_Channel::k_actuator3,   servo_range_cd);
     SRV_Channels::set_angle(SRV_Channel::k_actuator4,   servo_range_cd);
 
+    SRV_Channels::set_angle(SRV_Channel::k_actuator5,   servo_range_cd);
+
     // 设置倾转舵机默认 PWM 范围（硬件：500~2500us）
-    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator1,    500, 2500);
-    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator2,     500, 2500);
+    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator1, 500, 2500);
+    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator2, 500, 2500);
     SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator3, 500, 2500);
-    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator4,     500, 2500);
+    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator4, 500, 2500);
+
+    SRV_Channels::set_output_min_max_defaults(SRV_Channel::k_actuator5, 500, 2500);
 
     // 检查舵机是否已分配（默认或用户映射）
     _servos_assigned = (ok_rf || SRV_Channels::function_assigned(SRV_Channel::k_actuator1))
@@ -486,6 +492,9 @@ void AP_MotorsQuad_Tilt::output_to_motors()
     servoOutput(RR, rr_out_cd);
     servoOutput(LR, lr_out_cd);
     servoOutput(LF, lf_out_cd);
+
+    SRV_Channels::set_output_scaled(SRV_Channel::k_actuator5, (float)AP::ins().get_imu_pitch_rot_deg()*100);
+
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
