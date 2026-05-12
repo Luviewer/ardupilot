@@ -32,6 +32,8 @@ public:
     void trajectory_generation(uint8_t leg_index) override;
     void yaw_trajectory_generation(uint8_t leg_index) override;
     void main_inverse_kinematics(void) override;
+    void refresh_steps(void) override;
+    void cog_generation(uint8_t leg_index);
 
     uint32_t get_Freq() override { return (uint32_t)gait_hz.get(); }
 
@@ -49,6 +51,9 @@ protected:
     AP_Int8  trajectory_mode;        // 轨迹生成模式选择：0=经典摆线轨迹，1=贝塞尔曲线轨迹
     AP_Float bezier_control_height;  // 贝塞尔曲线控制点高度系数：调节抬腿高度（相对leg_lift_height的比例）
     AP_Float bezier_control_forward; // 贝塞尔曲线控制点前向偏移系数：调节轨迹前后延伸程度（相对行程长度的比例）
+    AP_Float centre_offset_ratio;    // 重心偏移比例系数：控制重心移动幅度
+    AP_Float centre_offset_ratio_x;  // 重心偏移比例系数（X方向）：控制X方向重心移动幅度
+    AP_Float centre_offset_ratio_y;  // 重心偏移比例系数（Y方向）：控制Y方向重心移动幅度
 
     // 轨迹生成函数
     void     generate_cycloid_trajectory(uint8_t leg_index);                                                                   // 摆线轨迹生成器：使用经典摆线算法，计算简单，运动平稳
@@ -62,4 +67,5 @@ protected:
     float    hip_lock_deg[AP_QUADRUPED_LEG_ALL];
     bool     hip_lock_inited = false;
     uint32_t lasttime;
+    uint8_t  gait_step_cog_start[AP_QUADRUPED_LEG_ALL]; // 每条腿的重心偏移起始步数
 };

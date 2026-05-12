@@ -2,7 +2,7 @@
 #include "AP_QuadRuped.h"
 #include <AP_HAL/AP_HAL.h>
 
-#define SPEED_HZ_DEFAULT        AP_QUADRUPED_SPEED_HZ_DEFAULT // 默认步态频率（Hz）
+#define SPEED_HZ_DEFAULT        AP_QUADRUPED_SPEED_HZ_DEFAULT   // 默认步态频率（Hz）
 #define GAIT_STEP_TOTAL_DEFAULT AP_QUADRUPED_STEP_TOTAL_DEFAULT // 默认步态总步数
 
 // 外部HAL实例
@@ -23,6 +23,9 @@ const AP_Param::GroupInfo AP_QuadRuped_Wave_COG::var_info[] = {
     // ==================== 贝塞尔曲线控制参数 ====================
     AP_GROUPINFO("BCTRL_H", 5, AP_QuadRuped_Wave_COG, bezier_control_height, 0.3f),
     AP_GROUPINFO("BCTRL_F", 6, AP_QuadRuped_Wave_COG, bezier_control_forward, 0.2f),
+
+    // ==================== 重心平滑过渡参数 ====================
+    AP_GROUPINFO("COG_TIME", 7, AP_QuadRuped_Wave_COG, cog_transition_time, 0.3f),  // 过渡时间（秒）
 
     AP_GROUPEND
 };
@@ -75,9 +78,8 @@ void AP_QuadRuped_Wave_COG::update_leg()
 
     refresh_steps();
 
-    // 波浪步态当前版本不处理重心偏移
-    // center_offset.zero();
-    // centre_offset_target.zero();
+    // 重心偏移：按完整周期生成连续圆轨迹，避免每个 1/4 圆切换时的突变
+    cog_generation(AP_QUADRUPED_LEG_RF);
 
     // 遍历所有腿，生成轨迹
     for (uint8_t leg_index = 0; leg_index < AP_QUADRUPED_LEG_ALL; leg_index++) {
@@ -87,64 +89,85 @@ void AP_QuadRuped_Wave_COG::update_leg()
 
         // 为每条腿生成位置轨迹和旋转轨迹
         trajectory_generation(leg_index);
-        cog_generation(leg_index);
         yaw_trajectory_generation(leg_index);
     }
 }
 
+// 主更新函数 - 确保重心过渡始终执行
+void AP_QuadRuped_Wave_COG::update()
+{
+    // 先执行父类的 main_inverse_kinematics，这会设置 move_requested
+    main_inverse_kinematics();
+
+    // 无论 move_requested 状态如何，都需要调用 cog_generation
+    // 这样才能检测状态变化并启动停止时的过渡
+    cog_generation(AP_QUADRUPED_LEG_RF);
+
+    output_leg_angle();
+    send_servo_cmd();
+}
+
 void AP_QuadRuped_Wave_COG::cog_generation(uint8_t leg_index)
 {
-    // 步态相位计算：与贝塞尔曲线轨迹相同的相位处理逻辑
-    // 这种统一设计保证了不同轨迹算法之间的相位一致性
-    int32_t delta_step = gait_step_now - gait_step_cog_start[leg_index];
+    (void)leg_index;
 
-    // 相位循环处理：确保步数在有效范围内，避免整数溢出和相位跳跃
-    // 先处理负数再取模，保证数学上的正确性和连续性
-    while (delta_step < 0) {
-        delta_step += gait_step_total;
+    const int16_t step_total = gait_step_total.get();
+    if (step_total <= 0) {
+        return;
     }
-    delta_step = delta_step % gait_step_total.get();
 
-    // 归一化相位转换：将离散步数映射到连续的[0,1]区间
-    // 这个p值是整个轨迹生成的时间基准，驱动后续所有的数学计算
-    const float p = (float)delta_step / (float)gait_step_total; // 0..1
+    // 用完整步态周期生成连续圆轨迹，避免每个 1/4 圆切换时的突变
+    const uint16_t step  = (uint16_t)(gait_step_now % step_total);
+    const float    phase = (float)step / (float)step_total; // 0..1
+    const float    angle = phase * M_2PI;                   // 0..2π
 
-    // 单腿重心偏移占 1/8 周期
-    const float swing_ratio = 1.0f / (float)gait_lift_divisor;
+    const float    radius = centre_offset_ratio.get();
+    const Vector2f cog_xy_target(radius * cosf(angle + M_PI), radius * sinf(angle + M_PI));
 
-    const float cog_length = centre_offset_ratio.get();
+    // 平滑过渡处理：只在开始和结束时平滑
+    const uint32_t now_ms = AP_HAL::millis();
+    const float transition_duration_ms = cog_transition_time.get() * 1000.0f;
 
-    Vector2f cog_xy_target, cog_xy_travel;
-    float    phase;
+    // 检测移动请求状态变化
+    if (move_requested && !cog_last_move_requested) {
+        // 开始移动：启动进入过渡
+        cog_transitioning = true;
+        cog_transition_start = {0.0f, 0.0f};  // 从中心开始
+        cog_transition_end = cog_xy_target;    // 目标是当前圆轨迹点
+        cog_transition_start_ms = now_ms;
+    } else if (!move_requested && cog_last_move_requested) {
+        // 停止移动：启动退出过渡
+        cog_transitioning = true;
+        cog_transition_start = cog_last_output; // 从上一帧实际输出位置开始
+        cog_transition_end = {0.0f, 0.0f};      // 目标是中心
+        cog_transition_start_ms = now_ms;
+    }
+    cog_last_move_requested = move_requested;
 
-    if (p < swing_ratio) {
-        phase = constrain_float(p / swing_ratio, 0.0f, 1.0f);
+    Vector2f cog_output;
 
-        if (leg_index == AP_QUADRUPED_LEG_RF) {
+    if (cog_transitioning) {
+        // 正在过渡中
+        const float elapsed = (float)(now_ms - cog_transition_start_ms);
+        float t = constrain_value(elapsed / transition_duration_ms, 0.0f, 1.0f);
 
-            cog_xy_travel   = Vector2f(-cog_length, -cog_length);
-            cog_xy_target.x = 
-            sqrtf(2) * cog_xy_travel.x * cosf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
-            cog_xy_target.y = sqrtf(2) * cog_xy_travel.y * sinf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
+        // smoothstep 平滑插值
+        t = t * t * (3.0f - 2.0f * t);
 
-        } else if (leg_index == AP_QUADRUPED_LEG_RB) {
+        cog_output = cog_transition_start * (1.0f - t) + cog_transition_end * t;
 
-            cog_xy_travel   = Vector2f(cog_length, -cog_length);
-            cog_xy_target.x = sqrtf(2) * cog_xy_travel.x * sinf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
-            cog_xy_target.y = sqrtf(2) * cog_xy_travel.y * cosf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
-
-        } else if (leg_index == AP_QUADRUPED_LEG_LB) {
-
-            cog_xy_travel   = Vector2f(cog_length, cog_length);
-            cog_xy_target.x = sqrtf(2) * cog_xy_travel.x * cosf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
-            cog_xy_target.y = sqrtf(2) * cog_xy_travel.y * sinf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
-
-        } else if (leg_index == AP_QUADRUPED_LEG_LF) {
-
-            cog_xy_travel   = Vector2f(-cog_length, cog_length);
-            cog_xy_target.x = sqrtf(2) * cog_xy_travel.x * sinf(M_PI / 2 * (phase - 0.5)); // X轴正弦变化，起终点相同
-            cog_xy_target.y = sqrtf(2) * cog_xy_travel.y * cosf(M_PI / 2 * (phase - 0.5)); // Y轴从+cog_length到-cog_length
+        // 过渡完成
+        if (elapsed >= transition_duration_ms) {
+            cog_transitioning = false;
         }
-        set_center_offset(cog_xy_target);
+    } else if (move_requested) {
+        // 正常移动中，直接使用圆轨迹
+        cog_output = cog_xy_target;
+    } else {
+        // 静止状态
+        cog_output = {0.0f, 0.0f};
     }
+
+    set_center_offset(cog_output);
+    cog_last_output = cog_output;
 }

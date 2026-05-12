@@ -62,6 +62,8 @@ const AP_Param::GroupInfo AP_QuadRuped_SYS_Params::var_info[] = {
 const AP_Param::GroupInfo AP_QuadRuped_CTRL_Params::var_info[] = {
     AP_SUBGROUPINFO(pitch_pid, "PIT_", 1, AP_QuadRuped_CTRL_Params, AC_PID),
     AP_SUBGROUPINFO(roll_pid, "ROL_", 2, AP_QuadRuped_CTRL_Params, AC_PID),
+    AP_SUBGROUPINFO(yaw_pid, "YAW_", 3, AP_QuadRuped_CTRL_Params, AC_PID),
+    AP_SUBGROUPINFO(pos_y_pid, "POY_", 4, AP_QuadRuped_CTRL_Params, AC_PID),
 
     AP_GROUPEND
 };

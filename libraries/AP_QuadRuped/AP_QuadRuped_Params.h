@@ -104,4 +104,30 @@ public:
             .srmax     = 0,
             .srtau     = 1.0 }
     };
+
+    AC_PID yaw_pid {
+        AC_PID::Defaults {
+            .p         = 0.5f,
+            .i         = 0.01f,
+            .d         = 0.05f,
+            .imax      = 1,
+            .filt_T_hz = 10.0f,
+            .filt_E_hz = 10.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
+
+    AC_PID pos_y_pid {
+        AC_PID::Defaults {
+            .p         = 1.0f,
+            .i         = 0.1f,
+            .d         = 0.0f,
+            .imax      = 50.0f,
+            .filt_T_hz = 2.0f,
+            .filt_E_hz = 5.0f,
+            .filt_D_hz = 10.0f,
+            .srmax     = 0,
+            .srtau     = 1.0 }
+    };
 };

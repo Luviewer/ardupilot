@@ -28,11 +28,21 @@ public:
     uint8_t gait_step_cog_start[AP_QUADRUPED_LEG_ALL]; // 每条腿的步态起始步数
 
     void update_leg() override;
+    void update() override;
 
     void gait_init() override;
 
 private:
     void cog_generation(uint8_t leg_index); // 重心偏移生成器
 
+    // 重心平滑过渡相关
+    bool cog_last_move_requested = false;   // 上一帧的移动请求状态
+    bool cog_transitioning = false;         // 是否正在过渡中
+    Vector2f cog_transition_start;          // 过渡起始位置
+    Vector2f cog_transition_end;            // 过渡目标位置
+    Vector2f cog_last_output;               // 上一帧实际输出的重心偏移
+    uint32_t cog_transition_start_ms = 0;   // 过渡开始时间戳
+
     AP_Float centre_offset_ratio;
+    AP_Float cog_transition_time;   // 重心过渡时间（秒）
 };
