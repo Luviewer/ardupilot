@@ -231,6 +231,10 @@ const AP_Param::GroupInfo AP_MotorsMulticopter::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("SPOOL_TIM_DN", 44, AP_MotorsMulticopter, _spool_down_time, 0),
 
+
+    AP_GROUPINFO("TLT_OFF_L", 45, AP_MotorsMulticopter, _tilt_offset_l, 0),
+    AP_GROUPINFO("TLT_OFF_R", 46, AP_MotorsMulticopter, _tilt_offset_r, 0),
+
     AP_GROUPEND
 };
 

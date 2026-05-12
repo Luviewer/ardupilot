@@ -102,8 +102,8 @@ void AP_MotorsTailsitter::output_to_motors()
     extern uint16_t qrud_mode_channel;
     // 必须在通道6大于1800同时小于GROUND_IDLE状态才可以禁用飞机执行器
     if (hal.rcin->read(qrud_mode_channel-1) < 1800 && _spool_state <= SpoolState::GROUND_IDLE) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, 0);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, 0);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_offset_l);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_offset_r);
 
         SRV_Channels::set_output_pwm(SRV_Channel::k_throttleLeft, output_to_pwm(_actuator[0]));
         SRV_Channels::set_output_pwm(SRV_Channel::k_throttleRight, output_to_pwm(_actuator[1]));
@@ -115,8 +115,8 @@ void AP_MotorsTailsitter::output_to_motors()
         // use set scaled to allow a different PWM range on plane forward throttle, throttle range is 0 to 100
         SRV_Channels::set_output_scaled(SRV_Channel::k_throttle, _actuator[2] * 100);
 
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE);
-        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, _tilt_left * SERVO_OUTPUT_RANGE + _tilt_offset_l);
+        SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, _tilt_right * SERVO_OUTPUT_RANGE + _tilt_offset_r);
     }
 }
 

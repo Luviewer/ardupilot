@@ -176,6 +176,9 @@ protected:
     AP_Float            _spool_up_time;
     AP_Float            _spool_down_time;
 
+    AP_Float            _tilt_offset_l;
+    AP_Float            _tilt_offset_r;
+
     // scaling for booster motor throttle
     AP_Float            _boost_scale;
 
