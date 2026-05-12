@@ -236,6 +236,17 @@ void Copter::tritilt_update()
         gcs().send_named_float("RTZCh",   return_zero_is_low ? 0.0f : 1.0f);
     }
 
+#if AP_CMCU06A_ENABLED
+    // Contact telemetry at 10 Hz.
+    if (now_ms - _tritilt.contact_float_send_ms >= 100U) {
+        _tritilt.contact_float_send_ms = now_ms;
+        const bool contact_healthy = cmcu06a.healthy();
+        const float contact_g = contact_healthy ? float(cmcu06a.get_value()) : 0.0f;
+        gcs().send_named_float("ContactG", contact_g);
+        gcs().send_named_float("ContactOn", contact_healthy ? 1.0f : 0.0f);
+    }
+#endif  // AP_CMCU06A_ENABLED
+
     // -----------------------------------------------------------------------
     // Boundary notifications (one-shot per crossing; flag cleared when condition lifts)
     // -----------------------------------------------------------------------

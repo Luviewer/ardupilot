@@ -71,6 +71,7 @@
 #include <AC_PrecLand/AC_PrecLand_config.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
+#include <AP_CMCU06A/AP_CMCU06A.h>
 #include <AP_SurfaceDistance/AP_SurfaceDistance.h>
 
 // Configuration
@@ -560,6 +561,10 @@ private:
     // last esc calibration notification update
     uint32_t esc_calibration_notify_update_ms;
 
+#if AP_CMCU06A_ENABLED
+    AP_CMCU06A cmcu06a;
+#endif
+
     // Top-level logic
     // setup the var_info table
     AP_Param param_loader;
@@ -716,6 +721,9 @@ private:
     void twentyfive_hz_logging();
     void three_hz_loop();
     void one_hz_loop();
+#if AP_CMCU06A_ENABLED
+    void cmcu06a_update();
+#endif
     void init_simple_bearing();
     void update_simple_mode(void);
     void update_super_simple_bearing(bool force_update);

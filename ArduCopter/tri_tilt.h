@@ -40,6 +40,7 @@ struct TriTiltState {
     uint32_t warn_center_stick_ms;
     uint32_t warn_switch_low_ms;
     uint32_t named_float_send_ms;
+    uint32_t contact_float_send_ms;
 
     // Boundary notification flags (fire once on entry)
     bool upper_limit_reported;

@@ -1440,9 +1440,14 @@ private:
     AP_Float _adm_dz;
     AP_Float _adm_fmax;
     AP_Float _adm_fest_lpf_hz;
-    AP_Float _adm_damp;
+    AP_Float _adm_force_g_max;
+    AP_Int8 _adm_force_reverse;
+    AP_Float _adm_force_dz;
     float _adm_force_est_filt = 0.0f;
-    float _prev_force_err = 0.0f;
+    bool _tare_requested = false;
+    bool _tare_reported = false;
+    uint32_t _tare_start_ms = 0;
+    uint32_t _sensor_failsafe_ms = 0;
 
     void admittance_reset();
     void admittance_update(float dt);

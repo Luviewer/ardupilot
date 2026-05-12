@@ -35,6 +35,7 @@ TriTiltState::TriTiltState()
       warn_center_stick_ms(0),
       warn_switch_low_ms(0),
       named_float_send_ms(0),
+      contact_float_send_ms(0),
       upper_limit_reported(false),
       lower_limit_reported(false),
       zero_position_reported(false)

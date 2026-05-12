@@ -801,14 +801,16 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 # endif
 
-    const float F_fr   = (_thrust[FR_UP]   + _thrust[FR_DOWN]);
-    const float F_rear = (_thrust[REAR_UP] + _thrust[REAR_DOWN]);
-    const float F_fl   = (_thrust[FL_UP]   + _thrust[FL_DOWN]);
-
-    const float F_sum = F_fr + F_rear + F_fl;
-
-    float Fx_model = F_fr * -sinf(_tilt_angle_rad[FR]) + F_rear * -sinf(_tilt_angle_rad[REAR]) + F_fl * -sinf(_tilt_angle_rad[FL]);
-    _est_body_x_thrust_ratio = Fx_model / MAX(F_sum,  1.0e-4f);
+    // CMCU-06A provides measured body-X contact force for impedance mode, so
+    // the motor-model estimate below is intentionally disabled.
+    // const float F_fr   = (_thrust[FR_UP]   + _thrust[FR_DOWN]);
+    // const float F_rear = (_thrust[REAR_UP] + _thrust[REAR_DOWN]);
+    // const float F_fl   = (_thrust[FL_UP]   + _thrust[FL_DOWN]);
+    //
+    // const float F_sum = F_fr + F_rear + F_fl;
+    //
+    // float Fx_model = F_fr * -sinf(_tilt_angle_rad[FR]) + F_rear * -sinf(_tilt_angle_rad[REAR]) + F_fl * -sinf(_tilt_angle_rad[FL]);
+    // _est_body_x_thrust_ratio = Fx_model / MAX(F_sum,  1.0e-4f);
 
     // static int count = 0;
     // count++;

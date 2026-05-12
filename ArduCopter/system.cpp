@@ -37,6 +37,10 @@ void Copter::init_ardupilot()
     // setup telem slots with serial ports
     gcs().setup_uarts();
 
+#if AP_CMCU06A_ENABLED
+    cmcu06a.init(AP::serialmanager());
+#endif
+
 #if OSD_ENABLED
     osd.init();
 #endif
