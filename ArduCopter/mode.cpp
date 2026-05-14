@@ -57,6 +57,11 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
         case Mode::Number::IMPEDANCE:
             return &mode_impedance;
 
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+        case Mode::Number::IMPEDANCE_ATTITUDE:
+            return &mode_impedance_attitude;
+#endif
+
         case Mode::Number::TILT_LOITER:
             return &mode_tilt_loiter;
 

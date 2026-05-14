@@ -1173,6 +1173,12 @@ const AP_Param::GroupInfo ParametersG2::var_info2[] = {
     // @Path: mode_impedance.cpp
     AP_SUBGROUPPTR(mode_impedance_ptr, "IMPD_", 21, ParametersG2, ModeImpedance),
 
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+    // @Group: IMPA_
+    // @Path: mode_impedance_attitude.cpp
+    AP_SUBGROUPPTR(mode_impedance_attitude_ptr, "IMPA_", 23, ParametersG2, ModeImpedanceAttitude),
+#endif
+
     // @Group: TTLT_
     // @Path: tri_tilt_params.cpp
     AP_SUBGROUPPTR(tritilt_ptr, "TTLT_", 22, ParametersG2, TriTiltState),
@@ -1247,6 +1253,9 @@ ParametersG2::ParametersG2(void) :
     ,mode_poshold_ptr(&copter.mode_poshold)
 #endif
     ,mode_impedance_ptr(&copter.mode_impedance)
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+    ,mode_impedance_attitude_ptr(&copter.mode_impedance_attitude)
+#endif
     ,tritilt_ptr(&copter._tritilt)
 {
     AP_Param::setup_object_defaults(this, var_info);

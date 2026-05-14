@@ -191,6 +191,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Impedance attitude - Loiter lateral hold with force-to-pitch admittance
+#ifndef MODE_IMPEDANCE_ATTITUDE_ENABLED
+# define MODE_IMPEDANCE_ATTITUDE_ENABLED 0
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 // Position Hold - enable holding of global position
 #ifndef MODE_POSHOLD_ENABLED
 # define MODE_POSHOLD_ENABLED 1

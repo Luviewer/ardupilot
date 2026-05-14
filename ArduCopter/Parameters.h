@@ -705,6 +705,9 @@ public:
 #endif
 
     void *mode_impedance_ptr;
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+    void *mode_impedance_attitude_ptr;
+#endif
 
     // tri_tilt parameters (prefix TTLT_)
     void *tritilt_ptr;

@@ -242,8 +242,15 @@ void Copter::tritilt_update()
         _tritilt.contact_float_send_ms = now_ms;
         const bool contact_healthy = cmcu06a.healthy();
         const float contact_g = contact_healthy ? float(cmcu06a.get_value()) : 0.0f;
+        float force_ref_g = mode_impedance.get_force_ref_g();
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+        if (flightmode == &mode_impedance_attitude) {
+            force_ref_g = mode_impedance_attitude.get_force_ref_g();
+        }
+#endif
         gcs().send_named_float("ContactG", contact_g);
         gcs().send_named_float("ContactOn", contact_healthy ? 1.0f : 0.0f);
+        gcs().send_named_float("ForceRefG", force_ref_g);
     }
 #endif  // AP_CMCU06A_ENABLED
 

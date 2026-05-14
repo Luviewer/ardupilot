@@ -105,6 +105,9 @@ public:
         TILT_LOITER =  30,  // Loiter with body-frame pitch control for tilt tricopter
 
         // Mode number 31 reserved for "offboard" for external/lua control.
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+        IMPEDANCE_ATTITUDE = 32, // Loiter lateral hold with admittance pitch attitude on forward axis
+#endif
 
         // Mode number 127 reserved for the "drone show mode" in the Skybrush
         // fork at https://github.com/skybrush-io/ardupilot
@@ -1409,7 +1412,9 @@ public:
     static const struct AP_Param::GroupInfo var_info[];
 
     bool init(bool ignore_checks) override;
+    void exit() override;
     void run() override;
+    float get_force_ref_g() const { return _adm_force_ref * _adm_force_g_max.get(); }
 
     bool requires_position() const override { return true; }
     bool has_manual_throttle() const override { return false; }
@@ -1439,6 +1444,7 @@ private:
     AP_Float _adm_vmax;
     AP_Float _adm_dz;
     AP_Float _adm_fmax;
+    AP_Float _adm_force_ref_rate;
     AP_Float _adm_fest_lpf_hz;
     AP_Float _adm_force_g_max;
     AP_Int8 _adm_force_reverse;
@@ -1452,6 +1458,63 @@ private:
     void admittance_reset();
     void admittance_update(float dt);
 };
+
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+class ModeImpedanceAttitude : public Mode {
+
+public:
+    ModeImpedanceAttitude();
+    Number mode_number() const override { return Number::IMPEDANCE_ATTITUDE; }
+
+    static const struct AP_Param::GroupInfo var_info[];
+
+    bool init(bool ignore_checks) override;
+    void exit() override;
+    void run() override;
+    float get_force_ref_g() const { return _adm_force_ref * _adm_force_g_max.get(); }
+
+    bool requires_position() const override { return true; }
+    bool has_manual_throttle() const override { return false; }
+    bool allows_arming(AP_Arming::Method method) const override { return true; };
+    bool is_autopilot() const override { return false; }
+    bool has_user_takeoff(bool must_navigate) const override { return true; }
+
+protected:
+
+    const char *name() const override { return "ImpAtt"; }
+    const char *name4() const override { return "IMPA"; }
+
+    float wp_distance_m() const override;
+    float wp_bearing_deg() const override;
+    float crosstrack_error_m() const override { return pos_control->crosstrack_error_m(); }
+
+private:
+
+    float _adm_v_body_x = 0.0f;
+    float _adm_force_ref = 0.0f;
+    float _adm_force_est = 0.0f;
+    float _virtual_pitch_rad = 0.0f;
+
+    AP_Float _adm_gain;
+    AP_Float _adm_tau;
+    AP_Float _adm_dz;
+    AP_Float _adm_fmax;
+    AP_Float _adm_force_ref_rate;
+    AP_Float _adm_pitch_max_deg;
+    AP_Float _adm_fest_lpf_hz;
+    AP_Float _adm_force_g_max;
+    AP_Int8 _adm_force_reverse;
+    AP_Float _adm_force_dz;
+    float _adm_force_est_filt = 0.0f;
+    bool _tare_requested = false;
+    bool _tare_reported = false;
+    uint32_t _tare_start_ms = 0;
+    uint32_t _sensor_failsafe_ms = 0;
+
+    void admittance_reset();
+    void admittance_update(float dt);
+};
+#endif // MODE_IMPEDANCE_ATTITUDE_ENABLED
 
 
 class ModeTiltLoiter : public Mode {

@@ -217,6 +217,9 @@ public:
     friend class ModeGuided;
     friend class ModeLand;
     friend class ModeImpedance;
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+    friend class ModeImpedanceAttitude;
+#endif
     friend class ModeTiltLoiter;
     friend class ModeLoiter;
     friend class ModePosHold;
@@ -1077,6 +1080,9 @@ private:
 #endif
     ModeLand mode_land;
     ModeImpedance mode_impedance;
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+    ModeImpedanceAttitude mode_impedance_attitude;
+#endif
     ModeTiltLoiter mode_tilt_loiter;
 #if MODE_LOITER_ENABLED
     ModeLoiter mode_loiter;

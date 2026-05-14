@@ -1385,6 +1385,9 @@ uint8_t GCS_MAVLINK_Copter::send_available_mode(uint8_t index) const
         &copter.mode_circle,
 #endif
         &copter.mode_impedance,
+#if MODE_IMPEDANCE_ATTITUDE_ENABLED
+        &copter.mode_impedance_attitude,
+#endif
 #if MODE_LOITER_ENABLED
         &copter.mode_loiter,
 #endif

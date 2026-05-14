@@ -813,11 +813,11 @@ void Copter::one_hz_loop()
     AP_Notify::flags.flying = !ap.land_complete;
 
 #if AP_CMCU06A_ENABLED
-    if (cmcu06a.healthy()) {
-        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "CMCU06A: %ld", long(cmcu06a.get_value()));
-    } else {
-        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "CMCU06A: no data");
-    }
+    // if (cmcu06a.healthy()) {
+    //     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "CMCU06A: %ld", long(cmcu06a.get_value()));
+    // } else {
+    //     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "CMCU06A: no data");
+    // }
 #endif
 
     // slowly update the PID notches with the average loop rate
