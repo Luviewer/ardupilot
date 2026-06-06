@@ -1,0 +1,73 @@
+# hw definition file for processing by chibios_hwdef.py
+# AP_Periph build for Pixhawk6C main-MCU FMU PWM with BDShot outputs
+
+include ../Pixhawk6C-bdshot/hwdef.dat
+
+# remove the IOMCU path and flash-only firmware payloads for AP_Periph
+undef IOMCU_UART
+undef USART6
+undef ROMFS
+undef HAL_WITH_IO_MCU_BIDIR_DSHOT
+undef HAL_BARO_ALLOW_INIT_NO_BARO
+undef BOOTLOADER_DEV_LIST
+
+# no SD card filesystem support is needed for this peripheral build
+undef HAL_OS_FATFS_IO
+undef FATFS_HAL_DEVICE
+undef SDMMC2
+
+# board ID. Reuse the base Pixhawk6C ID to avoid allocating a new bootloader ID.
+APJ_BOARD_ID TARGET_HW_PX4_FMU_V6C
+
+# FDCAN-capable H743. CAN_FDMODE remains a runtime parameter and defaults off.
+CANFD_SUPPORTED 4
+
+# setup build for a peripheral firmware
+env AP_PERIPH 1
+
+define AP_CAN_SLCAN_ENABLED 1
+define AP_PERIPH_BATTERY_ENABLED 1
+define AP_PERIPH_NOTIFY_ENABLED 1
+define AP_PERIPH_RC_OUT_ENABLED 1
+define HAL_GCS_ENABLED 1
+define DEFAULT_SERIAL0_PROTOCOL SerialProtocol_MAVLink2
+define DEFAULT_SERIAL0_BAUD 115
+
+# enable BDShot ESC control and telemetry from RC outputs
+define HAL_SERIAL_ESC_COMM_ENABLED 1
+define HAL_SUPPORT_RCOUT_SERIAL 1
+define HAL_WITH_ESC_TELEM 1
+
+define AP_SCRIPTING_ENABLED 0
+
+MAIN_STACK 0x2000
+PROCESS_STACK 0x6000
+
+define HAL_CAN_DRIVER_DEFAULT 1
+
+# listen for reboot command from uploader.py script on USB
+define HAL_PERIPH_LISTEN_FOR_SERIAL_UART_REBOOT_CMD_PORT 0
+
+# bootloader embedding / bootloader flashing not available in this AP_Periph target
+define AP_BOOTLOADER_FLASHING_ENABLED 0
+
+# Override the base bdshot layout. Use only Pixhawk6C H743 main-MCU FMU PWM pins:
+# PA8 PE11 PE13 PE14 PD14 PD15 PA0 PA1. Do not use IOMCU/AUX/co-processor PWM.
+undef PA8 PE11 PE13 PE14 PD14 PD15 PA0 PA1
+
+# PWM1-4: BDShot600 ESC outputs
+PA8  TIM1_CH1 TIM1 PWM(1) GPIO(50) BIDIR
+PE11 TIM1_CH2 TIM1 PWM(2) GPIO(51) BIDIR
+PE13 TIM1_CH3 TIM1 PWM(3) GPIO(52) BIDIR
+PE14 TIM1_CH4 TIM1 PWM(4) GPIO(53) BIDIR
+
+# PWM5-6: servo-style PWM actuators
+PD14 TIM4_CH3 TIM4 PWM(5) GPIO(54)
+PD15 TIM4_CH4 TIM4 PWM(6) GPIO(55)
+
+# PWM7-8: spare PWM outputs
+PA0  TIM5_CH1 TIM5 PWM(7) GPIO(56)
+PA1  TIM5_CH2 TIM5 PWM(8) GPIO(57)
+
+DMA_PRIORITY TIM* SPI* SDMMC* ADC* UART* USART*
+

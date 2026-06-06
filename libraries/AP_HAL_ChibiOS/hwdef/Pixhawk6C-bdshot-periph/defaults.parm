@@ -1,0 +1,34 @@
+# Default Parameters for the Pixhawk6C-bdshot-periph
+
+# CAN1 stays on classic CAN for recovery, CAN2 uses CAN FD.
+CAN_FDMODE 2
+CAN_FDBAUDRATE 4
+CAN2_FDBAUDRATE 4
+
+# OUT1-4 are BDShot600 ESC outputs
+OUT1_FUNCTION 33
+OUT2_FUNCTION 34
+OUT3_FUNCTION 35
+OUT4_FUNCTION 36
+
+# OUT5-6 are servo-style actuators, OUT7-8 are spare PWM outputs
+OUT5_FUNCTION 51
+OUT6_FUNCTION 52
+OUT7_FUNCTION 53
+OUT8_FUNCTION 54
+
+# Bi-Directional DShot 600 on the four ESC outputs
+ESC_PWM_TYPE 7
+OUT_BLH_MASK 15
+OUT_BLH_BDMASK 15
+OUT_BLH_PORT 0
+OUT_BLH_OTYPE 6
+OUT_DSHOT_ESC 1
+
+ESC_RATE 400
+ESC_TELEM_RATE 50
+
+# Pixhawk6C BATT2 voltage/current monitor pins
+BATT_MONITOR 4
+BATT2_CURR_PIN 14
+BATT2_VOLT_PIN 5
