@@ -166,8 +166,8 @@ const AP_Param::Info AP_Periph_FW::var_info[] = {
 #if HAL_CANFD_SUPPORTED
     // @Param: CAN_FDMODE
     // @DisplayName: Enable CANFD mode
-    // @Description: Enabling this option sets the CAN bus to be in CANFD mode with BRS.
-    // @Values: 0:Disabled,1:Enabled
+    // @Description: Bitmask enabling CAN FD mode with BRS on individual CAN interfaces.
+    // @Bitmask: 0:CAN1,1:CAN2,2:CAN3
     // @User: Advanced
     // @RebootRequired: True
     GSCALAR(can_fdmode,     "CAN_FDMODE", 0),
