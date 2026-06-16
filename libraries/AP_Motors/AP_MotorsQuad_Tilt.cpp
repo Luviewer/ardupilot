@@ -378,24 +378,10 @@ void AP_MotorsQuad_Tilt::setup_motors(motor_frame_class frame_class, motor_frame
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 uint32_t AP_MotorsQuad_Tilt::get_motor_mask()
 {
-    uint32_t mask = AP_MotorsMatrix::get_motor_mask();
-
-    // 加入倾转舵机输出
-    uint8_t chan;
-    if (SRV_Channels::find_channel(SRV_Channel::k_actuator1, chan)) {
-        mask |= 1U << chan;
-    }
-    if (SRV_Channels::find_channel(SRV_Channel::k_actuator2, chan)) {
-        mask |= 1U << chan;
-    }
-    if (SRV_Channels::find_channel(SRV_Channel::k_actuator3, chan)) {
-        mask |= 1U << chan;
-    }
-    if (SRV_Channels::find_channel(SRV_Channel::k_actuator4, chan)) {
-        mask |= 1U << chan;
-    }
-
-    return mask;
+    // 只返回电机 ESC 输出通道。倾转舵机没有 ESC 遥测，不能并入此掩码，
+    // 否则升空 RPM 检查 (motors_takeoff_check) 会永远等不到舵机通道的 ESC 转速。
+    // 舵机的安全开关行为由 BRD_SAFETY_MASK 单独控制。
+    return AP_MotorsMatrix::get_motor_mask();
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -665,19 +651,19 @@ void AP_MotorsQuad_Tilt::output_armed_stabilizing()
 
     // 右后（2,3）：上 CW 下 CCW
     float thrust_rear_mixed = _thrust_tricopter[RR] * (1.0f - ahrs_pitch_abs) + _thrust_bicopter[RR] * ahrs_pitch_abs;
-    _rpy_out[RR_UP]       = thrust_rear_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
-    _rpy_out[RR_DOWN]     = thrust_rear_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[RR_UP]       = thrust_rear_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[RR_DOWN]     = thrust_rear_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
 
     // 左后（4,5）：上 CW 下 CCW，yaw 符号与前右/后相反
-    float thrust_left_mixed = _thrust_tricopter[LF] * (1.0f - ahrs_pitch_abs) + _thrust_bicopter[LF] * ahrs_pitch_abs;
-    _rpy_out[LF_UP]         = thrust_left_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
-    _rpy_out[LF_DOWN]       = thrust_left_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
-
-    // 左前（6,7）：上 CW 下 CCW，yaw 符号与前右/后相反
     float thrust_front_mixed = _thrust_tricopter[LR] * (1.0f - ahrs_pitch_abs) + _thrust_bicopter[LR] * ahrs_pitch_abs;
     _rpy_out[LR_UP]         = thrust_front_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
     _rpy_out[LR_DOWN]       = thrust_front_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
-    
+
+    // 左前（6,7）：上 CW 下 CCW，yaw 符号与前右/后相反
+    float thrust_left_mixed = _thrust_tricopter[LF] * (1.0f - ahrs_pitch_abs) + _thrust_bicopter[LF] * ahrs_pitch_abs;
+    _rpy_out[LF_UP]         = thrust_left_mixed - yaw_thrust * 0.5f * _anti_yaw_factor;
+    _rpy_out[LF_DOWN]       = thrust_left_mixed + yaw_thrust * 0.5f * _anti_yaw_factor;
+
 
     /////////////////////////////////////////////////////////////////////////////////////////////////
     // 第12层：侧向力控制
@@ -687,7 +673,7 @@ void AP_MotorsQuad_Tilt::output_armed_stabilizing()
 
         // 侧向力混合
         _rpy_out[RF_UP] += lateral_thrust * _lateral_factor;
-        _rpy_out[RF_DOWN] -= lateral_thrust * _lateral_factor;
+        _rpy_out[RF_DOWN] += lateral_thrust * _lateral_factor;
 
         _rpy_out[RR_UP] += lateral_thrust * _lateral_factor;
         _rpy_out[RR_DOWN] -= lateral_thrust * _lateral_factor;

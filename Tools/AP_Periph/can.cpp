@@ -101,22 +101,6 @@ static struct instance_t {
 #endif // HAL_PERIPH_CAN_MIRROR
 } instances[HAL_NUM_CAN_IFACES];
 
-uint8_t AP_Periph_FW::canfd_iface_mask(uint8_t iface_mask) const
-{
-    iface_mask = (iface_mask == 0) ? uint8_t(IFACE_ALL) : iface_mask;
-#if HAL_CANFD_SUPPORTED
-    return iface_mask & uint8_t(g.can_fdmode.get()) & uint8_t(IFACE_ALL);
-#else
-    return 0;
-#endif
-}
-
-uint8_t AP_Periph_FW::classic_iface_mask(uint8_t iface_mask) const
-{
-    iface_mask = (iface_mask == 0) ? uint8_t(IFACE_ALL) : iface_mask;
-    return iface_mask & ~canfd_iface_mask(iface_mask) & uint8_t(IFACE_ALL);
-}
-
 
 #if CONFIG_HAL_BOARD == HAL_BOARD_CHIBIOS && defined(HAL_GPIO_PIN_TERMCAN1) && (HAL_NUM_CAN_IFACES >= 2)
 static ioline_t can_term_lines[] = {
@@ -226,7 +210,7 @@ void AP_Periph_FW::handle_get_node_info(CanardInstance* canard_instance,
     }
     pkt.name.len = strnlen((char*)pkt.name.data, sizeof(pkt.name.data));
 
-    uint16_t total_size = uavcan_protocol_GetNodeInfoResponse_encode(&pkt, buffer, !canfdout(current_rx_iface_index()));
+    uint16_t total_size = uavcan_protocol_GetNodeInfoResponse_encode(&pkt, buffer, !canfdout());
 
     canard_respond(canard_instance,
                    transfer,
@@ -338,7 +322,7 @@ void AP_Periph_FW::handle_param_getset(CanardInstance* canard_instance, CanardRx
     }
 
     uint8_t buffer[UAVCAN_PROTOCOL_PARAM_GETSET_RESPONSE_MAX_SIZE];
-    uint16_t total_size = uavcan_protocol_param_GetSetResponse_encode(&pkt, buffer, !canfdout(current_rx_iface_index()));
+    uint16_t total_size = uavcan_protocol_param_GetSetResponse_encode(&pkt, buffer, !canfdout());
 
     canard_respond(canard_instance,
                    transfer,
@@ -387,7 +371,7 @@ void AP_Periph_FW::handle_param_executeopcode(CanardInstance* canard_instance, C
     pkt.ok = true;
 
     uint8_t buffer[UAVCAN_PROTOCOL_PARAM_EXECUTEOPCODE_RESPONSE_MAX_SIZE];
-    uint16_t total_size = uavcan_protocol_param_ExecuteOpcodeResponse_encode(&pkt, buffer, !canfdout(current_rx_iface_index()));
+    uint16_t total_size = uavcan_protocol_param_ExecuteOpcodeResponse_encode(&pkt, buffer, !canfdout());
 
     canard_respond(canard_instance,
                    transfer,
@@ -423,7 +407,7 @@ void AP_Periph_FW::handle_begin_firmware_update(CanardInstance* canard_instance,
     uavcan_protocol_file_BeginFirmwareUpdateResponse reply {};
     reply.error = UAVCAN_PROTOCOL_FILE_BEGINFIRMWAREUPDATE_RESPONSE_ERROR_OK;
 
-    uint32_t total_size = uavcan_protocol_file_BeginFirmwareUpdateResponse_encode(&reply, buffer, !canfdout(current_rx_iface_index()));
+    uint32_t total_size = uavcan_protocol_file_BeginFirmwareUpdateResponse_encode(&reply, buffer, !canfdout());
     canard_respond(canard_instance,
                    transfer,
                    UAVCAN_PROTOCOL_FILE_BEGINFIRMWAREUPDATE_SIGNATURE,
@@ -788,31 +772,14 @@ void AP_Periph_FW::can_safety_button_update(void)
     pkt.button = ARDUPILOT_INDICATION_BUTTON_BUTTON_SAFETY;
     pkt.press_time = counter;
 
-    const uint8_t classic_mask = classic_iface_mask();
-    if (classic_mask != 0) {
-        uint8_t buffer[ARDUPILOT_INDICATION_BUTTON_MAX_SIZE];
-        uint16_t total_size = ardupilot_indication_Button_encode(&pkt, buffer, true);
-        canard_broadcast(ARDUPILOT_INDICATION_BUTTON_SIGNATURE,
-                         ARDUPILOT_INDICATION_BUTTON_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
-                         &buffer[0],
-                         total_size,
-                         false,
-                         classic_mask);
-    }
+    uint8_t buffer[ARDUPILOT_INDICATION_BUTTON_MAX_SIZE];
+    uint16_t total_size = ardupilot_indication_Button_encode(&pkt, buffer, !canfdout());
 
-    const uint8_t canfd_mask = canfd_iface_mask();
-    if (canfd_mask != 0) {
-        uint8_t buffer[ARDUPILOT_INDICATION_BUTTON_MAX_SIZE];
-        uint16_t total_size = ardupilot_indication_Button_encode(&pkt, buffer, false);
-        canard_broadcast(ARDUPILOT_INDICATION_BUTTON_SIGNATURE,
-                         ARDUPILOT_INDICATION_BUTTON_ID,
-                         CANARD_TRANSFER_PRIORITY_LOW,
-                         &buffer[0],
-                         total_size,
-                         true,
-                         canfd_mask);
-    }
+    canard_broadcast(ARDUPILOT_INDICATION_BUTTON_SIGNATURE,
+                            ARDUPILOT_INDICATION_BUTTON_ID,
+                            CANARD_TRANSFER_PRIORITY_LOW,
+                            &buffer[0],
+                            total_size);
 }
 #endif // HAL_GPIO_PIN_SAFE_BUTTON
 
@@ -858,7 +825,7 @@ void AP_Periph_FW::onTransferReceived(CanardInstance* canard_instance,
                 ok: true,
             };
             uint8_t buffer[UAVCAN_PROTOCOL_RESTARTNODE_RESPONSE_MAX_SIZE];
-            uint16_t total_size = uavcan_protocol_RestartNodeResponse_encode(&pkt, buffer, !canfdout(current_rx_iface_index()));
+            uint16_t total_size = uavcan_protocol_RestartNodeResponse_encode(&pkt, buffer, !canfdout());
             canard_respond(canard_instance,
                     transfer,
                     UAVCAN_PROTOCOL_RESTARTNODE_SIGNATURE,
@@ -1128,24 +1095,6 @@ bool AP_Periph_FW::canard_broadcast(uint64_t data_type_signature,
                                     uint16_t payload_len,
                                     uint8_t iface_mask)
 {
-    const bool is_dna = data_type_id == UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_ID;
-    return canard_broadcast(data_type_signature,
-                            data_type_id,
-                            priority,
-                            payload,
-                            payload_len,
-                            is_dna ? false : canfdout(),
-                            iface_mask);
-}
-
-bool AP_Periph_FW::canard_broadcast(uint64_t data_type_signature,
-                                    uint16_t data_type_id,
-                                    uint8_t priority,
-                                    const void* payload,
-                                    uint16_t payload_len,
-                                    bool canfd,
-                                    uint8_t iface_mask)
-{
     WITH_SEMAPHORE(canard_broadcast_semaphore);
     const bool is_dna = data_type_id == UAVCAN_PROTOCOL_DYNAMIC_NODE_ID_ALLOCATION_ID;
     if (!is_dna && canardGetLocalNodeID(&dronecan.canard) == CANARD_BROADCAST_NODE_ID) {
@@ -1167,7 +1116,7 @@ bool AP_Periph_FW::canard_broadcast(uint64_t data_type_signature,
         .payload = (uint8_t*)payload,
         .payload_len = payload_len,
 #if CANARD_ENABLE_CANFD
-        .canfd = is_dna ? false : canfd,
+        .canfd = is_dna? false : canfdout(),
 #endif
         .deadline_usec = AP_HAL::micros64()+CAN_FRAME_TIMEOUT,
 #if CANARD_MULTI_IFACE
@@ -1201,11 +1150,6 @@ bool AP_Periph_FW::canard_respond(CanardInstance* canard_instance,
                                   const uint8_t *payload,
                                   uint16_t payload_len)
 {
-#if CANARD_MULTI_IFACE
-    const uint8_t response_iface_mask = uint8_t(1U << current_rx_iface_index());
-#else
-    const uint8_t response_iface_mask = IFACE_ALL;
-#endif
     CanardTxTransfer transfer_object = {
         .transfer_type = CanardTransferTypeResponse,
         .data_type_signature = data_type_signature,
@@ -1215,11 +1159,11 @@ bool AP_Periph_FW::canard_respond(CanardInstance* canard_instance,
         .payload = payload,
         .payload_len = payload_len,
 #if CANARD_ENABLE_CANFD
-        .canfd = canfdout(current_rx_iface_index()),
+        .canfd = canfdout(),
 #endif
         .deadline_usec = AP_HAL::micros64()+CAN_FRAME_TIMEOUT,
 #if CANARD_MULTI_IFACE
-        .iface_mask = response_iface_mask,
+        .iface_mask = IFACE_ALL,
 #endif
     };
     const auto res = canardRequestOrRespondObj(canard_instance,
@@ -1402,7 +1346,6 @@ void AP_Periph_FW::processRx(void)
             rx_frame.iface_id = instance.index;
 #endif
 
-            rx_iface_index = instance.index;
             const int16_t res = canardHandleRxFrame(&dronecan.canard, &rx_frame, timestamp);
 #if HAL_ENABLE_SENDING_STATS
             if (res == -CANARD_ERROR_RX_MISSED_START) {
@@ -1471,35 +1414,18 @@ uint16_t AP_Periph_FW::pool_peak_percent()
 void AP_Periph_FW::node_status_send(void)
 {
     {
+        uint8_t buffer[UAVCAN_PROTOCOL_NODESTATUS_MAX_SIZE];
         node_status.uptime_sec = AP_HAL::millis() / 1000U;
 
         node_status.vendor_specific_status_code = MIN(hal.util->available_memory(), unsigned(UINT16_MAX));
 
-        const uint8_t classic_mask = classic_iface_mask();
-        if (classic_mask != 0) {
-            uint8_t buffer[UAVCAN_PROTOCOL_NODESTATUS_MAX_SIZE];
-            uint32_t len = uavcan_protocol_NodeStatus_encode(&node_status, buffer, true);
-            canard_broadcast(UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
-                             UAVCAN_PROTOCOL_NODESTATUS_ID,
-                             CANARD_TRANSFER_PRIORITY_LOW,
-                             buffer,
-                             len,
-                             false,
-                             classic_mask);
-        }
+        uint32_t len = uavcan_protocol_NodeStatus_encode(&node_status, buffer, !canfdout());
 
-        const uint8_t canfd_mask = canfd_iface_mask();
-        if (canfd_mask != 0) {
-            uint8_t buffer[UAVCAN_PROTOCOL_NODESTATUS_MAX_SIZE];
-            uint32_t len = uavcan_protocol_NodeStatus_encode(&node_status, buffer, false);
-            canard_broadcast(UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
-                             UAVCAN_PROTOCOL_NODESTATUS_ID,
-                             CANARD_TRANSFER_PRIORITY_LOW,
-                             buffer,
-                             len,
-                             true,
-                             canfd_mask);
-        }
+        canard_broadcast(UAVCAN_PROTOCOL_NODESTATUS_SIGNATURE,
+                                UAVCAN_PROTOCOL_NODESTATUS_ID,
+                                CANARD_TRANSFER_PRIORITY_LOW,
+                                buffer,
+                                len);
     }
 #if HAL_ENABLE_SENDING_STATS
     if (debug_option_is_set(AP_Periph_FW::DebugOptions::ENABLE_STATS)) {
@@ -1871,31 +1797,13 @@ void AP_Periph_FW::esc_telem_update()
         }
 #endif
 
-        const uint8_t classic_mask = classic_iface_mask();
-        if (classic_mask != 0) {
-            uint8_t buffer[UAVCAN_EQUIPMENT_ESC_STATUS_MAX_SIZE];
-            uint16_t total_size = uavcan_equipment_esc_Status_encode(&pkt, buffer, true);
-            canard_broadcast(UAVCAN_EQUIPMENT_ESC_STATUS_SIGNATURE,
-                             UAVCAN_EQUIPMENT_ESC_STATUS_ID,
-                             CANARD_TRANSFER_PRIORITY_LOW,
-                             &buffer[0],
-                             total_size,
-                             false,
-                             classic_mask);
-        }
-
-        const uint8_t canfd_mask = canfd_iface_mask();
-        if (canfd_mask != 0) {
-            uint8_t buffer[UAVCAN_EQUIPMENT_ESC_STATUS_MAX_SIZE];
-            uint16_t total_size = uavcan_equipment_esc_Status_encode(&pkt, buffer, false);
-            canard_broadcast(UAVCAN_EQUIPMENT_ESC_STATUS_SIGNATURE,
-                             UAVCAN_EQUIPMENT_ESC_STATUS_ID,
-                             CANARD_TRANSFER_PRIORITY_LOW,
-                             &buffer[0],
-                             total_size,
-                             true,
-                             canfd_mask);
-        }
+        uint8_t buffer[UAVCAN_EQUIPMENT_ESC_STATUS_MAX_SIZE];
+        uint16_t total_size = uavcan_equipment_esc_Status_encode(&pkt, buffer, !canfdout());
+        canard_broadcast(UAVCAN_EQUIPMENT_ESC_STATUS_SIGNATURE,
+                         UAVCAN_EQUIPMENT_ESC_STATUS_ID,
+                         CANARD_TRANSFER_PRIORITY_LOW,
+                         &buffer[0],
+                         total_size);
     }
 }
 #endif // HAL_WITH_ESC_TELEM

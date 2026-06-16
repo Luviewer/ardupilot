@@ -160,13 +160,10 @@ void AP_Periph_FW::rcout_update()
     const uint16_t esc_timeout_ms = g.esc_command_timeout_ms >= 0 ? g.esc_command_timeout_ms : 0; // Don't allow negative timeouts!
     const bool has_esc_rawcommand_timed_out = esc_timeout_ms != 0 && ((now_ms - last_esc_raw_command_ms) >= esc_timeout_ms);
     if (last_esc_num_channels > 0 && has_esc_rawcommand_timed_out) {
-        // If we've seen ESCs previously, and a timeout has occurred, then zero the outputs
+        // Keep sending zero-throttle DShot so ESCs see a valid signal while the CAN master is rebooting.
         int16_t esc_output[last_esc_num_channels];
         memset(esc_output, 0, sizeof(esc_output));
         rcout_esc(esc_output, last_esc_num_channels);
-
-        // Don't need to run again until new commands have been received
-        last_esc_num_channels = 0;
     }
 
     // Timeout for servo actuator commands
@@ -240,31 +237,14 @@ void AP_Periph_FW::sim_update_actuator(uint8_t actuator_id)
         pkt.speed = 0;
         pkt.power_rating_pct = UAVCAN_EQUIPMENT_ACTUATOR_STATUS_POWER_RATING_PCT_UNKNOWN;
 
-        const uint8_t classic_mask = classic_iface_mask();
-        if (classic_mask != 0) {
-            uint8_t buffer[UAVCAN_EQUIPMENT_ACTUATOR_STATUS_MAX_SIZE];
-            uint16_t total_size = uavcan_equipment_actuator_Status_encode(&pkt, buffer, true);
-            canard_broadcast(UAVCAN_EQUIPMENT_ACTUATOR_STATUS_SIGNATURE,
-                             UAVCAN_EQUIPMENT_ACTUATOR_STATUS_ID,
-                             CANARD_TRANSFER_PRIORITY_LOW,
-                             &buffer[0],
-                             total_size,
-                             false,
-                             classic_mask);
-        }
+        uint8_t buffer[UAVCAN_EQUIPMENT_ACTUATOR_STATUS_MAX_SIZE];
+        uint16_t total_size = uavcan_equipment_actuator_Status_encode(&pkt, buffer, !canfdout());
 
-        const uint8_t canfd_mask = canfd_iface_mask();
-        if (canfd_mask != 0) {
-            uint8_t buffer[UAVCAN_EQUIPMENT_ACTUATOR_STATUS_MAX_SIZE];
-            uint16_t total_size = uavcan_equipment_actuator_Status_encode(&pkt, buffer, false);
-            canard_broadcast(UAVCAN_EQUIPMENT_ACTUATOR_STATUS_SIGNATURE,
-                             UAVCAN_EQUIPMENT_ACTUATOR_STATUS_ID,
-                             CANARD_TRANSFER_PRIORITY_LOW,
-                             &buffer[0],
-                             total_size,
-                             true,
-                             canfd_mask);
-        }
+        canard_broadcast(UAVCAN_EQUIPMENT_ACTUATOR_STATUS_SIGNATURE,
+                         UAVCAN_EQUIPMENT_ACTUATOR_STATUS_ID,
+                         CANARD_TRANSFER_PRIORITY_LOW,
+                         &buffer[0],
+                         total_size);
     }
 }
 #endif // AP_SIM_ENABLED

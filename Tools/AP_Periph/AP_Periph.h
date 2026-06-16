@@ -200,23 +200,7 @@ public:
 
     void load_parameters();
     void prepare_reboot();
-    bool canfdout(uint8_t iface_index) const {
-#if HAL_CANFD_SUPPORTED
-        return (uint8_t(g.can_fdmode.get()) & (1U << iface_index)) != 0;
-#else
-        return false;
-#endif
-    }
-    bool canfdout() const {
-#if HAL_CANFD_SUPPORTED
-        return uint8_t(g.can_fdmode.get()) != 0;
-#else
-        return false;
-#endif
-    }
-    uint8_t current_rx_iface_index() const { return rx_iface_index; }
-    uint8_t canfd_iface_mask(uint8_t iface_mask=0) const;
-    uint8_t classic_iface_mask(uint8_t iface_mask=0) const;
+    bool canfdout() const { return (g.can_fdmode == 1); }
 
 #if AP_PERIPH_EFI_ENABLED
     void can_efi_update();
@@ -553,14 +537,6 @@ public:
                           uint16_t payload_len,
                           uint8_t iface_mask=0);
 
-    bool canard_broadcast(uint64_t data_type_signature,
-                          uint16_t data_type_id,
-                          uint8_t priority,
-                          const void* payload,
-                          uint16_t payload_len,
-                          bool canfd,
-                          uint8_t iface_mask);
-
     bool canard_respond(CanardInstance* canard_instance,
                         CanardRxTransfer* transfer,
                         uint64_t data_type_signature,
@@ -575,7 +551,6 @@ public:
                               uint16_t data_type_id,
                               CanardTransferType transfer_type,
                               uint8_t source_node_id);
-    uint8_t rx_iface_index;
 
     // reboot the peripheral, optionally holding in bootloader
     void reboot(bool hold_in_bootloader);
