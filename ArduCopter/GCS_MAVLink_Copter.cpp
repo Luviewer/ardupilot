@@ -1200,6 +1200,16 @@ void GCS_MAVLINK_Copter::handle_message(const mavlink_message_t &msg)
         copter.g2.toy_mode.handle_message(msg);
         break;
 #endif
+
+#if MODE_PENDULUM_ENABLED
+    case MAVLINK_MSG_ID_ODOMETRY:
+        if (copter.mode_pendulum.accepts_odometry(msg)) {
+            copter.mode_pendulum.handle_odometry(msg);
+            break;
+        }
+        FALLTHROUGH;
+#endif
+
     default:
         GCS_MAVLINK::handle_message(msg);
         break;
@@ -1387,6 +1397,9 @@ uint8_t GCS_MAVLINK_Copter::send_available_mode(uint8_t index) const
 #endif
 #if MODE_POSHOLD_ENABLED
         &copter.mode_poshold,
+#endif
+#if MODE_PENDULUM_ENABLED
+        &copter.mode_pendulum,
 #endif
 #if MODE_BRAKE_ENABLED
         &copter.mode_brake,

@@ -713,9 +713,13 @@ const AP_Param::GroupInfo ParametersG2::var_info[] = {
     AP_SUBGROUPINFO(smart_rtl, "SRTL_", 21, ParametersG2, AP_SmartRTL),
 #endif
 
-#if AP_WINCH_ENABLED
-    // 22 was AP_WheelEncoder
+#if MODE_PENDULUM_ENABLED
+    // @Group: PEND_
+    // @Path: mode_pendulum.cpp
+    AP_SUBGROUPPTR(mode_pendulum_ptr, "PEND_", 22, ParametersG2, ModePendulum),
+#endif
 
+#if AP_WINCH_ENABLED
     // @Group: WINCH
     // @Path: ../libraries/AP_Winch/AP_Winch.cpp
     AP_SUBGROUPINFO(winch, "WINCH", 23, ParametersG2, AP_Winch),
@@ -1237,6 +1241,9 @@ ParametersG2::ParametersG2(void) :
     ,mode_land_ptr(&copter.mode_land)
 #if MODE_POSHOLD_ENABLED
     ,mode_poshold_ptr(&copter.mode_poshold)
+#endif
+#if MODE_PENDULUM_ENABLED
+    ,mode_pendulum_ptr(&copter.mode_pendulum)
 #endif
 {
     AP_Param::setup_object_defaults(this, var_info);

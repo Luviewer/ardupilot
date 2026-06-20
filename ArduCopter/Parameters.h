@@ -739,6 +739,10 @@ public:
     void *mode_poshold_ptr;
 #endif
 
+#if MODE_PENDULUM_ENABLED
+    void *mode_pendulum_ptr;
+#endif
+
 };
 
 extern const AP_Param::Info        var_info[];

@@ -197,6 +197,12 @@
 #endif
 
 //////////////////////////////////////////////////////////////////////////////
+// Pendulum - altitude hold with external pole balancing controller
+#ifndef MODE_PENDULUM_ENABLED
+# define MODE_PENDULUM_ENABLED 1
+#endif
+
+//////////////////////////////////////////////////////////////////////////////
 // RTL - Return To Launch
 #ifndef MODE_RTL_ENABLED
 # define MODE_RTL_ENABLED 1

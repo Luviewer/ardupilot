@@ -97,6 +97,11 @@ Mode *Copter::mode_from_mode_num(const Mode::Number mode)
             return &mode_poshold;
 #endif
 
+#if MODE_PENDULUM_ENABLED
+        case Mode::Number::PENDULUM:
+            return &mode_pendulum;
+#endif
+
 #if MODE_BRAKE_ENABLED
         case Mode::Number::BRAKE:
             return &mode_brake;
@@ -197,6 +202,7 @@ bool Copter::gcs_mode_enabled(const Mode::Number mode_num)
         (uint8_t)Mode::Number::FLIP,
         (uint8_t)Mode::Number::AUTOTUNE,
         (uint8_t)Mode::Number::POSHOLD,
+        (uint8_t)Mode::Number::PENDULUM,
         (uint8_t)Mode::Number::BRAKE,
         (uint8_t)Mode::Number::THROW,
         (uint8_t)Mode::Number::AVOID_ADSB,
@@ -253,6 +259,9 @@ uint32_t Copter::get_available_mode_enabled_mask() const
 #endif
 #if MODE_POSHOLD_ENABLED
         &copter.mode_poshold,
+#endif
+#if MODE_PENDULUM_ENABLED
+        &copter.mode_pendulum,
 #endif
 #if MODE_BRAKE_ENABLED
         &copter.mode_brake,

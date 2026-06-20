@@ -101,6 +101,7 @@ public:
         AUTOROTATE =   26,  // Autonomous autorotation
         AUTO_RTL =     27,  // Auto RTL, this is not a true mode, AUTO will report as this mode if entered to perform a DO_LAND_START Landing sequence
         TURTLE =       28,  // Flip over after crash
+        PENDULUM =     29,  // altitude hold with external pole balancing control
 
         // Mode number 30 reserved for "offboard" for external/lua control.
 
@@ -527,6 +528,68 @@ protected:
 private:
 
 };
+
+#if MODE_PENDULUM_ENABLED
+class ModePendulum : public ModeAltHold {
+public:
+    ModePendulum();
+
+    Number mode_number() const override { return Number::PENDULUM; }
+
+    bool init(bool ignore_checks) override;
+    void run() override;
+
+    void handle_odometry(const mavlink_message_t &msg);
+    bool accepts_odometry(const mavlink_message_t &msg) const;
+
+    bool allows_autotune() const override { return false; }
+    bool allows_flip() const override { return false; }
+    bool allows_auto_trim() const override { return false; }
+    bool allows_save_trim() const override { return false; }
+
+    static const struct AP_Param::GroupInfo var_info[];
+
+protected:
+    const char *name() const override { return "Pendulum"; }
+    const char *name4() const override { return "PEND"; }
+
+private:
+    void reset_controller();
+    void update_control_state_notice(bool can_control, const char *reason);
+    bool get_vehicle_state(Vector3f &pos_ned_m, Vector3f &vel_ned_ms) const;
+    bool run_pendulum_controller(Vector3f &pos_ned_m, Vector3f &vel_ned_ms, Vector2f &target_accel_ne_mss);
+#if HAL_LOGGING_ENABLED
+    void write_log(const Vector2f &vehicle_pos_err_ne, const Vector2f &vehicle_vel_ne, const Vector2f &pole_pos_err_ne,
+                   const Vector2f &pole_rel_vel_ne, const Vector2f &accel_ne_mss, const Vector3f &att_target_rad, float dt);
+#endif
+
+    AP_Int8 _enable;
+    AP_Int16 _sysid;
+    AP_Float _k_x;
+    AP_Float _k_v;
+    AP_Float _k_r;
+    AP_Float _k_rd;
+    AP_Float _act_z_m;
+    AP_Int16 _timeout_ms;
+    AP_Int8 _debug;
+
+    Vector3f _pole_pos_ned_m {};
+    Vector3f _pole_vel_ned_ms {};
+    Vector2f _hold_pos_ne_m {};
+
+    uint32_t _pole_update_ms {};
+    uint32_t _last_control_ms {};
+    uint32_t _last_warn_ms {};
+    uint32_t _last_debug_ms {};
+    uint32_t _vel_pid_ms {};
+    Vector2f _control_accel_ne_mss {};
+    uint8_t _log_counter {};
+    bool _have_pole {};
+    bool _have_hold_pos {};
+    bool _control_active_prev {};
+    const char *_control_reason_prev {""};
+};
+#endif // MODE_PENDULUM_ENABLED
 
 class ModeAuto : public Mode {
 
