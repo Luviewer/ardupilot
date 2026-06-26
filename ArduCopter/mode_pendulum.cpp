@@ -257,7 +257,6 @@ void ModePendulum::run()
     float target_climb_rate_ms = get_pilot_desired_climb_rate_ms();
 
     const AltHoldModeState althold_state = get_alt_hold_state_D_ms(target_climb_rate_ms);
-    bool use_pendulum_velocity_control = false;
 
     switch (althold_state) {
     case AltHoldModeState::MotorStopped:
@@ -324,14 +323,18 @@ void ModePendulum::run()
                 }
             }
             if (can_control) {
-                Vector2f target_vel_ne_ms;
-                pos_control->input_vel_accel_NE_m(target_vel_ne_ms, _control_accel_ne_mss, false);
-                pos_control->NE_update_controller();
-                attitude_control->input_thrust_vector_rate_heading_rads(pos_control->get_thrust_vector(), target_yaw_rate_rads);
-                use_pendulum_velocity_control = true;
+                const float yaw_rad = ahrs.get_yaw_rad();
+                const float cos_yaw = cosf(yaw_rad);
+                const float sin_yaw = sinf(yaw_rad);
+                const float accel_forward = cos_yaw * _control_accel_ne_mss.x + sin_yaw * _control_accel_ne_mss.y;
+                const float accel_right = -sin_yaw * _control_accel_ne_mss.x + cos_yaw * _control_accel_ne_mss.y;
+                float pendulum_pitch_rad = -atanf(accel_forward / GRAVITY_MSS);
+                float pendulum_roll_rad = atanf(accel_right / GRAVITY_MSS);
+                const float lean_max = attitude_control->lean_angle_max_rad();
+                target_roll_rad = constrain_float(pendulum_roll_rad, -lean_max, lean_max);
+                target_pitch_rad = constrain_float(pendulum_pitch_rad, -lean_max, lean_max);
             }
         } else {
-            pos_control->NE_relax_velocity_controller();
             _vel_pid_ms = 0;
             _last_control_ms = 0;
             _control_accel_ne_mss.zero();
@@ -343,9 +346,7 @@ void ModePendulum::run()
     }
     }
 
-    if (!use_pendulum_velocity_control) {
-        attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw_rad(target_roll_rad, target_pitch_rad, target_yaw_rate_rads);
-    }
+    attitude_control->input_euler_angle_roll_pitch_euler_rate_yaw_rad(target_roll_rad, target_pitch_rad, target_yaw_rate_rads);
     pos_control->D_update_controller();
 }
 
