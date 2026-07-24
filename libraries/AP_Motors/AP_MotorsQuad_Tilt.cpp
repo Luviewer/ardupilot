@@ -673,7 +673,7 @@ void AP_MotorsQuad_Tilt::output_armed_stabilizing()
 
         // 侧向力混合
         _rpy_out[RF_UP] += lateral_thrust * _lateral_factor;
-        _rpy_out[RF_DOWN] += lateral_thrust * _lateral_factor;
+        _rpy_out[RF_DOWN] -= lateral_thrust * _lateral_factor;
 
         _rpy_out[RR_UP] += lateral_thrust * _lateral_factor;
         _rpy_out[RR_DOWN] -= lateral_thrust * _lateral_factor;

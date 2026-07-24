@@ -21,6 +21,7 @@
 
 #include <AP_HAL/AP_HAL.h>
 #include <AP_AHRS/AP_AHRS.h>
+#include <AP_InertialSensor/AP_InertialSensor.h>
 #include <AP_Logger/AP_Logger.h>
 
 // consume vision pose estimate data and send to EKF. distances in meters
@@ -39,6 +40,15 @@ void AP_VisualOdom_MAV::handle_pose_estimate(uint64_t remote_time_us, uint32_t t
     // rotate position to align with vehicle
     rotate_and_correct_position(pos);
 
+    // align mocap attitude to virtual IMU body (INS applies Ry(+θ) to vectors)
+    Quaternion att = attitude;
+    const float pitch_rot_deg = AP::ins().get_imu_pitch_rot_deg();
+    if (!is_zero(pitch_rot_deg)) {
+        Quaternion q_pitch;
+        q_pitch.from_axis_angle(Vector3f{0, 1, 0}, radians(-pitch_rot_deg));
+        att = att * q_pitch;
+    }
+
     posErr = constrain_float(posErr, _frontend.get_pos_noise(), 100.0f);
     angErr = constrain_float(angErr, _frontend.get_yaw_noise(), 1.5f);
 
@@ -48,14 +58,14 @@ void AP_VisualOdom_MAV::handle_pose_estimate(uint64_t remote_time_us, uint32_t t
     // send attitude and position to EKF if quality OK
     bool consume = (_quality >= _frontend.get_quality_min());
     if (consume) {
-        AP::ahrs().writeExtNavData(pos, attitude, posErr, angErr, time_ms, _frontend.get_delay_ms(), get_reset_timestamp_ms(reset_counter));
+        AP::ahrs().writeExtNavData(pos, att, posErr, angErr, time_ms, _frontend.get_delay_ms(), get_reset_timestamp_ms(reset_counter));
     }
 
     // calculate euler orientation for logging
     float roll;
     float pitch;
     float yaw;
-    attitude.to_euler(roll, pitch, yaw);
+    att.to_euler(roll, pitch, yaw);
 
 #if HAL_LOGGING_ENABLED
     // log sensor data
