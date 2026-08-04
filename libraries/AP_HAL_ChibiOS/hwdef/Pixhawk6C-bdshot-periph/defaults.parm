@@ -3,6 +3,10 @@
 # Keep DroneCAN on classic CAN by default.
 CAN_FDMODE 0
 
+# Fixed node ID is required by the main flight controller's targeted
+# DroneCAN SerialTunnel configuration.
+CAN_NODE 125
+
 # OUT1-4 are BDShot600 ESC outputs
 OUT1_FUNCTION 33
 OUT2_FUNCTION 34
@@ -32,8 +36,13 @@ BATT_MONITOR 4
 BATT2_CURR_PIN 14
 BATT2_VOLT_PIN 5
 
-# Keep TELEM2 free for the rangefinder when GCS/MAVLink is enabled on USB.
+# Keep TELEM1/2 dedicated to their sensors when GCS/MAVLink is enabled on USB.
+SERIAL1_PROTOCOL 1
+SERIAL1_BAUD 115
 SERIAL2_PROTOCOL -1
+
+# MicoAir MTF optical flow/range sensor is connected to TELEM1. MAVLink keeps
+# UART7 pins active until DroneCAN SerialTunnel locks and forwards the port.
 
 # TFmini-plus serial rangefinder on TELEM2 (SERIAL2 / UART5), published over DroneCAN.
 # Mounted forward for wall distance / contact detection (not obstacle avoidance).

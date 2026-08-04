@@ -32,11 +32,17 @@ define AP_PERIPH_RC_OUT_ENABLED 1
 define HAL_GCS_ENABLED 1
 define DEFAULT_SERIAL0_PROTOCOL SerialProtocol_MAVLink2
 define DEFAULT_SERIAL0_BAUD 115
+define DEFAULT_SERIAL1_PROTOCOL SerialProtocol_MAVLink
+define DEFAULT_SERIAL1_BAUD 115
 define DEFAULT_SERIAL2_PROTOCOL SerialProtocol_None
+
+# MicoAir MTF MAVLink optical flow/range sensor on TELEM1 = SERIAL1 (UART7).
+# MAVLink initialises the UART pins; DroneCAN SerialTunnel locks and forwards it.
+define AP_UART_MONITOR_ENABLED 1
 
 # serial rangefinder (TFmini-plus) on TELEM2 = SERIAL2 (UART5), published over DroneCAN
 define AP_PERIPH_RANGEFINDER_ENABLED 1
-define HAL_PERIPH_RANGEFINDER_PORT_DEFAULT 2
+define AP_PERIPH_RANGEFINDER_PORT_DEFAULT 2
 
 # enable BDShot ESC control and telemetry from RC outputs
 define HAL_SERIAL_ESC_COMM_ENABLED 1
@@ -75,4 +81,3 @@ PA0  TIM5_CH1 TIM5 PWM(7) GPIO(56)
 PA1  TIM5_CH2 TIM5 PWM(8) GPIO(57)
 
 DMA_PRIORITY TIM* SPI* SDMMC* ADC* UART* USART*
-
