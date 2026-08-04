@@ -37,8 +37,11 @@ void Copter::init_ardupilot()
     // setup telem slots with serial ports
     gcs().setup_uarts();
 
-#if AP_CMCU06A_ENABLED
-    cmcu06a.init(AP::serialmanager());
+#if AP_CONTACT_SENSOR_ENABLED
+    contact_sensor.init(AP::serialmanager());
+    if (contact_sensor.type() != AP_ContactSensor_Manager::Type::NONE) {
+        GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Contact sensor: %s", contact_sensor.type_name());
+    }
 #endif
 
 #if OSD_ENABLED

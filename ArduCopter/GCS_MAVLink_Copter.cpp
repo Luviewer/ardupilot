@@ -576,6 +576,55 @@ MAV_RESULT GCS_MAVLINK_Copter::handle_command_int_packet(const mavlink_command_i
         return MAV_RESULT_ACCEPTED;
     }
 
+#if AP_CONTACT_SENSOR_ENABLED
+    case MAV_CMD_USER_2: {
+        // ADM002 contact sensor calibration:
+        //   param1=0 query, 1 software tare, 2 device zero,
+        //   3 persistent default zero, 4 full scale, 5 calibration point.
+        // For actions 4 and 5, param2 is an integer mass in kg.
+        const int16_t action_value = int16_t(packet.param1);
+        if (!is_equal(packet.param1, float(action_value)) ||
+            action_value < int16_t(AP_ContactSensor_Manager::CalibrationAction::QUERY) ||
+            action_value > int16_t(AP_ContactSensor_Manager::CalibrationAction::CALIBRATE_POINT)) {
+            return MAV_RESULT_DENIED;
+        }
+
+        const auto action = AP_ContactSensor_Manager::CalibrationAction(action_value);
+        if (action == AP_ContactSensor_Manager::CalibrationAction::QUERY) {
+            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Contact cal state:%u action:%u",
+                          unsigned(copter.contact_sensor.calibration_state()),
+                          unsigned(copter.contact_sensor.calibration_action()));
+            return MAV_RESULT_ACCEPTED;
+        }
+        if (hal.util->get_soft_armed()) {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Disarm for contact calibration");
+            return MAV_RESULT_TEMPORARILY_REJECTED;
+        }
+        if (!copter.contact_sensor.healthy()) {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Contact sensor not healthy");
+            return MAV_RESULT_FAILED;
+        }
+
+        uint16_t value_kg = 0;
+        if (action == AP_ContactSensor_Manager::CalibrationAction::SET_FULL_SCALE ||
+            action == AP_ContactSensor_Manager::CalibrationAction::CALIBRATE_POINT) {
+            const int32_t requested_kg = int32_t(packet.param2);
+            if (!is_equal(packet.param2, float(requested_kg)) || requested_kg <= 0 || requested_kg > UINT16_MAX) {
+                GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Contact calibration mass invalid");
+                return MAV_RESULT_DENIED;
+            }
+            value_kg = uint16_t(requested_kg);
+        }
+
+        if (!copter.contact_sensor.start_calibration(action, value_kg)) {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Contact calibration busy or failed");
+            return MAV_RESULT_TEMPORARILY_REJECTED;
+        }
+        GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Contact calibration started");
+        return MAV_RESULT_ACCEPTED;
+    }
+#endif
+
     default:
         return GCS_MAVLINK::handle_command_int_packet(packet, msg);
     }

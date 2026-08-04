@@ -240,8 +240,8 @@ const AP_Scheduler::Task Copter::scheduler_tasks[] = {
 #if AP_WINCH_ENABLED
     SCHED_TASK_CLASS(AP_Winch,             &copter.g2.winch,            update,          50,  50, 150),
 #endif
-#if AP_CMCU06A_ENABLED
-    SCHED_TASK(cmcu06a_update,     20,     50, 151),
+#if AP_CONTACT_SENSOR_ENABLED
+    SCHED_TASK(contact_sensor_update, 200, 100, 151),
 #endif
 #ifdef USERHOOK_FASTLOOP
     SCHED_TASK(userhook_FastLoop,    100,     75, 153),
@@ -812,14 +812,6 @@ void Copter::one_hz_loop()
 
     AP_Notify::flags.flying = !ap.land_complete;
 
-#if AP_CMCU06A_ENABLED
-    // if (cmcu06a.healthy()) {
-    //     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "CMCU06A: %ld", long(cmcu06a.get_value()));
-    // } else {
-    //     GCS_SEND_TEXT(MAV_SEVERITY_INFO, "CMCU06A: no data");
-    // }
-#endif
-
     // slowly update the PID notches with the average loop rate
     if (!using_rate_thread) {
         attitude_control->set_notch_sample_rate(AP::scheduler().get_filtered_loop_rate_hz());
@@ -843,10 +835,18 @@ void Copter::one_hz_loop()
 #endif
 }
 
-#if AP_CMCU06A_ENABLED
-void Copter::cmcu06a_update()
+#if AP_CONTACT_SENSOR_ENABLED
+void Copter::contact_sensor_update()
 {
-    cmcu06a.update();
+    contact_sensor.update();
+    const uint32_t sequence = contact_sensor.calibration_sequence();
+    if (sequence != contact_calibration_report_sequence) {
+        contact_calibration_report_sequence = sequence;
+        const auto state = contact_sensor.calibration_state();
+        const bool success = state == AP_ContactSensor_Manager::CalibrationState::SUCCESS;
+        GCS_SEND_TEXT(success ? MAV_SEVERITY_NOTICE : MAV_SEVERITY_WARNING,
+                      "Contact calibration %s", success ? "complete" : "failed");
+    }
 }
 #endif
 

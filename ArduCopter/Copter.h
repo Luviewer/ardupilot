@@ -71,7 +71,8 @@
 #include <AC_PrecLand/AC_PrecLand_config.h>
 #include <AP_OpticalFlow/AP_OpticalFlow.h>
 #include <AP_Winch/AP_Winch_config.h>
-#include <AP_CMCU06A/AP_CMCU06A.h>
+#include <AP_ContactSensor/AP_ContactSensor_Manager.h>
+#include <AP_ContactSensor/AP_ContactDetector.h>
 #include <AP_SurfaceDistance/AP_SurfaceDistance.h>
 
 // Configuration
@@ -564,8 +565,9 @@ private:
     // last esc calibration notification update
     uint32_t esc_calibration_notify_update_ms;
 
-#if AP_CMCU06A_ENABLED
-    AP_CMCU06A cmcu06a;
+#if AP_CONTACT_SENSOR_ENABLED
+    AP_ContactSensor_Manager contact_sensor;
+    uint32_t contact_calibration_report_sequence = 0;
 #endif
 
     // Top-level logic
@@ -724,8 +726,8 @@ private:
     void twentyfive_hz_logging();
     void three_hz_loop();
     void one_hz_loop();
-#if AP_CMCU06A_ENABLED
-    void cmcu06a_update();
+#if AP_CONTACT_SENSOR_ENABLED
+    void contact_sensor_update();
 #endif
     void init_simple_bearing();
     void update_simple_mode(void);
@@ -928,7 +930,10 @@ private:
     void Log_Write_SysID_Data(float waveform_time, float waveform_sample, float waveform_freq_hz, float angle_x_degs, float angle_y_degs, float angle_z_degs, float accel_x_mss, float accel_y_mss, float accel_z_mss);
     void Log_Write_Vehicle_Startup_Messages();
     void Log_Write_Rate_Thread_Dt(float dt, float dtAvg, float dtMax, float dtMin);
-    void Log_Write_Impedance(float force_ref, float force_est, float force_err, float vel_body_x, float vel_ne_n, float vel_ne_e, float virtual_pitch_rad);
+    void Log_Write_Impedance(uint8_t state, uint8_t fault, float force_ref_n,
+                             float force_raw_n, float force_filt_n, float tool_dist_m,
+                             float confidence, float force_ff, float force_p,
+                             float force_i, float fx_command);
     void Log_Write_TriTilt(float pitch_off_deg, float pitch_virt_deg, float pitch_ahrs_deg,
                            float pitch_true_deg, float pitch_rate_degs, float gyro_pitch_degs);
 #endif  // HAL_LOGGING_ENABLED

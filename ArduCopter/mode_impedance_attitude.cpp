@@ -64,7 +64,7 @@ const AP_Param::GroupInfo ModeImpedanceAttitude::var_info[] = {
 
     // @Param: ADM_FLPF
     // @DisplayName: Force feedback low-pass frequency
-    // @Description: Cutoff frequency for low-pass filtering the normalized CMCU-06A force feedback. Lower values are smoother but add lag; set 0 to disable.
+    // @Description: Cutoff frequency for low-pass filtering normalized tool force feedback. Lower values are smoother but add lag; set 0 to disable.
     // @Range: 0.0 10.0
     // @Units: Hz
     // @User: Advanced
@@ -72,7 +72,7 @@ const AP_Param::GroupInfo ModeImpedanceAttitude::var_info[] = {
 
     // @Param: ADM_FGMAX
     // @DisplayName: Admittance force full-scale grams
-    // @Description: CMCU-06A body-X force in grams that maps to normalized force feedback 1.0.
+    // @Description: ADM002 body-X force in grams that maps to normalized force feedback 1.0.
     // @Range: 1 100000
     // @Units: g
     // @User: Advanced
@@ -80,7 +80,7 @@ const AP_Param::GroupInfo ModeImpedanceAttitude::var_info[] = {
 
     // @Param: ADM_FREV
     // @DisplayName: Admittance force reverse
-    // @Description: Reverse the sign of the CMCU-06A body-X force feedback when sensor installation direction is opposite.
+    // @Description: Reverse the sign of the ADM002 body-X force feedback when sensor installation direction is opposite.
     // @Values: 0:Normal,1:Reversed
     // @User: Advanced
     AP_GROUPINFO("ADM_FREV", 9, ModeImpedanceAttitude, _adm_force_reverse, 0),
@@ -126,14 +126,14 @@ bool ModeImpedanceAttitude::init(bool ignore_checks)
     _tare_reported = false;
     _tare_start_ms = 0;
     _sensor_failsafe_ms = 0;
-#if AP_CMCU06A_ENABLED
-    if (!copter.cmcu06a.healthy()) {
-        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "ImpAtt: CMCU06A not healthy");
+#if AP_CONTACT_SENSOR_ENABLED
+    if (!copter.contact_sensor.healthy()) {
+        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "ImpAtt: contact sensor not healthy");
         return false;
     }
 
-    if (!copter.cmcu06a.tare()) {
-        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "ImpAtt: CMCU06A tare busy");
+    if (!copter.contact_sensor.tare()) {
+        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "ImpAtt: contact sensor tare failed");
         return false;
     }
     _tare_requested = true;
@@ -191,18 +191,21 @@ void ModeImpedanceAttitude::run()
     bool force_ready = false;
     bool tare_settled = false;
     float raw_fest = 0.0f;
-#if AP_CMCU06A_ENABLED
+#if AP_CONTACT_SENSOR_ENABLED
     tare_settled = _tare_requested &&
                    (now_ms - _tare_start_ms >= IMPEDANCE_ATT_TARE_SETTLE_MS) &&
-                   (copter.cmcu06a.last_tare_ms() >= _tare_start_ms);
+                   copter.contact_sensor.tare_complete();
     if (tare_settled && !_tare_reported) {
         _tare_reported = true;
-        GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "ImpAtt: CMCU06A tare OK");
+        GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "ImpAtt: contact sensor tare OK");
     }
-    force_ready = tare_settled && copter.cmcu06a.healthy();
+    force_ready = tare_settled && copter.contact_sensor.healthy();
     if (force_ready) {
+        AP_ContactSensor::ForceSample sample;
         const float force_g_max = MAX(_adm_force_g_max.get(), 1.0f);
-        raw_fest = constrain_float(float(copter.cmcu06a.get_value()) / force_g_max, -1.0f, 1.0f);
+        if (copter.contact_sensor.get_force_sample(sample)) {
+            raw_fest = constrain_float(float(sample.raw_value) / force_g_max, -1.0f, 1.0f);
+        }
         if (_adm_force_reverse.get() != 0) {
             raw_fest = -raw_fest;
         }
@@ -228,7 +231,7 @@ void ModeImpedanceAttitude::run()
     const float force_dz = constrain_float(_adm_force_dz.get(), 0.0f, 0.3f);
     _adm_force_est = (fabsf(_adm_force_est_filt) < force_dz) ? 0.0f : _adm_force_est_filt;
 
-#if AP_CMCU06A_ENABLED
+#if AP_CONTACT_SENSOR_ENABLED
     if (!tare_settled) {
         _sensor_failsafe_ms = 0;
     } else if (force_ready) {
@@ -298,12 +301,11 @@ void ModeImpedanceAttitude::run()
         use_attitude_output = true;
 
 #if HAL_LOGGING_ENABLED
-        copter.Log_Write_Impedance(
-            _adm_force_ref, _adm_force_est,
-            _adm_force_ref - _adm_force_est,
-            _adm_v_body_x,
-            0.0f, 0.0f,
-            _virtual_pitch_rad);
+        copter.Log_Write_Impedance(0, 0,
+                                   _adm_force_ref * _adm_force_g_max.get() * GRAVITY_MSS * 0.001f,
+                                   0.0f,
+                                   _adm_force_est * _adm_force_g_max.get() * GRAVITY_MSS * 0.001f,
+                                   0.0f, 0.0f, 0.0f, 0.0f, 0.0f, _adm_v_body_x);
 #endif
 
         target_climb_rate_ms = get_avoidance_adjusted_climbrate_ms(target_climb_rate_ms);

@@ -236,23 +236,29 @@ void Copter::tritilt_update()
         gcs().send_named_float("RTZCh",   return_zero_is_low ? 0.0f : 1.0f);
     }
 
-#if AP_CMCU06A_ENABLED
+#if AP_CONTACT_SENSOR_ENABLED
     // Contact telemetry at 10 Hz.
     if (now_ms - _tritilt.contact_float_send_ms >= 100U) {
         _tritilt.contact_float_send_ms = now_ms;
-        const bool contact_healthy = cmcu06a.healthy();
-        const float contact_g = contact_healthy ? float(cmcu06a.get_value()) : 0.0f;
-        float force_ref_g = mode_impedance.get_force_ref_g();
+        const bool contact_healthy = contact_sensor.healthy();
+        AP_ContactSensor::ForceSample sample;
+        const bool have_sample = contact_sensor.get_force_sample(sample);
+        const float contact_g = have_sample ? float(sample.raw_value) : 0.0f;
+        const float contact_n = have_sample ? sample.tool_force_n : 0.0f;
+        float force_ref_n = mode_impedance.get_force_ref_n();
 #if MODE_IMPEDANCE_ATTITUDE_ENABLED
         if (flightmode == &mode_impedance_attitude) {
-            force_ref_g = mode_impedance_attitude.get_force_ref_g();
+            force_ref_n = mode_impedance_attitude.get_force_ref_g() * GRAVITY_MSS * 0.001f;
         }
 #endif
         gcs().send_named_float("ContactG", contact_g);
+        gcs().send_named_float("ForceN", contact_n);
         gcs().send_named_float("ContactOn", contact_healthy ? 1.0f : 0.0f);
-        gcs().send_named_float("ForceRefG", force_ref_g);
+        gcs().send_named_float("ForceRef", force_ref_n);
+        gcs().send_named_float("ContactCal", float(uint8_t(contact_sensor.calibration_state())));
+        gcs().send_named_float("CalAction", float(uint8_t(contact_sensor.calibration_action())));
     }
-#endif  // AP_CMCU06A_ENABLED
+#endif  // AP_CONTACT_SENSOR_ENABLED
 
     // -----------------------------------------------------------------------
     // Boundary notifications (one-shot per crossing; flag cleared when condition lifts)

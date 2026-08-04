@@ -801,7 +801,7 @@ void AP_MotorsTri_Tilt::output_armed_stabilizing()
     }
 # endif
 
-    // CMCU-06A provides measured body-X contact force for impedance mode, so
+    // ADM002 provides measured body-X contact force for impedance mode, so
     // the motor-model estimate below is intentionally disabled.
     // const float F_fr   = (_thrust[FR_UP]   + _thrust[FR_DOWN]);
     // const float F_rear = (_thrust[REAR_UP] + _thrust[REAR_DOWN]);

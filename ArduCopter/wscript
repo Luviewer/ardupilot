@@ -24,7 +24,7 @@ def build(bld):
             'AP_Devo_Telem',
             'AC_AutoTune',
             'AP_KDECAN',
-            'AP_CMCU06A',
+            'AP_ContactSensor',
             'AP_SurfaceDistance'
         ],
     )

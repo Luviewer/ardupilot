@@ -317,29 +317,38 @@ void Copter::Log_Write_SysID_Setup(uint8_t systemID_axis, float waveform_magnitu
 struct PACKED log_Impedance {
     LOG_PACKET_HEADER;
     uint64_t time_us;
-    float force_ref;
-    float force_est;
-    float force_err;
-    float vel_body_x;
-    float vel_ne_n;
-    float vel_ne_e;
-    float virtual_pitch_rad;
+    uint8_t state;
+    uint8_t fault;
+    float force_ref_n;
+    float force_raw_n;
+    float force_filt_n;
+    float tool_dist_m;
+    float confidence;
+    float force_ff;
+    float force_p;
+    float force_i;
+    float fx_command;
 };
 
-void Copter::Log_Write_Impedance(float force_ref, float force_est, float force_err,
-                                  float vel_body_x, float vel_ne_n, float vel_ne_e,
-                                  float virtual_pitch_rad)
+void Copter::Log_Write_Impedance(uint8_t state, uint8_t fault, float force_ref_n,
+                                 float force_raw_n, float force_filt_n, float tool_dist_m,
+                                 float confidence, float force_ff, float force_p,
+                                 float force_i, float fx_command)
 {
     struct log_Impedance pkt = {
         LOG_PACKET_HEADER_INIT(LOG_IMPEDANCE_MSG),
-        time_us             : AP_HAL::micros64(),
-        force_ref           : force_ref,
-        force_est           : force_est,
-        force_err           : force_err,
-        vel_body_x          : vel_body_x,
-        vel_ne_n            : vel_ne_n,
-        vel_ne_e            : vel_ne_e,
-        virtual_pitch_rad   : virtual_pitch_rad
+        time_us       : AP_HAL::micros64(),
+        state         : state,
+        fault         : fault,
+        force_ref_n   : force_ref_n,
+        force_raw_n   : force_raw_n,
+        force_filt_n  : force_filt_n,
+        tool_dist_m   : tool_dist_m,
+        confidence    : confidence,
+        force_ff      : force_ff,
+        force_p       : force_p,
+        force_i       : force_i,
+        fx_command    : fx_command,
     };
     logger.WriteBlock(&pkt, sizeof(pkt));
 }
@@ -631,18 +640,22 @@ const struct LogStructure Copter::log_structure[] = {
       "RTDT", "Qffff", "TimeUS,dt,dtAvg,dtMax,dtMin", "sssss", "F----" , true },
 
 // @LoggerMessage: IMPD
-// @Description: Impedance mode admittance control data
+// @Description: Impedance contact detection and direct force control data
 // @Field: TimeUS: Time since system startup
-// @Field: FRef: Force reference from pitch stick
-// @Field: FEst: Estimated body-X thrust ratio
-// @Field: FErr: Force error (FRef - FEst)
-// @Field: VBx: Admittance velocity in body-X (m/s)
-// @Field: VN: Admittance velocity offset North (m/s)
-// @Field: VE: Admittance velocity offset East (m/s)
-// @Field: VPit: Virtual pitch angle fed to Loiter (rad)
+// @Field: State: Contact controller state
+// @Field: Fault: Last contact controller fault reason
+// @Field: FRef: Tool-axis force reference
+// @Field: FRaw: Raw tool-axis force after sign correction
+// @Field: FFilt: Bias-corrected filtered tool-axis force
+// @Field: Dist: Forward tool range
+// @Field: Conf: Force-control confidence
+// @Field: FF: Force feedforward output
+// @Field: FP: Force proportional output
+// @Field: FI: Force integral output
+// @Field: Fx: Final direct forward command
 
     { LOG_IMPEDANCE_MSG, sizeof(log_Impedance),
-      "IMPD", "Qfffffff", "TimeUS,FRef,FEst,FErr,VBx,VN,VE,VPit", "s-------", "F-------" , true },
+      "IMPD", "QBBfffffffff", "TimeUS,State,Fault,FRef,FRaw,FFilt,Dist,Conf,FF,FP,FI,Fx", "s--NNNm-----", "F-----------", true },
 
 // @LoggerMessage: TTLT
 // @Description: TriTilt pitch offset and virtual/true pitch angles

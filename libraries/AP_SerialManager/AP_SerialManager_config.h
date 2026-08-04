@@ -125,10 +125,10 @@
 #define AP_SERIALMANAGER_SLCAN_BUFSIZE_RX       128
 #define AP_SERIALMANAGER_SLCAN_BUFSIZE_TX       128
 
-// CMCU-06A Modbus-RTU strain/load transmitter
-#define AP_SERIALMANAGER_CMCU06A_BAUD           9600
-#define AP_SERIALMANAGER_CMCU06A_BUFSIZE_RX     32
-#define AP_SERIALMANAGER_CMCU06A_BUFSIZE_TX     16
+// ADM002 high-rate unsolicited weight stream
+#define AP_SERIALMANAGER_ADM002_BAUD             115200
+#define AP_SERIALMANAGER_ADM002_BUFSIZE_RX       256
+#define AP_SERIALMANAGER_ADM002_BUFSIZE_TX       16
 
 // MSP protocol default buffer sizes
 #define AP_SERIALMANAGER_MSP_BUFSIZE_RX     128

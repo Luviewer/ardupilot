@@ -1414,7 +1414,8 @@ public:
     bool init(bool ignore_checks) override;
     void exit() override;
     void run() override;
-    float get_force_ref_g() const { return _adm_force_ref * _adm_force_g_max.get(); }
+    float get_force_ref_n() const { return _force_ref_n; }
+    uint8_t get_contact_state() const { return uint8_t(_state); }
 
     bool requires_position() const override { return true; }
     bool has_manual_throttle() const override { return false; }
@@ -1433,32 +1434,91 @@ protected:
 
 private:
 
-    float _adm_v_body_x = 0.0f;
-    float _adm_force_ref = 0.0f;
-    float _adm_force_est = 0.0f;
-    float _virtual_pitch_rad = 0.0f;
-    Vector2f _vel_offset_ne;
+    enum class ContactState : uint8_t {
+        READY = 0,
+        APPROACH,
+        CONTACT_CONFIRM,
+        FORCE_HOLD,
+        REACQUIRE,
+        RETREAT,
+    };
 
-    AP_Float _adm_gain;
-    AP_Float _adm_tau;
-    AP_Float _adm_vmax;
-    AP_Float _adm_dz;
-    AP_Float _adm_fmax;
-    AP_Float _adm_force_ref_rate;
-    AP_Float _adm_fest_lpf_hz;
-    AP_Float _adm_force_g_max;
-    AP_Int8 _adm_force_reverse;
-    AP_Float _adm_force_dz;
-    float _adm_force_est_filt = 0.0f;
+    enum class FaultReason : uint8_t {
+        NONE = 0,
+        RANGEFINDER,
+        FORCE_SENSOR,
+        APPROACH_TIMEOUT,
+        FORCE_LIMIT,
+        ACTUATOR_SATURATION,
+        REACQUIRE_FAILED,
+        RETREAT_TIMEOUT,
+        POSITION_ESTIMATE,
+    };
+
+    AP_Float _force_ref_default_n;
+    AP_Float _force_ref_max_n;
+    AP_Float _force_abort_n;
+    AP_Float _force_kp;
+    AP_Float _force_ki;
+    AP_Float _force_i_max;
+    AP_Float _fx_max;
+    AP_Float _fx_slew_rate;
+    AP_Float _approach_speed_ms;
+    AP_Float _slow_speed_ms;
+    AP_Float _slow_distance_m;
+    AP_Float _retreat_distance_m;
+    AP_Float _approach_timeout_s;
+    AP_Float _retreat_timeout_s;
+    AP_Int8 _rangefinder_instance;
+    AP_Float _saturation_timeout_s;
+    AP_Int8 _force_reverse;
+
+    ContactState _state = ContactState::READY;
+    FaultReason _fault_reason = FaultReason::NONE;
+    float _locked_yaw_rad = 0.0f;
+    float _tool_distance_m = 0.0f;
+    bool _tool_distance_healthy = false;
+    float _previous_tool_distance_m = 0.0f;
+    uint32_t _last_rangefinder_ms = 0;
+    float _force_raw_n = 0.0f;
+    float _force_filtered_n = 0.0f;
+    float _force_ref_n = 0.0f;
+    float _force_integral = 0.0f;
+    float _force_p_out = 0.0f;
+    float _force_i_out = 0.0f;
+    float _fx_target = 0.0f;
+    float _fx_command = 0.0f;
+    float _confidence = 0.0f;
+    float _noise_mean_n = 0.0f;
+    float _noise_m2_n = 0.0f;
+    uint16_t _noise_count = 0;
+    AP_ContactDetector _contact_detector;
+    uint32_t _last_force_sequence = 0;
+    uint32_t _last_force_sample_ms = 0;
+    float _last_force_dt_s = 0.05f;
+    uint32_t _state_start_ms = 0;
+    uint32_t _saturation_start_ms = 0;
+    uint32_t _telemetry_ms = 0;
+    Vector2f _contact_start_ne_m;
+    Vector2f _retreat_start_ne_m;
+    bool _reacquire_used = false;
+    bool _auto_start_pending = true;
     bool _tare_requested = false;
     bool _tare_reported = false;
     uint32_t _tare_start_ms = 0;
-    uint32_t _sensor_failsafe_ms = 0;
 
-    void admittance_reset();
-    void admittance_update(float dt);
+    void reset_contact_control();
+    void set_state(ContactState state, FaultReason reason = FaultReason::NONE);
+    bool update_force_sample();
+    void update_tool_distance();
+    void update_confidence(float dt);
+    void update_force_controller(float dt, bool new_force_sample);
+    void set_body_x_velocity(float speed_ms);
+    void run_contact_state(float dt, bool new_force_sample);
+    void output_attitude_and_force(const Vector3f &thrust_vector, bool force_override);
+    float contact_on_threshold_n() const;
+    float retreat_distance_done_m() const;
 };
-
 #if MODE_IMPEDANCE_ATTITUDE_ENABLED
 class ModeImpedanceAttitude : public Mode {
 

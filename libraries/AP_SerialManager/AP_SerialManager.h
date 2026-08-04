@@ -87,7 +87,8 @@ public:
         SerialProtocol_PPP = 48,
         SerialProtocol_IBUS_Telem = 49,                // i-BUS telemetry data, ie via sensor port of FS-iA6B
         SerialProtocol_IOMCU = 50,                     // IOMCU 
-        SerialProtocol_CMCU06A = 51,                   // CMCU-06A strain/load transmitter
+        SerialProtocol_Reserved51 = 51,                // retired; do not reuse
+        SerialProtocol_ADM002 = 52,                    // ADM002 high-rate contact force stream
         SerialProtocol_NumProtocols                    // must be the last value
     };
 
