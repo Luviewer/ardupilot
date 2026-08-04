@@ -86,7 +86,8 @@ void AC_AttitudeControl_Multi_6DoF::set_forward_lateral_rad(float &euler_pitch_a
 {
     // pitch/forward
     if (forward_enable && _motors.get_tilt_enable()) {
-        _motors.set_forward(-sinf(euler_pitch_angle_rad));
+        const float forward = external_forward_active ? external_forward : -sinf(euler_pitch_angle_rad);
+        _motors.set_forward(forward);
         euler_pitch_angle_rad = radians(pitch_offset_deg);
     } else {
         _motors.set_forward(0.0f);

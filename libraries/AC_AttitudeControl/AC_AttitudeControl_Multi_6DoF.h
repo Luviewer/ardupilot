@@ -103,6 +103,18 @@ public:
         lateral_enable = b;
     }
 
+    // Override the forward thrust-vectoring input for hybrid force/position
+    // control. The owner must clear the override when leaving its mode.
+    void set_external_forward(float forward) {
+        external_forward = constrain_float(forward, -1.0f, 1.0f);
+        external_forward_active = true;
+    }
+    void clear_external_forward() {
+        external_forward = 0.0f;
+        external_forward_active = false;
+    }
+    bool external_forward_is_active() const { return external_forward_active; }
+
 private:
 
     void set_forward_lateral_rad(float &euler_pitch_angle_rad, float &euler_roll_angle_rad);
@@ -114,6 +126,8 @@ private:
 
     bool forward_enable = true;
     bool lateral_enable = true;
+    bool external_forward_active = false;
+    float external_forward = 0.0f;
 
     static AC_AttitudeControl_Multi_6DoF *_singleton;
 
