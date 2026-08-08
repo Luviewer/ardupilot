@@ -1,0 +1,12 @@
+# Use GUIDED for the Lua pendulum controller.
+FLTMODE6         4
+
+# Enable Lua scripting. The heap and instruction limits match SITL defaults.
+SCR_ENABLE       1
+SCR_HEAP_SIZE    204800
+SCR_VM_I_COUNT   10000
+
+# Receive the pole plugin's MAVLink 2 ODOMETRY stream on SERIAL2.
+SERIAL2_BAUD     57
+SERIAL2_OPTIONS  0
+SERIAL2_PROTOCOL 2
