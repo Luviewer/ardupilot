@@ -1,0 +1,39 @@
+# Gazebo Classic tilt-tricopter impedance test configuration
+FRAME_CLASS 7
+FRAME_TYPE 22
+MOT_TILT_EN 1
+MOT_TILT_ANG_MAX 135
+
+# Gazebo sends an ADM002 stream to SERIAL6 over UDP port 9024
+SERIAL6_PROTOCOL 52
+SERIAL6_BAUD 115
+
+# Gazebo sends a forward DISTANCE_SENSOR stream to SERIAL7 over UDP port 9025
+SERIAL7_PROTOCOL 2
+SERIAL7_BAUD 115
+RNGFND1_TYPE 10
+RNGFND1_ORIENT 0
+RNGFND1_MIN 0.05
+RNGFND1_MAX 10
+
+# Keep battery behaviour deterministic while validating the contact controller
+BATT_MONITOR 0
+
+# Conservative first-pass impedance settings
+IMPD_FREF 1.0
+IMPD_FREF_MAX 3.0
+IMPD_F_ABORT 8.0
+IMPD_F_KP 0.03
+IMPD_F_KI 0.01
+IMPD_F_IMAX 0.15
+IMPD_FX_MAX 0.20
+IMPD_FX_RATE 0.25
+IMPD_APP_SPD 0.10
+IMPD_SLOW_SPD 0.03
+IMPD_SLOW_DIST 0.30
+IMPD_RET_DIST 0.50
+IMPD_APP_TOUT 45
+IMPD_RET_TOUT 15
+IMPD_RFND_IDX 0
+IMPD_SAT_TOUT 1.0
+IMPD_FS_REV 0
