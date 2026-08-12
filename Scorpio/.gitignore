@@ -1,0 +1,7 @@
+eeprom.bin
+mav.parm
+mav.tlog
+mav.tlog.raw
+terrain/
+screenshots/
+recordings/*.mp4

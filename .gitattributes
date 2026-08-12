@@ -10,3 +10,4 @@
 *.bin binary linguist-generated
 *.elf binary linguist-generated
 *.hex binary linguist-generated
+Scorpio/recordings/*.bag filter=lfs diff=lfs merge=lfs -text

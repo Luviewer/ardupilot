@@ -425,10 +425,11 @@ void AP_HexRuped::read_radio_input()
         hal.rcin->read(_channel_params.yaw_channel - 1)         // Z轴：逆时针(+)/顺时针(-)旋转
     };
 
-    // 为未配置的通道设置默认中位值（1500μs表示零输入）
-    if (_channel_params.throttle_x_channel == -1) throttle_chan[0] = 1500;
-    if (_channel_params.throttle_y_channel == -1) throttle_chan[1] = 1500;
-    if (_channel_params.yaw_channel == -1) throttle_chan[2] = 1500;
+    // 为未配置或尚未收到数据的扩展通道设置默认中位值。SITL/部分接收机
+    // 在RC9以上通道初始化前返回0，不能把它解释成满量程反向运动。
+    if (_channel_params.throttle_x_channel == -1 || throttle_chan[0] == 0) throttle_chan[0] = 1500;
+    if (_channel_params.throttle_y_channel == -1 || throttle_chan[1] == 0) throttle_chan[1] = 1500;
+    if (_channel_params.yaw_channel == -1 || throttle_chan[2] == 0) throttle_chan[2] = 1500;
 
     // 死区处理：将接近中位的PWM值（1450-1550μs）强制设为中位值
     // 目的：消除摇杆机械回中误差和电子噪声引起的微小抖动
@@ -457,8 +458,8 @@ void AP_HexRuped::read_radio_input()
     };
 
     // 为未配置的通道设置默认中位值
-    if (_channel_params.roll_channel == -1) rollpitch_chan[0] = 1500;
-    if (_channel_params.pitch_channel == -1) rollpitch_chan[1] = 1500;
+    if (_channel_params.roll_channel == -1 || rollpitch_chan[0] == 0) rollpitch_chan[0] = 1500;
+    if (_channel_params.pitch_channel == -1 || rollpitch_chan[1] == 0) rollpitch_chan[1] = 1500;
 
     // 同样进行死区处理，避免姿态控制抖动
     for (uint8_t i = 0; i < 2; i++) {
