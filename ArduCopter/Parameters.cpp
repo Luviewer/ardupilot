@@ -720,8 +720,7 @@ const AP_Param::Info Copter::var_info[] = {
     GOBJECT(custom_control, "CC", AC_CustomControl),
 #endif
 
-    // GOBJECT(qrupd, "QRUPD", AP_QuadRuped),
-    GOBJECT(qrupd, "QRD_", AP_QuadRuped),
+    GOBJECT(hexruped, "HEX_", AP_HexRuped),
 
     // @Group:
     // @Path: Parameters.cpp

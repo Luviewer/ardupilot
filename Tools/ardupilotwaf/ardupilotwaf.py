@@ -131,6 +131,7 @@ COMMON_VEHICLE_DEPENDENT_LIBRARIES = [
     'AP_RCMapper',
     'AP_MultiHeap',
     'AP_QuadRuped',
+    'AP_HexRuped',
     'AP_Hiwonder',
     'AC_TD',
 ]

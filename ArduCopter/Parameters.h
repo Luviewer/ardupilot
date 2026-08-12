@@ -382,7 +382,7 @@ public:
         k_param_throw_altitude_min,
         k_param_throw_altitude_max,
 
-        k_param_qrupd,
+        k_param_hexruped,
 
         // the k_param_* space is 9-bits in size
         // 511: reserved

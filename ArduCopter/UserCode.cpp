@@ -23,10 +23,10 @@ void Copter::userhook_init() // 如果启用了用户初始化钩子
 #ifdef USERHOOK_FASTLOOP // 如果启用了 100Hz 高速循环钩子
 void Copter::userhook_FastLoop()
 {
-    qrud_mode_channel = qrupd.get_channel_params().mode_channel;
+    qrud_mode_channel = hexruped.get_channel_params().mode_channel;
 
 
-    qrupd.update();
+    hexruped.update();
     // // put your 100Hz code here   // 100Hz 代码（每 10ms 执行一次）
     // const AP_RangeFinder_Backend* sensor = rangefinder.get_backend(0);
 

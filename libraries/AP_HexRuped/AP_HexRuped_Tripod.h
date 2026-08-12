@@ -1,0 +1,49 @@
+#pragma once
+
+#include "AP_HexRuped_Backend.h"
+#include "AP_HexRuped_Params.h"
+#include <AC_PID/AC_PID.h>
+#include <AP_AHRS/AP_AHRS_View.h>
+#include <AP_HAL/AP_HAL_Boards.h>
+#include <AP_Math/AP_Math.h>
+#include <AP_Motors/AP_Motors.h>
+#include <AP_Param/AP_Param.h>
+
+// 前向声明
+class AP_HexRuped;
+
+// 交替三角步态后端实现
+class AP_HexRuped_Tripod : public AP_HexRuped_Backend {
+public:
+    // 构造函数
+    AP_HexRuped_Tripod(AP_HexRuped& frontend, AP_HexRuped::HexRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
+
+    // 析构函数
+    virtual ~AP_HexRuped_Tripod() { }
+
+    // 后端接口实现
+    void update() override;
+    void update_leg() override;
+
+    void gait_init() override;
+
+    void trajectory_generation(uint8_t leg_index) override;
+
+    uint32_t get_Freq() override { return gait_hz.get(); }
+
+    // 参数表定义
+    static const struct AP_Param::GroupInfo var_info[];
+
+private:
+    // 交替三角步态特定参数
+    AP_Int8  trajectory_mode;        // 轨迹生成模式选择：0=经典摆线轨迹，1=贝塞尔曲线轨迹
+    AP_Float bezier_control_height;  // 贝塞尔曲线控制点高度系数：调节抬腿高度（相对leg_lift_height的比例）
+    AP_Float bezier_control_forward; // 贝塞尔曲线控制点前向偏移系数：调节轨迹前后延伸程度（相对行程长度的比例）
+
+    uint32_t lasttime;
+
+    // 轨迹生成函数
+    void     generate_cycloid_trajectory(uint8_t leg_index);                                                                   // 摆线轨迹生成器：使用经典摆线算法，计算简单，运动平稳
+    void     generate_bezier_trajectory(uint8_t leg_index);                                                                    // 贝塞尔曲线轨迹生成器：提供灵活的轨迹形状控制，适合复杂地形
+    Vector3f cubic_bezier_trajectory(float t, const Vector3f& p0, const Vector3f& p1, const Vector3f& p2, const Vector3f& p3); // 三次贝塞尔曲线计算核心函数
+};
