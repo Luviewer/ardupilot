@@ -409,14 +409,22 @@ bool AP_MotorsQuad_Tilt::arming_checks(size_t buflen, char* buffer) const
 
 void AP_MotorsQuad_Tilt::servoOutput(enum TiltIndex servo_index, float svo_out_cd)
 {
+    // REV parameters are booleans: 0 means normal and 1 means reversed.
+    // Do not multiply by the raw parameter value because the normal/default
+    // value of zero would suppress every tilt command.
+    const float rf_direction = _tilt_servo_rf_rev.get() == 0 ? 1.0f : -1.0f;
+    const float rr_direction = _tilt_servo_rr_rev.get() == 0 ? 1.0f : -1.0f;
+    const float lr_direction = _tilt_servo_lr_rev.get() == 0 ? 1.0f : -1.0f;
+    const float lf_direction = _tilt_servo_lf_rev.get() == 0 ? 1.0f : -1.0f;
+
     if (servo_index == RF) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator1,    (float)_tilt_servo_rf_rev.get() * svo_out_cd + (float)_svo_rf_offset.get());
+        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator1, rf_direction * svo_out_cd + (float)_svo_rf_offset.get());
     } else if (servo_index == RR) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator2,     (float)_tilt_servo_rr_rev.get() * svo_out_cd + (float)_svo_rr_offset.get());
+        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator2, rr_direction * svo_out_cd + (float)_svo_rr_offset.get());
     } else if (servo_index == LR) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator3, (float)_tilt_servo_lr_rev.get() * svo_out_cd + (float)_svo_lr_offset.get());
+        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator3, lr_direction * svo_out_cd + (float)_svo_lr_offset.get());
     } else if (servo_index == LF) {
-        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator4,     (float)_tilt_servo_lf_rev.get() * svo_out_cd + (float)_svo_lf_offset.get());
+        SRV_Channels::set_output_scaled(SRV_Channel::k_actuator4, lf_direction * svo_out_cd + (float)_svo_lf_offset.get());
     }
 }
 
