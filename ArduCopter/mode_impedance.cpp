@@ -7,7 +7,12 @@
 static constexpr uint32_t IMPEDANCE_TARE_SETTLE_MS = 600;
 static constexpr uint32_t IMPEDANCE_RANGE_TIMEOUT_MS = 300;
 static constexpr float IMPEDANCE_RANGE_JUMP_M = 0.2f;
-static constexpr float IMPEDANCE_PILOT_ABORT_STICK = 0.6f;
+// A forward ray mounted at the probe tip becomes invalid as it enters the
+// contact surface.  Permit a tightly bounded handoff to the force sensor only
+// after the last valid range was already inside this near-contact zone.
+static constexpr float IMPEDANCE_RANGE_HANDOFF_M = 0.10f;
+static constexpr uint32_t IMPEDANCE_RANGE_HANDOFF_TIMEOUT_MS = 2000;
+static constexpr uint16_t IMPEDANCE_ALT_HOLD_PWM = 1800U;
 static constexpr float IMPEDANCE_FORCE_LPF_HZ = 3.0f;
 static constexpr float IMPEDANCE_REACQUIRE_SPEED_MS = 0.03f;
 static constexpr float IMPEDANCE_CONFIDENCE_TC_S = 0.3f;
@@ -15,6 +20,9 @@ static constexpr float IMPEDANCE_FORCE_REF_RATE_NS = 1.0f;
 static constexpr float IMPEDANCE_CONTACT_ON_N = 0.5f;
 static constexpr float IMPEDANCE_CONTACT_OFF_N = 0.25f;
 static constexpr uint8_t IMPEDANCE_CONTACT_SAMPLES = 3;
+// Keep force control active through a bounded impact transient before
+// declaring a genuine release. Force, range, position and sensor safety
+// exits remain active during this window.
 static constexpr uint8_t IMPEDANCE_BASELINE_SAMPLES = 20;
 static constexpr float IMPEDANCE_NOISE_SIGMA_MULTIPLIER = 4.0f;
 
@@ -149,6 +157,22 @@ const AP_Param::GroupInfo ModeImpedance::var_info[] = {
     // @User: Advanced
     AP_GROUPINFO("FS_REV", 33, ModeImpedance, _force_reverse, 0),
 
+    // @Param: REL_TOUT
+    // @DisplayName: 接触释放确认时间
+    // @Description: 恒力阶段检测到低于释放阈值后，继续保持力控的确认时间。用于区分碰撞瞬态和真实失触；力上限、测距、位置和传感器故障仍立即退出。
+    // @Range: 0.1 10
+    // @Units: s
+    // @User: Advanced
+    AP_GROUPINFO("REL_TOUT", 34, ModeImpedance, _release_confirm_s, 1.0f),
+
+    // @Param: F_OFF
+    // @DisplayName: 接触释放力阈值
+    // @Description: 恒力阶段滤波力连续低于该阈值时，开始释放确认计时。必须低于接触建立阈值，过高会把低力稳态误判为失触。
+    // @Range: 0.01 5
+    // @Units: N
+    // @User: Advanced
+    AP_GROUPINFO("F_OFF", 35, ModeImpedance, _force_off_threshold_n, IMPEDANCE_CONTACT_OFF_N),
+
     AP_GROUPEND
 };
 
@@ -168,6 +192,7 @@ bool ModeImpedance::init(bool ignore_checks)
     loiter_nav->set_pilot_desired_acceleration_rad(0.0f, 0.0f);
     loiter_nav->init_target_m(pos_control->get_pos_estimate_NED_m().xy() -
                               pos_control->get_pos_offset_NED_m().xy());
+    pos_control->NE_stop_vel_stabilisation();
     loiter_nav->clear_vel_offset_NE_ms();
 
     if (!pos_control->D_is_active()) {
@@ -225,11 +250,15 @@ void ModeImpedance::reset_contact_control()
     _noise_count = 0;
     _previous_tool_distance_m = 0.0f;
     _last_rangefinder_ms = 0;
-    _contact_detector.configure(IMPEDANCE_CONTACT_ON_N, IMPEDANCE_CONTACT_OFF_N, IMPEDANCE_CONTACT_SAMPLES);
+    _last_valid_tool_distance_m = 0.0f;
+    _last_valid_tool_distance_ms = 0;
+    const float reset_off_n = constrain_float(_force_off_threshold_n.get(), 0.01f, IMPEDANCE_CONTACT_ON_N);
+    _contact_detector.configure(IMPEDANCE_CONTACT_ON_N, reset_off_n, IMPEDANCE_CONTACT_SAMPLES);
     _contact_detector.reset();
     _last_force_sequence = 0;
     _last_force_sample_ms = 0;
     _last_force_dt_s = 0.05f;
+    _body_x_velocity_command_ms = 0.0f;
     _state_start_ms = AP_HAL::millis();
     _saturation_start_ms = 0;
     _reacquire_used = false;
@@ -263,26 +292,52 @@ void ModeImpedance::set_state(ContactState state, FaultReason reason)
     case ContactState::APPROACH:
         _fault_reason = FaultReason::NONE;
         _locked_yaw_rad = ahrs.get_yaw();
+        _locked_tool_axis_ne = Vector2f{cosf(_locked_yaw_rad), sinf(_locked_yaw_rad)};
+        _approach_start_ne_m = pos_control->get_pos_estimate_NED_m().xy().tofloat();
         _force_integral = 0.0f;
         _force_ref_n = constrain_float(_force_ref_default_n, 1.0f, _force_ref_max_n);
         _contact_detector.reset();
         loiter_nav->init_target_m(pos_control->get_pos_estimate_NED_m().xy() -
                                   pos_control->get_pos_offset_NED_m().xy());
+        pos_control->NE_stop_vel_stabilisation();
         GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Impedance: approach");
         break;
-    case ContactState::CONTACT_CONFIRM:
-        set_body_x_velocity(0.0f);
-        GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Impedance: confirming contact");
-        break;
-    case ContactState::FORCE_HOLD:
+    case ContactState::CONTACT_CONFIRM: {
+        const Vector2f approach_delta = pos_control->get_pos_estimate_NED_m().xy().tofloat() - _approach_start_ne_m;
+        if (approach_delta.length() > 0.05f) {
+            _locked_tool_axis_ne = approach_delta.normalized();
+        }
+    }
+    set_body_x_velocity(0.0f);
+    GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Impedance: confirming contact");
+    break;
+    case ContactState::FORCE_HOLD: {
+        loiter_nav->clear_vel_offset_NE_ms();
+        loiter_nav->init_target_m(pos_control->get_pos_estimate_NED_m().xy() -
+                                  pos_control->get_pos_offset_NED_m().xy());
         _contact_start_ne_m = pos_control->get_pos_estimate_NED_m().xy().tofloat();
-        _force_integral = 0.0f;
+        // Make the velocity-to-force transition bumpless.  The approach
+        // controller already has the correct model-specific forward sign;
+        // preserve its current actuator demand while the force PI takes over.
+        _confidence = 1.0f;
+        const float force_error_n = _force_ref_n - _force_filtered_n;
+        _force_p_out = _force_kp.get() * force_error_n;
+        const float fx_max = constrain_float(_fx_max.get(), 0.0f, 1.0f);
+        const float current_forward = constrain_float(motors->get_forward(), -fx_max, fx_max);
+        _force_integral = constrain_float(current_forward - _force_p_out,
+                                          -_force_i_max.get(), _force_i_max.get());
+        _force_i_out = _force_integral;
+        _fx_target = constrain_float(_force_p_out + _force_i_out, -fx_max, fx_max);
+        _fx_command = _fx_target;
+        _release_pending_start_ms = 0;
         _contact_detector.reset(true);
         GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Impedance: force hold");
         break;
+    }
     case ContactState::REACQUIRE:
         _force_integral = 0.0f;
         _fx_target = 0.0f;
+        _release_pending_start_ms = 0;
         _reacquire_used = true;
         _contact_detector.reset();
         GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Impedance: contact lost, reacquire");
@@ -290,7 +345,9 @@ void ModeImpedance::set_state(ContactState state, FaultReason reason)
     case ContactState::RETREAT:
         _force_integral = 0.0f;
         _fx_target = 0.0f;
+        _release_pending_start_ms = 0;
         _retreat_start_ne_m = pos_control->get_pos_estimate_NED_m().xy().tofloat();
+        _retreat_start_distance_m = _tool_distance_healthy ? _tool_distance_m : _last_valid_tool_distance_m;
         GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Impedance: retreat reason %u", unsigned(_fault_reason));
         break;
     }
@@ -356,6 +413,33 @@ void ModeImpedance::update_tool_distance()
     }
     _tool_distance_healthy = _tool_distance_m >= backend->min_distance() &&
                              _tool_distance_m <= backend->max_distance();
+    if (_tool_distance_healthy) {
+        _last_valid_tool_distance_m = _tool_distance_m;
+        _last_valid_tool_distance_ms = AP_HAL::millis();
+    }
+#endif
+}
+
+bool ModeImpedance::range_contact_handoff_available(uint32_t now_ms) const
+{
+    if (_tool_distance_healthy) {
+        return true;
+    }
+    if (_last_valid_tool_distance_ms == 0 || _last_valid_tool_distance_m > IMPEDANCE_RANGE_HANDOFF_M) {
+        return false;
+    }
+#if AP_CONTACT_SENSOR_ENABLED
+    if (!copter.contact_sensor.healthy()) {
+        return false;
+    }
+    // Once force hold is positively established the force sensor is the
+    // primary normal-axis feedback, so the tip ray may remain occluded for the
+    // duration of contact.  All pre-contact/reacquire states retain the short
+    // handoff deadline.
+    return _state == ContactState::FORCE_HOLD ||
+           now_ms - _last_valid_tool_distance_ms <= IMPEDANCE_RANGE_HANDOFF_TIMEOUT_MS;
+#else
+    return false;
 #endif
 }
 
@@ -375,19 +459,21 @@ void ModeImpedance::update_confidence(float dt)
 #if AP_CONTACT_SENSOR_ENABLED
     force_sensor_healthy = copter.contact_sensor.healthy();
 #endif
-    if (_tool_distance_healthy && force_sensor_healthy &&
+    const bool contact_handoff = range_contact_handoff_available(AP_HAL::millis());
+    if (contact_handoff && force_sensor_healthy &&
         (_state == ContactState::CONTACT_CONFIRM || _state == ContactState::FORCE_HOLD || _state == ContactState::REACQUIRE)) {
         const float near_m = MAX(_slow_distance_m.get(), 0.05f);
-        if (_tool_distance_m <= near_m) {
+        const float confidence_distance_m = _tool_distance_healthy ? _tool_distance_m : _last_valid_tool_distance_m;
+        if (confidence_distance_m <= near_m) {
             requested = 1.0f;
-        } else if (_tool_distance_m < 2.0f * near_m) {
-            const float phase = (_tool_distance_m - near_m) / near_m;
+        } else if (confidence_distance_m < 2.0f * near_m) {
+            const float phase = (confidence_distance_m - near_m) / near_m;
             requested = 0.5f * (1.0f + cosf(phase * M_PI));
         }
 
         if (_state == ContactState::FORCE_HOLD) {
             const Vector2f position_ne_m = pos_control->get_pos_estimate_NED_m().xy().tofloat();
-            const Vector2f forward_ne{cosf(_locked_yaw_rad), sinf(_locked_yaw_rad)};
+            const Vector2f forward_ne = _locked_tool_axis_ne;
             const float tool_error_m = fabsf((position_ne_m - _contact_start_ne_m) * forward_ne);
             if (tool_error_m > 0.1f) {
                 const float error_phase = constrain_float((tool_error_m - 0.1f) / 0.4f, 0.0f, 1.0f);
@@ -426,21 +512,29 @@ void ModeImpedance::update_force_controller(float dt, bool new_force_sample)
 
 void ModeImpedance::set_body_x_velocity(float speed_ms)
 {
-    Vector2f velocity_ne_ms{speed_ms * cosf(_locked_yaw_rad), speed_ms * sinf(_locked_yaw_rad)};
-    loiter_nav->set_vel_offset_NE_ms(velocity_ne_ms);
+    _body_x_velocity_command_ms = speed_ms;
+}
+
+bool ModeImpedance::use_ne_velocity_control() const
+{
+    return _state == ContactState::APPROACH ||
+           _state == ContactState::CONTACT_CONFIRM ||
+           _state == ContactState::REACQUIRE ||
+           (_state == ContactState::RETREAT && fabsf(_fx_command) <= 0.01f);
 }
 
 float ModeImpedance::retreat_distance_done_m() const
 {
     const Vector2f position_ne_m = pos_control->get_pos_estimate_NED_m().xy().tofloat();
-    const Vector2f forward_ne{cosf(_locked_yaw_rad), sinf(_locked_yaw_rad)};
-    return -((position_ne_m - _retreat_start_ne_m) * forward_ne);
+    return -((position_ne_m - _retreat_start_ne_m) * _locked_tool_axis_ne);
 }
 
 void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
 {
     const uint32_t now_ms = AP_HAL::millis();
-    _contact_detector.configure(contact_on_threshold_n(), IMPEDANCE_CONTACT_OFF_N, IMPEDANCE_CONTACT_SAMPLES);
+    const float contact_on_n = contact_on_threshold_n();
+    const float contact_off_n = constrain_float(_force_off_threshold_n.get(), 0.01f, contact_on_n);
+    _contact_detector.configure(contact_on_n, contact_off_n, IMPEDANCE_CONTACT_SAMPLES);
     const bool detection_active = _state == ContactState::APPROACH ||
                                   _state == ContactState::CONTACT_CONFIRM ||
                                   _state == ContactState::FORCE_HOLD ||
@@ -483,7 +577,7 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
         break;
 
     case ContactState::APPROACH:
-        if (!_tool_distance_healthy) {
+        if (!range_contact_handoff_available(now_ms)) {
             set_state(ContactState::RETREAT, FaultReason::RANGEFINDER);
             break;
         }
@@ -491,7 +585,8 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
             set_state(ContactState::RETREAT, FaultReason::APPROACH_TIMEOUT);
             break;
         }
-        set_body_x_velocity((_tool_distance_m <= _slow_distance_m.get()) ? _slow_speed_ms.get() : _approach_speed_ms.get());
+        set_body_x_velocity((!_tool_distance_healthy || _tool_distance_m <= _slow_distance_m.get()) ?
+                            _slow_speed_ms.get() : _approach_speed_ms.get());
         if (contact_event == AP_ContactDetector::Event::CONTACT) {
             set_state(ContactState::FORCE_HOLD);
         } else if (_contact_detector.contact_candidate()) {
@@ -501,7 +596,7 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
 
     case ContactState::CONTACT_CONFIRM:
         set_body_x_velocity(0.0f);
-        if (!_tool_distance_healthy) {
+        if (!range_contact_handoff_available(now_ms)) {
             set_state(ContactState::RETREAT, FaultReason::RANGEFINDER);
             break;
         }
@@ -514,11 +609,17 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
 
     case ContactState::FORCE_HOLD: {
         set_body_x_velocity(0.0f);
-        if (!_tool_distance_healthy) {
+        if (!range_contact_handoff_available(now_ms)) {
             set_state(ContactState::RETREAT, FaultReason::RANGEFINDER);
             break;
         }
         if (contact_event == AP_ContactDetector::Event::RELEASE) {
+            _release_pending_start_ms = now_ms;
+        } else if (contact_event == AP_ContactDetector::Event::CONTACT) {
+            _release_pending_start_ms = 0;
+        }
+        if (_release_pending_start_ms != 0 &&
+            now_ms - _release_pending_start_ms >= uint32_t(MAX(_release_confirm_s.get(), 0.1f) * 1000.0f)) {
             set_state(_reacquire_used ? ContactState::RETREAT : ContactState::REACQUIRE,
                       _reacquire_used ? FaultReason::REACQUIRE_FAILED : FaultReason::NONE);
             break;
@@ -540,7 +641,7 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
 
     case ContactState::REACQUIRE:
         _fx_target = 0.0f;
-        if (!_tool_distance_healthy) {
+        if (!range_contact_handoff_available(now_ms)) {
             set_state(ContactState::RETREAT, FaultReason::RANGEFINDER);
             break;
         }
@@ -567,7 +668,16 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
             break;
         }
         set_body_x_velocity(-MAX(_slow_speed_ms.get(), 0.02f));
-        if (retreat_distance_done_m() >= _retreat_distance_m.get()) {
+        // Accept either the requested position retreat or direct physical
+        // evidence that the probe has cleared the wall.  The latter protects
+        // tilt-frame SITL setups where NE/body-axis mapping is imperfect:
+        // force must be released and the forward gap must have opened by a
+        // meaningful margin before READY can be declared.
+        const bool force_released = fabsf(_force_filtered_n) <= _force_off_threshold_n.get();
+        const bool range_clear = _tool_distance_healthy &&
+                                 _tool_distance_m >= MAX(_retreat_start_distance_m + 0.15f,
+                                         _slow_distance_m.get() + 0.10f);
+        if (retreat_distance_done_m() >= _retreat_distance_m.get() || (force_released && range_clear)) {
             set_state(ContactState::READY);
         } else if (now_ms - _state_start_ms > uint32_t(MAX(_retreat_timeout_s.get(), 1.0f) * 1000.0f)) {
             set_body_x_velocity(0.0f);
@@ -605,9 +715,12 @@ void ModeImpedance::output_attitude_and_force(const Vector3f &thrust_vector, boo
 
 void ModeImpedance::run()
 {
-    if (rc().has_valid_input() && channel_pitch->norm_input_dz() > IMPEDANCE_PILOT_ABORT_STICK) {
-        GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Impedance: pilot abort");
-        copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
+    if (rc().has_valid_input() &&
+        channel_pitch->get_radio_in() > IMPEDANCE_ALT_HOLD_PWM) {
+        GCS_SEND_TEXT(MAV_SEVERITY_NOTICE, "Impedance: RC2 high, ALT_HOLD");
+        if (!copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND)) {
+            GCS_SEND_TEXT(MAV_SEVERITY_ERROR, "Impedance: ALT_HOLD switch failed");
+        }
         return;
     }
 
@@ -680,7 +793,16 @@ void ModeImpedance::run()
         break;
     case AltHoldModeState::Flying:
         run_contact_state(dt, new_force_sample);
-        loiter_nav->update();
+        if (use_ne_velocity_control()) {
+            Vector2f velocity_ne_ms = _locked_tool_axis_ne * _body_x_velocity_command_ms;
+            const Vector2f accel_ne_zero;
+            pos_control->input_vel_accel_NE_m(velocity_ne_ms, accel_ne_zero, false);
+            pos_control->NE_stop_pos_stabilisation();
+            pos_control->NE_update_controller();
+        } else {
+            loiter_nav->clear_vel_offset_NE_ms();
+            loiter_nav->update();
+        }
         target_climb_rate_ms = get_avoidance_adjusted_climbrate_ms(target_climb_rate_ms);
         pos_control->D_set_pos_target_from_climb_rate_ms(target_climb_rate_ms);
         break;

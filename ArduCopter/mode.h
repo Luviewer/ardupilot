@@ -1472,14 +1472,20 @@ private:
     AP_Int8 _rangefinder_instance;
     AP_Float _saturation_timeout_s;
     AP_Int8 _force_reverse;
+    AP_Float _release_confirm_s;
+    AP_Float _force_off_threshold_n;
 
     ContactState _state = ContactState::READY;
     FaultReason _fault_reason = FaultReason::NONE;
     float _locked_yaw_rad = 0.0f;
+    Vector2f _locked_tool_axis_ne{1.0f, 0.0f};
+    Vector2f _approach_start_ne_m;
     float _tool_distance_m = 0.0f;
     bool _tool_distance_healthy = false;
     float _previous_tool_distance_m = 0.0f;
     uint32_t _last_rangefinder_ms = 0;
+    float _last_valid_tool_distance_m = 0.0f;
+    uint32_t _last_valid_tool_distance_ms = 0;
     float _force_raw_n = 0.0f;
     float _force_filtered_n = 0.0f;
     float _force_ref_n = 0.0f;
@@ -1496,11 +1502,14 @@ private:
     uint32_t _last_force_sequence = 0;
     uint32_t _last_force_sample_ms = 0;
     float _last_force_dt_s = 0.05f;
+    float _body_x_velocity_command_ms = 0.0f;
     uint32_t _state_start_ms = 0;
     uint32_t _saturation_start_ms = 0;
+    uint32_t _release_pending_start_ms = 0;
     uint32_t _telemetry_ms = 0;
     Vector2f _contact_start_ne_m;
     Vector2f _retreat_start_ne_m;
+    float _retreat_start_distance_m = 0.0f;
     bool _reacquire_used = false;
     bool _auto_start_pending = true;
     bool _tare_requested = false;
@@ -1514,10 +1523,12 @@ private:
     void update_confidence(float dt);
     void update_force_controller(float dt, bool new_force_sample);
     void set_body_x_velocity(float speed_ms);
+    bool use_ne_velocity_control() const;
     void run_contact_state(float dt, bool new_force_sample);
     void output_attitude_and_force(const Vector3f &thrust_vector, bool force_override);
     float contact_on_threshold_n() const;
     float retreat_distance_done_m() const;
+    bool range_contact_handoff_available(uint32_t now_ms) const;
 };
 #if MODE_IMPEDANCE_ATTITUDE_ENABLED
 class ModeImpedanceAttitude : public Mode {
