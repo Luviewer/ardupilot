@@ -160,10 +160,17 @@ void AP_ADM002::read_from_uart()
 bool AP_ADM002::parse_buffer()
 {
     bool parsed = false;
+    if (parse_enable_stream_ack()) {
+        parsed = true;
+    }
     if (_config_state == ConfigState::PENDING && parse_config_ack()) {
         parsed = true;
     }
     while (_rx_len >= STREAM_FRAME_LEN) {
+        if (parse_enable_stream_ack()) {
+            parsed = true;
+            continue;
+        }
         if (_config_state == ConfigState::PENDING && parse_config_ack()) {
             parsed = true;
             continue;
@@ -180,6 +187,19 @@ bool AP_ADM002::parse_buffer()
         parsed = true;
     }
     return parsed;
+}
+
+// High-speed firmware acknowledges 0x28 before starting unsolicited samples.
+bool AP_ADM002::parse_enable_stream_ack()
+{
+    if (_rx_len < 3 ||
+        _rx_buf[0] != DEVICE_ADDRESS ||
+        _rx_buf[1] != ENABLE_STREAM_ACK_FUNCTION ||
+        _rx_buf[2] != uint8_t(DEVICE_ADDRESS + ENABLE_STREAM_ACK_FUNCTION)) {
+        return false;
+    }
+    consume_rx(3);
+    return true;
 }
 
 // Configuration acknowledgements are interleaved with unsolicited samples.

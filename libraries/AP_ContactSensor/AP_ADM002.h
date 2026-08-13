@@ -77,6 +77,7 @@ private:
 
     static constexpr uint8_t DEVICE_ADDRESS = 1;
     static constexpr uint8_t ENABLE_STREAM_FUNCTION = 0x28;
+    static constexpr uint8_t ENABLE_STREAM_ACK_FUNCTION = 0x29;
     static constexpr uint8_t WRITE_OPERATION = 1;
     static constexpr uint8_t ENABLE_STREAM = 1;
     static constexpr uint8_t STREAM_FRAME_LEN = 5;
@@ -94,6 +95,7 @@ private:
     void read_from_uart();
     bool parse_buffer();
     bool parse_config_ack();
+    bool parse_enable_stream_ack();
     bool parse_stream_frame();
     void consume_rx(uint8_t nbytes);
     void reset_rx();

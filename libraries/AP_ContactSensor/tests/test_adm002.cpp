@@ -103,6 +103,17 @@ TEST(ADM002, UsesDocumentedEnableCommandChecksum)
     EXPECT_EQ(0x2B, AP_ADM002Test::checksum(command, sizeof(command)));
 }
 
+TEST(ADM002, ParsesHighSpeedFirmwareEnableAckBeforeStream)
+{
+    AP_ADM002 sensor;
+    uint8_t stream[8] { 0x01, 0x29, 0x2A };
+    AP_ADM002Test::make_frame(&stream[3], 0x03, 20000);
+
+    EXPECT_TRUE(AP_ADM002Test::feed(sensor, stream, sizeof(stream)));
+    EXPECT_EQ(20000, AP_ADM002Test::weight_g(sensor));
+    EXPECT_EQ(1U, AP_ADM002Test::sequence(sensor));
+}
+
 TEST(ADM002, ConvertsGramsToNewtonsAndAppliesSoftwareTare)
 {
     AP_ADM002 sensor;
