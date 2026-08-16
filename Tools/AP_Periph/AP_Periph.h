@@ -254,13 +254,52 @@ public:
 #endif // HAL_PERIPH_ENABLE_RPM
 
 #ifdef HAL_USE_Hiwonder_Servo
-    uint32_t hiwonder_last_send_ms;
-    void send_hiwonder_pos();
-    void handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTransfer* transfer);
-    // void test_read_servo_positions();
+    static constexpr uint8_t HIWONDER_JOINTS_PER_LEG = 3;
+    static constexpr uint8_t HIWONDER_SERVO_COUNT = AP_Hiwonder::BUS_COUNT * HIWONDER_JOINTS_PER_LEG;
 
-    AC_TD servo_td[12];
-    AP_Hiwonder hiwonder[AP_Hiwonder::SERVO_Total] = { 1, 2, 3, 4 };
+    enum class HiwonderReadType : uint8_t {
+        POSITION,
+        TEMPERATURE,
+        VOLTAGE,
+        DISTANCE,
+        COUNT,
+    };
+
+    struct HiwonderPollState {
+        bool pending {};
+        uint8_t joint_index {};
+        uint8_t next_joint_index {};
+        HiwonderReadType read_type { HiwonderReadType::POSITION };
+        bool online[HIWONDER_JOINTS_PER_LEG] {};
+        uint8_t position_failures[HIWONDER_JOINTS_PER_LEG] {};
+        uint32_t next_due_ms[HIWONDER_JOINTS_PER_LEG][uint8_t(HiwonderReadType::COUNT)] {};
+    } hiwonder_poll[AP_Hiwonder::BUS_COUNT];
+
+    void update_hiwonder();
+    void update_hiwonder_port(uint8_t leg_index, uint32_t now_ms);
+    bool select_hiwonder_read(HiwonderPollState &poll, uint32_t now_ms);
+    bool start_hiwonder_read(uint8_t leg_index, HiwonderPollState &poll, uint32_t now_ms);
+    void publish_hiwonder_position(uint32_t now_ms);
+    void publish_hiwonder_temperature(uint32_t now_ms);
+    void publish_hiwonder_voltage(uint32_t now_ms);
+    void publish_hiwonder_distance(uint32_t now_ms);
+    void handle_hiwonder_cmd(CanardInstance* canard_ins, CanardRxTransfer* transfer);
+
+    AP_Hiwonder hiwonder[AP_Hiwonder::BUS_COUNT] {
+        AP_Hiwonder(1), AP_Hiwonder(2), AP_Hiwonder(3),
+        AP_Hiwonder(4), AP_Hiwonder(5), AP_Hiwonder(6),
+    };
+    uint16_t hiwonder_positions[HIWONDER_SERVO_COUNT] {};
+    uint8_t hiwonder_temperatures[HIWONDER_SERVO_COUNT] {};
+    uint16_t hiwonder_voltages[HIWONDER_SERVO_COUNT] {};
+    int32_t hiwonder_distances[HIWONDER_SERVO_COUNT] {};
+    uint32_t hiwonder_temperature_valid_mask {};
+    uint32_t hiwonder_voltage_valid_mask {};
+    uint32_t hiwonder_distance_valid_mask {};
+    uint32_t hiwonder_position_last_send_ms {};
+    uint32_t hiwonder_temperature_last_send_ms {};
+    uint32_t hiwonder_voltage_last_send_ms {};
+    uint32_t hiwonder_distance_last_send_ms {};
 #endif
 
 #ifdef HAL_PERIPH_ENABLE_BATTERY
