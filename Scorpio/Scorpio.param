@@ -38,8 +38,9 @@ HEX_CLASS,0
 HEX_CH_THR_X,9
 HEX_CH_THR_Y,13
 HEX_CH_YAW,14
-HEX_CH_ROL,15
-HEX_CH_PIT,16
+# 地面六足步态暂不使用AHRS滚转/俯仰补偿；避免落足冲击经PID反馈到六条腿。
+HEX_CH_ROL,-1
+HEX_CH_PIT,-1
 # 当前实现将 HGH/LIFT 直接解释为毫米偏移，而不是RC通道号。
 HEX_CH_HGH,0
 HEX_CH_LIFT,20
