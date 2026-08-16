@@ -2,6 +2,20 @@
 #include "AP_HexRuped.h"
 #include "AP_HexRuped_Defines.h"
 
+static uint16_t angle_to_servo_pwm(float angle_deg, float direction)
+{
+    const float pwm = direction * angle_deg * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG +
+                      LEG_MOTOR_PWM_MIDDLE;
+    return uint16_t(constrain_float(pwm, LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX));
+}
+
+static uint16_t apply_servo_offset(uint16_t pwm, float offset)
+{
+    return uint16_t(constrain_float(float(pwm) + offset,
+                                    LEG_MOTOR_PWM_MIN,
+                                    LEG_MOTOR_PWM_MAX));
+}
+
 // 构造函数
 AP_HexRuped_Backend::AP_HexRuped_Backend(AP_HexRuped& frontend, AP_HexRuped::HexRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors)
     : _frontend(frontend)
@@ -15,13 +29,13 @@ float AP_HexRuped_Backend::get_leg_mount_yaw_deg(uint8_t leg_index) const
 {
     const AP_HexRuped_SYS_Params& sys = _frontend.get_sys_params();
     switch (leg_index) {
-        case AP_HEXRUPED_LEG_RF: return sys.FRONT_YAW;
-        case AP_HEXRUPED_LEG_RB: return sys.REAR_YAW;
-        case AP_HEXRUPED_LEG_LB: return -180.0f - sys.REAR_YAW;
-        case AP_HEXRUPED_LEG_LF: return 180.0f - sys.FRONT_YAW;
-        case AP_HEXRUPED_LEG_RM: return sys.MIDDLE_YAW;
-        case AP_HEXRUPED_LEG_LM: return 180.0f - sys.MIDDLE_YAW;
-        default: return 0.0f;
+    case AP_HEXRUPED_LEG_RF: return sys.FRONT_YAW;
+    case AP_HEXRUPED_LEG_RB: return sys.REAR_YAW;
+    case AP_HEXRUPED_LEG_LB: return -180.0f - sys.REAR_YAW;
+    case AP_HEXRUPED_LEG_LF: return 180.0f - sys.FRONT_YAW;
+    case AP_HEXRUPED_LEG_RM: return sys.MIDDLE_YAW;
+    case AP_HEXRUPED_LEG_LM: return 180.0f - sys.MIDDLE_YAW;
+    default: return 0.0f;
     }
 }
 
@@ -39,13 +53,13 @@ Vector3f AP_HexRuped_Backend::get_leg_frame_position(uint8_t leg_index) const
     const float half_width = sys.FRAME_WIDTH * 0.5f;
 
     switch (leg_index) {
-        case AP_HEXRUPED_LEG_RF: return { half_length, half_width, 0.0f };
-        case AP_HEXRUPED_LEG_RB: return { -half_length, half_width, 0.0f };
-        case AP_HEXRUPED_LEG_LB: return { -half_length, -half_width, 0.0f };
-        case AP_HEXRUPED_LEG_LF: return { half_length, -half_width, 0.0f };
-        case AP_HEXRUPED_LEG_RM: return { sys.MIDDLE_X, half_width, 0.0f };
-        case AP_HEXRUPED_LEG_LM: return { sys.MIDDLE_X, -half_width, 0.0f };
-        default: return {};
+    case AP_HEXRUPED_LEG_RF: return { half_length, half_width, 0.0f };
+    case AP_HEXRUPED_LEG_RB: return { -half_length, half_width, 0.0f };
+    case AP_HEXRUPED_LEG_LB: return { -half_length, -half_width, 0.0f };
+    case AP_HEXRUPED_LEG_LF: return { half_length, -half_width, 0.0f };
+    case AP_HEXRUPED_LEG_RM: return { sys.MIDDLE_X, half_width, 0.0f };
+    case AP_HEXRUPED_LEG_LM: return { sys.MIDDLE_X, -half_width, 0.0f };
+    default: return {};
     }
 }
 
@@ -70,7 +84,12 @@ bool AP_HexRuped_Backend::init()
         endpoint_leg_frame[leg_index] = get_leg_frame_position(leg_index);
     }
 
-    gait_init(); // 初始化六足机器人逆运动学控制器
+    // 后端可能在步态切换后复用，初始化时必须清除上一次的收步状态。
+    reset_leg();
+    stop_state = StopState::IDLE;
+    settle_step = 0;
+    gait_step_total_cached = -1;
+    refresh_steps(); // 校验步数参数并初始化当前步态
 
     return true;
 }
@@ -87,9 +106,12 @@ void AP_HexRuped_Backend::reset_leg()
 
 void AP_HexRuped_Backend::refresh_steps()
 {
-    const int16_t step_total = gait_step_total.get();
-    if (step_total < 0) {
-        return;
+    const int16_t step_total = constrain_int16(gait_step_total.get(),
+                               AP_HEXRUPED_STEP_TOTAL_MIN,
+                               AP_HEXRUPED_STEP_TOTAL_MAX);
+    if (step_total != gait_step_total.get()) {
+        // 参数元数据只限制地面站输入，运行时仍需防御脚本或旧参数文件中的非法值。
+        gait_step_total.set(step_total);
     }
 
     if (step_total == gait_step_total_cached) {
@@ -107,16 +129,83 @@ void AP_HexRuped_Backend::calc_gait_sequence()
     const float travel_dz = 0.01f; // 移动死区阈值，防止微小抖动
 
     // 判断是否有移动请求（前进/后退或旋转）
-    if ((fabsf(_frontend.get_throttle_x()) > travel_dz) || (fabsf(_frontend.get_throttle_y()) > travel_dz) || (fabsf(_frontend.get_yaw_rate()) > travel_dz / 2))
-        move_requested = true; // 需要移动
-    else
-        move_requested = false; // 保持静止
-
-    // 根据移动请求执行相应动作
-    if (move_requested == true) {
-        update_leg(); // 更新腿部运动（执行步态）
+    if ((fabsf(_frontend.get_throttle_x()) > travel_dz) || (fabsf(_frontend.get_throttle_y()) > travel_dz) || (fabsf(_frontend.get_yaw_rate()) > travel_dz / 2)) {
+        move_requested = true;    // 需要移动
     } else {
-        reset_leg(); // 重置腿部到初始位置
+        move_requested = false;    // 保持静止
+    }
+
+    // RC失联属于安全事件，不等待收步，立即回到对称站姿。
+    if (_frontend.is_rc_failsafe()) {
+        reset_leg();
+        stop_state = StopState::IDLE;
+        settle_step = 0;
+        return;
+    }
+
+    if (move_requested) {
+        stop_throttle_x = throttle_x_travel;
+        stop_throttle_y = throttle_y_travel;
+        stop_yaw = yaw_travel;
+        stop_state = StopState::WALKING;
+        update_leg();
+        return;
+    }
+
+    if (stop_state == StopState::IDLE) {
+        reset_leg();
+        return;
+    }
+
+    if (stop_state == StopState::WALKING) {
+        stop_state = StopState::FINISHING_STEP;
+    }
+
+    if (stop_state == StopState::FINISHING_STEP) {
+        // 摇杆已经回中，但轨迹仍用最后有效行程走到最近的全腿着地边界。
+        const float input_x = throttle_x_travel;
+        const float input_y = throttle_y_travel;
+        const float input_yaw = yaw_travel;
+        throttle_x_travel = stop_throttle_x;
+        throttle_y_travel = stop_throttle_y;
+        yaw_travel = stop_yaw;
+        update_leg();
+        throttle_x_travel = input_x;
+        throttle_y_travel = input_y;
+        yaw_travel = input_yaw;
+
+        bool all_legs_down = true;
+        for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
+            if (fabsf(gait_pos_xyz[leg_index].z) > 0.01f) {
+                all_legs_down = false;
+                break;
+            }
+        }
+        if (!all_legs_down) {
+            return;
+        }
+
+        for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
+            settle_start_pos[leg_index] = gait_pos_xyz[leg_index];
+            settle_start_yaw[leg_index] = gait_rot_z[leg_index];
+        }
+        settle_step = 0;
+        settle_step_total = MAX(static_cast<uint16_t>(1), static_cast<uint16_t>(gait_step_total.get() / 2));
+        stop_state = StopState::SETTLING;
+    }
+
+    if (stop_state == StopState::SETTLING) {
+        settle_step = MIN(static_cast<uint16_t>(settle_step + 1), settle_step_total);
+        const float t = static_cast<float>(settle_step) / static_cast<float>(settle_step_total);
+        const float blend = t * t * (3.0f - 2.0f * t); // smoothstep: 两端速度为零
+        for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
+            gait_pos_xyz[leg_index] = settle_start_pos[leg_index] * (1.0f - blend);
+            gait_rot_z[leg_index] = settle_start_yaw[leg_index] * (1.0f - blend);
+        }
+        if (settle_step >= settle_step_total) {
+            reset_leg();
+            stop_state = StopState::IDLE;
+        }
     }
 }
 
@@ -213,11 +302,6 @@ void AP_HexRuped_Backend::main_inverse_kinematics(void)
         endpoint_leg_angle[leg_index].x = wrap_180(endpoint_leg_angle[leg_index].x);
     }
 
-    // 计算步态序列
-    // 根据 throttle_travel（前进/后退）和 yaw_travel（旋转）更新步态相位
-    // 决定下一步的足端轨迹
-    calc_gait_sequence();
-
     // 保存当前关节角度到上一时刻变量
     for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
         endpoint_leg_angle_last[leg_index] = endpoint_leg_angle[leg_index];
@@ -266,21 +350,12 @@ void AP_HexRuped_Backend::main_radio_controller()
     }
 
     //////////////////////////////////////////////////////////////////////////////////
-    // 处理横移通道（保持沿X轴直线行走，约束Y方向偏移）
-    // if (channel.throttle_y_channel != -1) {
-    //     const float y_target = 0.0f;
-    //     float       y_current = 0.0f;
-    //     Vector3f    pos_ned;
-    //     if (_ahrs.get_relative_position_NED_origin(pos_ned)) {
-    //         y_current = pos_ned.y;
-    //     }
-
-    //     // 使用PI控制器计算输出
-    //     float dt = 0.1f;
-    //     throttle_y_travel = ctrl.pos_y_pid.update_all(y_target, y_current, dt);
-    // } else {
-    //     throttle_y_travel = 0.0f;
-    // }
+    // 处理横移通道。与前进相同，当前为摇杆到足端行程的开环映射。
+    if (channel.throttle_y_channel != -1) {
+        throttle_y_travel = _frontend.get_throttle_y() * channel.throttle_y_max;
+    } else {
+        throttle_y_travel = 0.0f;
+    }
 
     //////////////////////////////////////////////////////////////////////////////////
     // 处理偏航通道
@@ -331,10 +406,6 @@ void AP_HexRuped_Backend::main_radio_controller()
 // 输出腿部关节角度 - 将计算出的关节角度转换为PWM信号
 void AP_HexRuped_Backend::output_leg_angle(void)
 {
-    uint16_t pwm_coxa;  // 髋关节PWM值
-    uint16_t pwm_femur; // 股关节PWM值
-    uint16_t pwm_tibia; // 胫关节PWM值
-
     // 遍历所有腿，计算每个关节的PWM值
     for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
         // 获取腿部参数
@@ -342,26 +413,23 @@ void AP_HexRuped_Backend::output_leg_angle(void)
 
         // 将角度转换为PWM值
         // 公式：PWM = 方向系数 × 角度 × PWM范围/角度范围 + 中间值
-        pwm_coxa = constrain_int16(
-            leg_param.COXA_DIR * endpoint_leg_angle[leg_index].x * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE,
-            LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX);
-        pwm_femur = constrain_int16(
-            leg_param.FEMU_DIR * endpoint_leg_angle[leg_index].y * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE,
-            LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX);
-        pwm_tibia = constrain_int16(
-            leg_param.TIBI_DIR * endpoint_leg_angle[leg_index].z * LEG_MOTOR_MAX_PWM / LEG_MOTOR_MAX_DEG + LEG_MOTOR_PWM_MIDDLE,
-            LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX);
-
-        // 存储PWM命令到输出数组
-        servo_output_cmd[leg_index].x = pwm_coxa;  // 髋关节PWM
-        servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
-        servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
+        servo_output_cmd[leg_index].x = angle_to_servo_pwm(endpoint_leg_angle[leg_index].x,
+                                        leg_param.COXA_DIR);
+        servo_output_cmd[leg_index].y = angle_to_servo_pwm(endpoint_leg_angle[leg_index].y,
+                                        leg_param.FEMU_DIR);
+        servo_output_cmd[leg_index].z = angle_to_servo_pwm(endpoint_leg_angle[leg_index].z,
+                                        leg_param.TIBI_DIR);
     }
+    servo_output_valid = true;
 }
 
 // 硬件伺服命令设置 - 通过CAN总线发送PWM控制信号到舵机
 bool AP_HexRuped_Backend::send_servo_cmd()
 {
+    if (!servo_output_valid) {
+        return false;
+    }
+
     com_usl_ServoCmd msg {}; // 创建DroneCAN伺服控制消息结构体
     msg.cmd.len = AP_HEXRUPED_SERVO_COUNT; // 六条腿×三个关节 = 18个数据
 
@@ -371,48 +439,47 @@ bool AP_HexRuped_Backend::send_servo_cmd()
         const AP_HexRuped_Params& leg_param = _frontend.get_leg_params(leg_index);
 
         // 填充CAN消息数据（添加偏移补偿）
-        const uint16_t coxa_pwm = constrain_int16(servo_output_cmd[leg_index].x + leg_param.COXA_OFS,
-                                                   LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX);
-        const uint16_t femur_pwm = constrain_int16(servo_output_cmd[leg_index].y + leg_param.FEMU_OFS,
-                                                    LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX);
-        const uint16_t tibia_pwm = constrain_int16(servo_output_cmd[leg_index].z + leg_param.TIBI_OFS,
-                                                    LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX);
+        const uint16_t coxa_pwm = apply_servo_offset(servo_output_cmd[leg_index].x,
+                                  leg_param.COXA_OFS);
+        const uint16_t femur_pwm = apply_servo_offset(servo_output_cmd[leg_index].y,
+                                   leg_param.FEMU_OFS);
+        const uint16_t tibia_pwm = apply_servo_offset(servo_output_cmd[leg_index].z,
+                                   leg_param.TIBI_OFS);
+        const uint8_t channel = leg_index * AP_HEXRUPED_JOINTS_PER_LEG;
 
-        msg.cmd.data[leg_index * 3 + 0] = coxa_pwm;
-        msg.cmd.data[leg_index * 3 + 1] = femur_pwm;
-        msg.cmd.data[leg_index * 3 + 2] = tibia_pwm;
+        msg.cmd.data[channel + 0] = coxa_pwm;
+        msg.cmd.data[channel + 1] = femur_pwm;
+        msg.cmd.data[channel + 2] = tibia_pwm;
 
-        // 同时设置PWM输出通道（直接输出模式）
-        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_hexleg_rf_coxa + leg_index * 3),
+        // SRV只保存18路逻辑输出，不要求飞控具备18个物理PWM通道。只有通过
+        // SERVOx_FUNCTION显式映射的功能才会输出到引脚；实机和Scorpio SITL
+        // 均以下方DroneCAN消息作为腿部执行链路，SRV镜像用于遥测和可选PWM调试。
+        SRV_Channels::set_output_pwm(static_cast<SRV_Channel::Aux_servo_function_t>(SRV_Channel::k_hexleg_rf_coxa + channel),
                                      coxa_pwm);
-        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_hexleg_rf_femu + leg_index * 3),
+        SRV_Channels::set_output_pwm(static_cast<SRV_Channel::Aux_servo_function_t>(SRV_Channel::k_hexleg_rf_femu + channel),
                                      femur_pwm);
-        SRV_Channels::set_output_pwm((SRV_Channel::Aux_servo_function_t)(SRV_Channel::k_hexleg_rf_tibi + leg_index * 3),
+        SRV_Channels::set_output_pwm(static_cast<SRV_Channel::Aux_servo_function_t>(SRV_Channel::k_hexleg_rf_tibi + channel),
                                      tibia_pwm);
     }
 
     // 在所有可用的CAN总线接口上广播伺服控制命令
     // 获取CAN驱动数量
-    uint8_t can_num_drivers = AP::can().get_num_drivers();
+    const uint8_t can_num_drivers = AP::can().get_num_drivers();
 
     // 发送成功标志
     bool ok = false;
 
     // 遍历所有CAN接口
     for (uint8_t i = 0; i < can_num_drivers; i++) {
-        auto* dronecan = AP_DroneCAN::get_dronecan(i); // 获取第i个CAN驱动实例
+        auto *dronecan = AP_DroneCAN::get_dronecan(i); // 获取第i个CAN驱动实例
         if (dronecan != nullptr) {
-            // 尝试广播消息，使用|=确保只要有一个接口成功就返回true
-            ok |= dronecan->com_usl_servocmd.broadcast(msg); // 发送伺服控制命令
+            const bool sent = dronecan->com_usl_servocmd.broadcast(msg);
+            if (sent) {
+                dronecan->log_hiwonder_servo_command(msg);
+            }
+            // 使用|=确保只要有一个接口成功就返回true
+            ok |= sent;
         }
     }
     return ok; // 返回广播结果
-}
-
-// 辅助函数：角度转PWM
-uint16_t AP_HexRuped_Backend::radians_to_pwm(float angle_rad)
-{
-    // 假设PWM范围1000-2000对应-90到90度
-    float angle_deg = degrees(angle_rad);
-    return uint16_t(1500 + (angle_deg / 90.0f) * 500);
 }

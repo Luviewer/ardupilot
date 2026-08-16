@@ -2,63 +2,54 @@
 #include "AP_HexRuped.h"
 #include <AP_HAL/AP_HAL.h>
 
-#define SPEED_HZ_DEFAULT        25.0f // 默认步态频率（Hz）
+#define SPEED_HZ_DEFAULT        AP_HEXRUPED_SPEED_HZ_DEFAULT // 默认步态频率（Hz）
 #define GAIT_STEP_TOTAL_DEFAULT 24    // 默认步态总步数
 
 // 外部HAL实例
 extern const AP_HAL::HAL& hal;
 
-// 交替三角步态参数表定义
-// 使用AP_Param框架实现参数的持久化存储和运行时调整
-// 参数前缀HEX_TRI_由ArduPilot参数系统自动添加
+// 交替三角步态参数。保留既有参数名，避免升级固件后丢失现场标定值。
 const AP_Param::GroupInfo AP_HexRuped_Tripod::var_info[] = {
-    // ==================== 基础步态参数 ====================
-
-    // 步态频率控制：决定机器人运动的时间分辨率
-    // 参数名：HEX_TRI_Hz，范围：1-100Hz，默认：25Hz
-    // 设计原理：频率越高，运动越平滑，但计算负载越大
-    // 25Hz是经验值，在平滑性和计算效率之间取得平衡
+    // @Param: Hz
+    // @DisplayName: Tripod gait update rate
+    // @Description: Trajectory update rate. Zero freezes the gait phase while servo commands continue at 100 Hz
+    // @Units: Hz
+    // @Range: 0 100
+    // @Increment: 1
+    // @User: Standard
     AP_GROUPINFO("Hz", 1, AP_HexRuped_Tripod, gait_hz, SPEED_HZ_DEFAULT),
 
-    // 步态总步数：决定一个完整步态周期的离散化精度
-    // 参数名：HEX_TRI_STEP，范围：8-100步，默认：24步
-    // 设计原理：步数越多，轨迹越精确，但内存占用越大
-    // 24步对应约1秒的步态周期（25Hz时），适合六足交替三角步态
+    // @Param: STEP
+    // @DisplayName: Tripod gait steps
+    // @Description: Number of discrete trajectory points in one complete tripod gait cycle
+    // @Range: 8 100
+    // @Increment: 1
+    // @User: Standard
     AP_GROUPINFO("STEP", 2, AP_HexRuped_Tripod, gait_step_total, GAIT_STEP_TOTAL_DEFAULT),
 
-    // ==================== 轨迹生成模式选择 ====================
-
-    // 轨迹生成算法选择：提供多种轨迹生成方式以适应不同场景
-    // 参数名：HEX_TRI_TRAJ_MODE，选项：0=摆线轨迹，1=贝塞尔曲线轨迹，默认：0
-    // 设计考量：
-    // - 摆线轨迹：计算简单，运动平稳，适合平坦地面
-    // - 贝塞尔曲线：形状灵活，可调性强，适合复杂地形
-    // 默认选择摆线轨迹确保系统稳定性和向后兼容性
+    // @Param: TRAJ_MODE
+    // @DisplayName: Tripod trajectory type
+    // @Description: Selects the swing-leg trajectory generator
+    // @Values: 0:Cycloid,1:Cubic Bezier
+    // @User: Standard
     AP_GROUPINFO("TRAJ_MODE", 3, AP_HexRuped_Tripod, trajectory_mode, 0),
 
-    // ==================== 贝塞尔曲线控制参数 ====================
-    // 以下参数仅在TRAJ_MODE=1时生效，用于精细调节贝塞尔曲线轨迹形状
-
-    // 贝塞尔曲线控制点高度系数：调节抬腿高度和轨迹弧度
-    // 参数名：HEX_TRI_BCTRL_H，范围：0.1-2.0，默认：0.3
-    // 物理意义：实际抬腿高度 = leg_lift_height * BCTRL_H
-    // 设计原理：
-    // - 0.3的默认值产生适中的抬腿高度，兼顾越障能力和稳定性
-    // - 增大值会提高抬腿高度，增强越障能力但降低稳定性
-    // - 减小值会降低抬腿高度，提高稳定性但限制越障能力
+    // @Param: BCTRL_H
+    // @DisplayName: Tripod Bezier height control
+    // @Description: Vertical Bezier control-point scale relative to the configured leg lift height
+    // @Range: 0.1 2.0
+    // @Increment: 0.05
+    // @User: Advanced
     AP_GROUPINFO("BCTRL_H", 4, AP_HexRuped_Tripod, bezier_control_height, 0.3f),
 
-    // 贝塞尔曲线控制点前向偏移系数：调节轨迹的前后延伸程度
-    // 参数名：HEX_TRI_BCTRL_F，范围：0.0-1.0，默认：0.2
-    // 物理意义：前向偏移距离 = throttle_travel.length() * BCTRL_F
-    // 设计原理：
-    // - 0.2的默认值产生轻微的前向延伸，创造自然的抬腿轨迹
-    // - 增大值会延长抬腿距离，适合高速运动但增加冲击风险
-    // - 减小值会缩短抬腿距离，适合低速运动但可能限制步长
-    // - 0.0产生垂直抬腿，1.0产生最大延伸的轨迹
+    // @Param: BCTRL_F
+    // @DisplayName: Tripod Bezier forward control
+    // @Description: Horizontal Bezier control-point scale relative to commanded travel
+    // @Range: 0.0 1.0
+    // @Increment: 0.05
+    // @User: Advanced
     AP_GROUPINFO("BCTRL_F", 5, AP_HexRuped_Tripod, bezier_control_forward, 0.2f),
 
-    // 参数表结束标记，AP_Param框架要求的固定格式
     AP_GROUPEND
 };
 
@@ -173,13 +164,13 @@ void AP_HexRuped_Tripod::generate_cycloid_trajectory(uint8_t leg_index)
         leg_xy_target = throttle_travel * S - throttle_travel; // 原公式在 X 上的 1D 推广到 2D
 
         // Z轴轨迹：垂直方向的摆线运动，实现抬腿和落地
-        // 公式：-leg_lift_height * (1 - cos(δ))
+        // 公式：-0.5 * leg_lift_height * (1 - cos(δ))
         // 特性：
         // - δ=0时，Z=0（地面起始）
-        // - δ=π时，Z=-2*leg_lift_height（最高点）
+        // - δ=π时，Z=-leg_lift_height（最高点）
         // - δ=2π时，Z=0（地面落地）
         // 负号表示向上为负方向（符合机器人坐标系）
-        leg_z_target = -leg_lift_height * (1.0f - cosf(delta));
+        leg_z_target = -0.5f * leg_lift_height * (1.0f - cosf(delta));
 
     } else { // ==================== 支撑相（Stance Phase）====================
         // 支撑相时间映射：将[0.5,1]映射到[0,1]，用于地面接触期轨迹
@@ -226,7 +217,9 @@ void AP_HexRuped_Tripod::update_leg()
     for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
         int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
 
-        if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
+        if (delta_step < 0) {
+            delta_step += gait_step_total;    // 处理循环计数
+        }
 
         // 为每条腿生成位置轨迹和旋转轨迹
         trajectory_generation(leg_index);
@@ -237,37 +230,10 @@ void AP_HexRuped_Tripod::update_leg()
 // 主更新函数，按顺序执行控制流程
 void AP_HexRuped_Tripod::update()
 {
-    // if ((AP_HAL::millis() - lasttime) < (1000 / gait_hz)) {
-    //     return;
-    // }
-
-    // // 更新最后执行时间
-    // lasttime = AP_HAL::millis();
-
-    // // 检查遥控器通道 6（CH_6）的值是否大于 1500（通常表示开关激活）并且没有解锁
-    // if (_frontend.get_mode_channel() > 1800 && !_motors.armed()) {
-    //     // 执行主控制器
-    //     main_radio_controller();
-
-    //     // 执行逆运动学解算
-    //     main_inverse_kinematics();
-
-    //     // 输出腿部关节角度
-    //     output_leg_angle();
-    // } else {
-    //     hengxiang_claw_leg();
-    // }
-
-    // main_radio_controller();
-
-    // 执行逆运动学解算
+    // 先更新当前周期的足端轨迹，再逆解并输出，避免关节命令滞后一拍。
+    calc_gait_sequence();
     main_inverse_kinematics();
-
-    // 输出腿部关节角度
     output_leg_angle();
-
-    // 发送数据
-    send_servo_cmd();
 }
 
 // 三次贝塞尔曲线轨迹生成函数

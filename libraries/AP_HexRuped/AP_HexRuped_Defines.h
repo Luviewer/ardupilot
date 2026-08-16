@@ -34,6 +34,9 @@ using HexRupedLegIndex = AP_HexRuped_LegIndex;
 using HexRupedClass = AP_HexRuped_Class;
 
 // 统一的常量定义
-#define AP_HEXRUPED_SPEED_HZ_DEFAULT     25.0f  // 默认步态频率（Hz）
+#define AP_HEXRUPED_SPEED_HZ_DEFAULT     25     // 默认步态频率（Hz）
+#define AP_HEXRUPED_SPEED_HZ_MAX         100    // 步态计算受100Hz主调度上限约束
+#define AP_HEXRUPED_STEP_TOTAL_MIN       8      // 防止轨迹取模和相位划分失效
+#define AP_HEXRUPED_STEP_TOTAL_MAX       100    // 腿相位索引使用uint8_t保存
 #define AP_HEXRUPED_STEP_TOTAL_DEFAULT   24     // 默认步态总步数
 #define AP_HEXRUPED_START_COXA_ANGLE     45.0f  // 起始髋关节角度

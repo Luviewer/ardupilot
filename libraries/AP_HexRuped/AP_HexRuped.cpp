@@ -214,11 +214,12 @@ void AP_HexRuped::create_backends()
  *
  * 这是系统的核心更新函数，以固定频率调用，负责：
  * 1. 检查系统使能状态
- * 2. 按步态频率控制更新周期
+ * 2. 按步态频率控制轨迹/逆运动学更新周期
  * 3. 读取和处理遥控器输入
  * 4. 根据当前模式执行相应动作
+ * 5. 每次100Hz调度都发送一次最新舵机目标
  *
- * 更新频率由当前步态的get_Freq()方法决定，通常为50-200Hz
+ * 步态更新频率由当前后端参数决定；DroneCAN发送固定跟随100Hz调度。
  */
 void AP_HexRuped::update()
 {
@@ -241,23 +242,20 @@ void AP_HexRuped::update()
     // 保持主更新频率的控制
     _backend->main_radio_controller();
 
-    // 频率控制：确保按照当前步态设定的频率更新
-    // 计算距离上次更新的时间间隔，如果小于步态周期则跳过本次更新
-    const uint32_t update_freq = _backend->get_Freq();
-    if (update_freq == 0) {
-        return;
-    }
-    if ((AP_HAL::millis() - lasttime) < (1000 / update_freq)) {
-        return;
-    }
+    // 步态计算和舵机命令发送解耦：步态只在参数指定的周期内推进，
+    // 但最新目标会在函数末尾由100Hz调度固定重发。
+    static constexpr uint16_t scheduler_frequency_hz = 100;
+    const uint16_t gait_frequency_hz = _backend->get_gait_frequency_hz();
+    _gait_phase_accumulator += gait_frequency_hz;
+    const bool gait_update_due = _gait_phase_accumulator >= scheduler_frequency_hz;
 
-    // 更新最后执行时间戳
-    lasttime = AP_HAL::millis();
+    if (gait_update_due) {
+        _gait_phase_accumulator -= scheduler_frequency_hz;
 
-    const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
+        const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
 
-    // 根据主模式执行相应的控制逻辑
-    switch (fly_walk_mode.master_mode) {
+        // 根据主模式执行相应的控制逻辑
+        switch (fly_walk_mode.master_mode) {
         default:
         case Walking_Mode: // 行走模式
             // 设置当前选择的步态类型
@@ -268,60 +266,65 @@ void AP_HexRuped::update()
 
         case Flying_Mode: // 飞行模式（特殊姿态模式）
             switch (fly_walk_mode.fly_mode) {
-                default:
-                case Fly_Mode_Flying: {
-                    // 获取测距传感器数据进行高度检测
-                    if (sensor) {
-                        // 读取地面距离（厘米）
-                        uint16_t sonar_cm = sensor->distance_cm();
-                        if (sonar_cm > 40) {
-                            // 离地较高时：收起腿部成X形向上姿态
-                            _backend->x_up_sleep_leg();
-                            break;
-                        }
+            default:
+            case Fly_Mode_Flying: {
+                // 获取测距传感器数据进行高度检测
+                if (sensor) {
+                    // 读取地面距离（厘米）
+                    uint16_t sonar_cm = sensor->distance_cm();
+                    if (sonar_cm > 40) {
+                        // 离地较高时：收起腿部成X形向上姿态
+                        _backend->x_up_sleep_leg();
+                        break;
                     }
-                    // 离地较低或无传感器时：收起腿部成X形睡眠姿态
-                    _backend->x_sleep_leg();
-                } break;
+                }
+                // 离地较低或无传感器时：收起腿部成X形睡眠姿态
+                _backend->x_sleep_leg();
+            } break;
 
-                case Fly_Mode_Zhong_Claw:
-                    // 纵向爪子模式：腿部形成纵向爪子形状
-                    // _backend->zhongxiang_claw_leg(get_claw_angle());
-                    if (_motors->get_throttle() >= 0.5 && hal.rcin->read(CH_7) > 1500) {
-                        _backend->zhongxiang_claw_leg(-40);
-                    } else {
-                        if (sensor) {
-                            // 读取地面距离（厘米）
-                            uint16_t sonar_cm = sensor->distance_cm();
-                            if (sonar_cm < 8) {
-                                // 离地较高时：收起腿部成X形向上姿态
-                                _backend->zhongxiang_claw_leg(70);
-                            } else {
-                                _backend->zhongxiang_claw_leg(-40);
-                            }
-                        }
-                    }
-
-                    break;
-
-                case Fly_Mode_Heng_Claw:
-                    // 横向爪子模式：腿部形成横向爪子形状
-                    // _backend->hengxiang_claw_leg(get_claw_angle());
-
+            case Fly_Mode_Zhong_Claw:
+                // 纵向爪子模式：腿部形成纵向爪子形状
+                // _backend->zhongxiang_claw_leg(get_claw_angle());
+                if (_motors->get_throttle() >= 0.5 && hal.rcin->read(CH_7) > 1500) {
+                    _backend->zhongxiang_claw_leg(-40);
+                } else {
                     if (sensor) {
                         // 读取地面距离（厘米）
                         uint16_t sonar_cm = sensor->distance_cm();
                         if (sonar_cm < 8) {
                             // 离地较高时：收起腿部成X形向上姿态
-                            _backend->hengxiang_claw_leg(40);
+                            _backend->zhongxiang_claw_leg(70);
                         } else {
-                            _backend->hengxiang_claw_leg(-40);
+                            _backend->zhongxiang_claw_leg(-40);
                         }
                     }
-                    break;
+                }
+
+                break;
+
+            case Fly_Mode_Heng_Claw:
+                // 横向爪子模式：腿部形成横向爪子形状
+                // _backend->hengxiang_claw_leg(get_claw_angle());
+
+                if (sensor) {
+                    // 读取地面距离（厘米）
+                    uint16_t sonar_cm = sensor->distance_cm();
+                    if (sonar_cm < 8) {
+                        // 离地较高时：收起腿部成X形向上姿态
+                        _backend->hengxiang_claw_leg(40);
+                    } else {
+                        _backend->hengxiang_claw_leg(-40);
+                    }
+                }
+                break;
             }
             break;
+        }
     }
+
+    // userhook_FastLoop由Copter调度器以100Hz调用。无论本周期是否推进步态，
+    // 都发送一次缓存目标，保证步长/步态频率变化不会改变舵机命令发送频率。
+    _backend->send_servo_cmd();
 }
 
 /**
@@ -343,8 +346,9 @@ void AP_HexRuped::set_gait_type(HexRupedGaitType type)
     }
 
     // 如果已经是当前步态，则无需切换
-    if (_gait_last_type == type)
+    if (_gait_last_type == type) {
         return;
+    }
 
     // 检查目标步态后端是否存在且已初始化
     if (_gait_backends[type]) {
@@ -427,9 +431,15 @@ void AP_HexRuped::read_radio_input()
 
     // 为未配置或尚未收到数据的扩展通道设置默认中位值。SITL/部分接收机
     // 在RC9以上通道初始化前返回0，不能把它解释成满量程反向运动。
-    if (_channel_params.throttle_x_channel == -1 || throttle_chan[0] == 0) throttle_chan[0] = 1500;
-    if (_channel_params.throttle_y_channel == -1 || throttle_chan[1] == 0) throttle_chan[1] = 1500;
-    if (_channel_params.yaw_channel == -1 || throttle_chan[2] == 0) throttle_chan[2] = 1500;
+    if (_channel_params.throttle_x_channel == -1 || throttle_chan[0] == 0) {
+        throttle_chan[0] = 1500;
+    }
+    if (_channel_params.throttle_y_channel == -1 || throttle_chan[1] == 0) {
+        throttle_chan[1] = 1500;
+    }
+    if (_channel_params.yaw_channel == -1 || throttle_chan[2] == 0) {
+        throttle_chan[2] = 1500;
+    }
 
     // 死区处理：将接近中位的PWM值（1450-1550μs）强制设为中位值
     // 目的：消除摇杆机械回中误差和电子噪声引起的微小抖动
@@ -458,8 +468,12 @@ void AP_HexRuped::read_radio_input()
     };
 
     // 为未配置的通道设置默认中位值
-    if (_channel_params.roll_channel == -1 || rollpitch_chan[0] == 0) rollpitch_chan[0] = 1500;
-    if (_channel_params.pitch_channel == -1 || rollpitch_chan[1] == 0) rollpitch_chan[1] = 1500;
+    if (_channel_params.roll_channel == -1 || rollpitch_chan[0] == 0) {
+        rollpitch_chan[0] = 1500;
+    }
+    if (_channel_params.pitch_channel == -1 || rollpitch_chan[1] == 0) {
+        rollpitch_chan[1] = 1500;
+    }
 
     // 同样进行死区处理，避免姿态控制抖动
     for (uint8_t i = 0; i < 2; i++) {
@@ -488,7 +502,9 @@ void AP_HexRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取模式开关通道，用于在行走模式和飞行模式之间切换
     uint16_t mode_value = hal.rcin->read(_channel_params.mode_channel - 1);
-    if (_channel_params.mode_channel == -1) mode_value = 1000; // 默认为低电平（行走模式）
+    if (_channel_params.mode_channel == -1) {
+        mode_value = 1000;    // 默认为低电平（行走模式）
+    }
 
     // 阈值判断：PWM > 1800μs 切换到飞行模式，否则保持行走模式
     if (mode_value > 1800) {
@@ -502,7 +518,9 @@ void AP_HexRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取步态选择通道的PWM值，使用两档开关
     uint16_t walk_value = hal.rcin->read(_channel_params.walk_mode_channel - 1);
-    if (_channel_params.walk_mode_channel == -1) walk_value = 1000; // 默认最低档位
+    if (_channel_params.walk_mode_channel == -1) {
+        walk_value = 1000;    // 默认最低档位
+    }
 
     // 两档选择：低档为快速Tripod，高档为五腿支撑的Wave。
     set_walk_mode(walk_value > 1500 ? AP_HEXRUPED_GAIT_WAVE : AP_HEXRUPED_GAIT_TRIPOD);
@@ -512,7 +530,9 @@ void AP_HexRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取飞行模式选择通道，用于选择不同的特殊姿态
     uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);
-    if (_channel_params.fly_mode_channel == -1) flying_value = 1000; // 默认飞行姿态
+    if (_channel_params.fly_mode_channel == -1) {
+        flying_value = 1000;    // 默认飞行姿态
+    }
 
     // 飞行子模式判断：同样采用分段PWM范围判断
     if (flying_value > 1800 && flying_value < 2100) {
@@ -528,21 +548,14 @@ void AP_HexRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取爪子控制通道，用于动态调节爪子开合角度
     uint16_t claw_value = hal.rcin->read(_channel_params.claw_channel - 1);
-    if (_channel_params.claw_channel == -1) claw_value = 1500; // 默认中位角度（0度）
+    if (_channel_params.claw_channel == -1) {
+        claw_value = 1500;    // 默认中位角度（0度）
+    }
 
     // 将爪子PWM值转换为角度（范围：-90度到+90度）
     // 1500μs对应0度，1000μs对应-90度，2000μs对应+90度
     _claw_angle = ((float)claw_value - 1500.0f) / 500.0f * 90.0f;
 
-    ////////////////////////////////////////////////////////////////////////////////////
-    // 调试代码段（已注释，用于开发时输出遥控器输入数据）
-    ////////////////////////////////////////////////////////////////////////////////////
-    // static uint32_t lasttime = 0;
-    // if (AP_HAL::millis() - lasttime > 1000) {
-    //     lasttime = AP_HAL::millis();
-    //     // 每秒输出一次当前的遥控器输入值，用于调试和校准
-    //     gcs().send_text(MAV_SEVERITY_NOTICE, "_throttle_x, y,z:%f, %f,%f", _throttle_x, _throttle_y, _yaw_rate);
-    // }
 }
 
 /**

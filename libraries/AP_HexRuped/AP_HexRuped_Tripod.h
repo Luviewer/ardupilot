@@ -13,7 +13,8 @@
 class AP_HexRuped;
 
 // 交替三角步态后端实现
-class AP_HexRuped_Tripod : public AP_HexRuped_Backend {
+class AP_HexRuped_Tripod : public AP_HexRuped_Backend
+{
 public:
     // 构造函数
     AP_HexRuped_Tripod(AP_HexRuped& frontend, AP_HexRuped::HexRuped_State& state, AP_AHRS_View& ahrs, AP_Motors& motors);
@@ -29,8 +30,6 @@ public:
 
     void trajectory_generation(uint8_t leg_index) override;
 
-    uint32_t get_Freq() override { return gait_hz.get(); }
-
     // 参数表定义
     static const struct AP_Param::GroupInfo var_info[];
 
@@ -39,8 +38,6 @@ private:
     AP_Int8  trajectory_mode;        // 轨迹生成模式选择：0=经典摆线轨迹，1=贝塞尔曲线轨迹
     AP_Float bezier_control_height;  // 贝塞尔曲线控制点高度系数：调节抬腿高度（相对leg_lift_height的比例）
     AP_Float bezier_control_forward; // 贝塞尔曲线控制点前向偏移系数：调节轨迹前后延伸程度（相对行程长度的比例）
-
-    uint32_t lasttime;
 
     // 轨迹生成函数
     void     generate_cycloid_trajectory(uint8_t leg_index);                                                                   // 摆线轨迹生成器：使用经典摆线算法，计算简单，运动平稳

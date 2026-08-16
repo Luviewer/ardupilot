@@ -8,17 +8,46 @@
 // 外部HAL实例
 extern const AP_HAL::HAL& hal;
 
-// 波浪步态参数表定义
+// 波浪步态参数。参数元数据供地面站生成范围、单位和枚举说明。
 const AP_Param::GroupInfo AP_HexRuped_Wave::var_info[] = {
-    // ==================== 基础步态参数 ====================
+    // @Param: Hz
+    // @DisplayName: Wave gait update rate
+    // @Description: Trajectory update rate. Zero freezes the gait phase while servo commands continue at 100 Hz
+    // @Units: Hz
+    // @Range: 0 100
+    // @Increment: 1
+    // @User: Standard
     AP_GROUPINFO("Hz", 1, AP_HexRuped_Wave, gait_hz, SPEED_HZ_DEFAULT),
+
+    // @Param: STEP
+    // @DisplayName: Wave gait steps
+    // @Description: Number of discrete trajectory points in one complete wave gait cycle
+    // @Range: 8 100
+    // @Increment: 1
+    // @User: Standard
     AP_GROUPINFO("STEP", 2, AP_HexRuped_Wave, gait_step_total, GAIT_STEP_TOTAL_DEFAULT),
 
-    // ==================== 轨迹生成模式选择 ====================
+    // @Param: TRAJ_MODE
+    // @DisplayName: Wave trajectory type
+    // @Description: Selects the swing-leg trajectory generator
+    // @Values: 0:Cycloid,1:Cubic Bezier
+    // @User: Standard
     AP_GROUPINFO("TRAJ_MODE", 3, AP_HexRuped_Wave, trajectory_mode, 0),
 
-    // ==================== 贝塞尔曲线控制参数 ====================
+    // @Param: BCTRL_H
+    // @DisplayName: Wave Bezier height control
+    // @Description: Vertical Bezier control-point scale relative to the configured leg lift height
+    // @Range: 0.1 2.0
+    // @Increment: 0.05
+    // @User: Advanced
     AP_GROUPINFO("BCTRL_H", 5, AP_HexRuped_Wave, bezier_control_height, 0.3f),
+
+    // @Param: BCTRL_F
+    // @DisplayName: Wave Bezier forward control
+    // @Description: Horizontal Bezier control-point scale relative to commanded travel
+    // @Range: 0.0 1.0
+    // @Increment: 0.05
+    // @User: Advanced
     AP_GROUPINFO("BCTRL_F", 6, AP_HexRuped_Wave, bezier_control_forward, 0.2f),
 
     AP_GROUPEND
@@ -54,7 +83,7 @@ void AP_HexRuped_Wave::gait_init()
     };
     for (uint8_t phase_index = 0; phase_index < AP_HEXRUPED_LEG_ALL; phase_index++) {
         gait_step_leg_start[wave_order[phase_index]] = static_cast<uint8_t>(
-            constrain_int16(step_total * phase_index / AP_HEXRUPED_LEG_ALL, 0, 255));
+                    constrain_int16(step_total * phase_index / AP_HEXRUPED_LEG_ALL, 0, 255));
     }
 }
 
@@ -99,7 +128,9 @@ void AP_HexRuped_Wave::update_leg()
     for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
         int16_t delta_step = gait_step_now - gait_step_leg_start[leg_index];
 
-        if (delta_step < 0) delta_step += gait_step_total; // 处理循环计数
+        if (delta_step < 0) {
+            delta_step += gait_step_total;    // 处理循环计数
+        }
 
         // 为每条腿生成位置轨迹和旋转轨迹
         trajectory_generation(leg_index);
@@ -175,7 +206,8 @@ void AP_HexRuped_Wave::generate_cycloid_trajectory(uint8_t leg_index)
         const float S     = (delta - sinf(delta)) / M_2PI * 2.0f;
 
         leg_xy_target = throttle_travel * S - throttle_travel;
-        leg_z_target  = -leg_lift_height * (1.0f - cosf(delta));
+        // HEX_CH_LIFT表示实际最大抬腿高度，而不是余弦轨迹的半幅值。
+        leg_z_target  = -0.5f * leg_lift_height * (1.0f - cosf(delta));
 
     } else {
         const float phase = constrain_float((p - swing_ratio) / (1.0f - swing_ratio), 0.0f, 1.0f);
@@ -315,8 +347,7 @@ void AP_HexRuped_Wave::main_inverse_kinematics()
 // 主更新函数
 void AP_HexRuped_Wave::update()
 {
-    // main_radio_controller();
+    calc_gait_sequence();
     main_inverse_kinematics();
     output_leg_angle();
-    send_servo_cmd();
 }

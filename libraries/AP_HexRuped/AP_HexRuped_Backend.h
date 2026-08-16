@@ -31,13 +31,14 @@
 class AP_HexRuped;
 
 // 后端接口类
-class AP_HexRuped_Backend {
+class AP_HexRuped_Backend
+{
 public:
     // 构造函数
     AP_HexRuped_Backend(AP_HexRuped&                  frontend,
-                         AP_HexRuped::HexRuped_State& state,
-                         AP_AHRS_View&                  ahrs,
-                         AP_Motors&                     motors);
+                        AP_HexRuped::HexRuped_State& state,
+                        AP_AHRS_View&                  ahrs,
+                        AP_Motors&                     motors);
 
     // 虚析构函数
     virtual ~AP_HexRuped_Backend() { }
@@ -47,9 +48,11 @@ public:
     virtual void gait_init()                              = 0;
     virtual void trajectory_generation(uint8_t leg_index) = 0;
 
-    // 基类提供默认的get_Freq()实现，使用基类的gait_hz参数
-    // 子类可以重写此方法来使用自己的频率参数，实现独立控制
-    virtual uint32_t get_Freq() { return gait_hz.get(); }
+    // 0表示冻结步态；上限与Copter的100Hz用户调度一致。
+    uint16_t get_gait_frequency_hz() const
+    {
+        return constrain_int16(gait_hz.get(), 0, AP_HEXRUPED_SPEED_HZ_MAX);
+    }
 
     // 可选重写的虚函数
     virtual bool init();
@@ -74,8 +77,14 @@ public:
     Vector3f get_leg_frame_position(uint8_t leg_index) const;
     bool     is_right_leg(uint8_t leg_index) const;
 
-    void set_center_offset(Vector2f xy, float z = 0) { center_offset = Vector3f(xy, z); }
-    void set_center_offset(float x, float y, float z = 0) { center_offset = Vector3f(x, y, z); }
+    void set_center_offset(Vector2f xy, float z = 0)
+    {
+        center_offset = Vector3f(xy, z);
+    }
+    void set_center_offset(float x, float y, float z = 0)
+    {
+        center_offset = Vector3f(x, y, z);
+    }
 
     // 辅助函数
     void right_sleep_leg();
@@ -85,8 +94,6 @@ public:
     void zhongxiang_claw_leg(float angle_value);
 
     // 角度转换函数
-    uint16_t radians_to_pwm(float angle_rad);
-
 protected:
     // 前端控制器引用
     AP_HexRuped&                  _frontend;
@@ -99,6 +106,23 @@ protected:
     // 移动请求标志 - true表示需要移动，false表示保持静止
     bool move_requested = false;
 
+    enum class StopState : uint8_t {
+        IDLE,
+        WALKING,
+        FINISHING_STEP,
+        SETTLING,
+    };
+    StopState stop_state = StopState::IDLE;
+
+    // 正常停步时保留最后一帧有效行程，先完成当前摆动相，再平滑收回站姿。
+    float stop_throttle_x = 0.0f;
+    float stop_throttle_y = 0.0f;
+    float stop_yaw = 0.0f;
+    uint16_t settle_step = 0;
+    uint16_t settle_step_total = 1;
+    Vector3f settle_start_pos[AP_HEXRUPED_LEG_ALL] {};
+    float settle_start_yaw[AP_HEXRUPED_LEG_ALL] {};
+
     // 步态参数
     uint8_t gait_step_leg_start[AP_HEXRUPED_LEG_ALL] {}; // 每条腿的步态起始步数
     uint8_t gait_lift_divisor = 1;                        // 抬腿除数 - 控制抬腿速度
@@ -106,6 +130,7 @@ protected:
 
     // 伺服输出命令
     Vector3ui servo_output_cmd[AP_HEXRUPED_LEG_ALL] {}; // 存储每条腿三个关节的PWM值
+    bool servo_output_valid = false;                    // 防止初始化完成前发送全零缓存
 
     // 运动参数
     int32_t gait_step_now = 0; // 当前步态计数 - 当前步态周期中的步数
@@ -143,7 +168,7 @@ protected:
     float roll_target;
 
     AP_Int16 gait_step_total; // 步态周期总步数：控制一个完整步态的离散化精度
-    AP_Int16 gait_hz;         // 步态频率（Hz）：基类通用参数，子类可以重写get_Freq()使用自己的参数
+    AP_Int16 gait_hz;         // 步态计算频率；0冻结相位，发送频率仍保持100Hz
 
     // 静态机体中心校准/未来支撑多边形补偿；现有步态保持为零。
     Vector3f center_offset;

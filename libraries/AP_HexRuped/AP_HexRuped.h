@@ -22,7 +22,8 @@ class AP_HexRuped_Tripod;
 class AP_HexRuped_Wave;
 #endif
 
-class AP_HexRuped {
+class AP_HexRuped
+{
     friend class AP_HexRuped_Backend;
     friend class AP_HexRuped_Tripod;
     friend class AP_HexRuped_Wave;
@@ -43,37 +44,41 @@ public:
 
     void update(); // 主更新循环
 
-    HexRupedClass get_class() const { return (HexRupedClass)_hexruped_class.get(); }
+    HexRupedClass get_class() const { return static_cast<HexRupedClass>(_hexruped_class.get()); }
 
     // 步态控制
     void set_gait_type(HexRupedGaitType type);
-    HexRupedGaitType get_gait_type() const { return (HexRupedGaitType)_gait_last_type; }
+    HexRupedGaitType get_gait_type() const { return static_cast<HexRupedGaitType>(_gait_last_type); }
 
     // 控制输入接口
-    void set_throttle(float throttle_x, float throttle_y) { _throttle_xyz.xy() = { throttle_x, throttle_y }; }
+    void set_throttle(float throttle_x, float throttle_y)
+    {
+        _throttle_xyz.xy() = { throttle_x, throttle_y };
+    }
 
     void set_yaw_rate(float yaw_rate) { _throttle_xyz.z = yaw_rate; }
 
     // 状态查询接口
-    float get_throttle_x() const { return _throttle_xyz.x; }
-    float get_throttle_y() const { return _throttle_xyz.y; }
-    float get_yaw_rate() const { return _throttle_xyz.z; }
-    float get_throttle_roll() const { return _throttle_roll_pitch.x; }
-    float get_throttle_pitch() const { return _throttle_roll_pitch.y; }
+    float    get_throttle_x() const { return _throttle_xyz.x; }
+    float    get_throttle_y() const { return _throttle_xyz.y; }
+    float    get_yaw_rate() const { return _throttle_xyz.z; }
+    bool     is_rc_failsafe() const { return rc().in_rc_failsafe(); }
+    float    get_throttle_roll() const { return _throttle_roll_pitch.x; }
+    float    get_throttle_pitch() const { return _throttle_roll_pitch.y; }
 
-    uint16_t get_mode_channel() { return hal.rcin->read(_channel_params.mode_channel - 1); }
-    uint16_t get_fly_mode_channel() { return hal.rcin->read(_channel_params.fly_mode_channel - 1); }
-    uint16_t get_walk_mode_channel() { return hal.rcin->read(_channel_params.walk_mode_channel - 1); }
+    uint16_t get_mode_channel() const { return hal.rcin->read(_channel_params.mode_channel - 1); }
+    uint16_t get_fly_mode_channel() const { return hal.rcin->read(_channel_params.fly_mode_channel - 1); }
+    uint16_t get_walk_mode_channel() const { return hal.rcin->read(_channel_params.walk_mode_channel - 1); }
 
     // 参数访问接口
-    uint8_t get_master_mode() { return fly_walk_mode.master_mode; }
-    uint8_t get_walk_mode() { return fly_walk_mode.walk_mode; }
-    uint8_t get_fly_mode() { return fly_walk_mode.fly_mode; }
-    void    set_master_mode(uint8_t value) { fly_walk_mode.master_mode = value; }
-    void    set_walk_mode(uint8_t value) { fly_walk_mode.walk_mode = value; }
-    void    set_fly_mode(uint8_t value) { fly_walk_mode.fly_mode = value; }
+    uint8_t  get_master_mode() const { return fly_walk_mode.master_mode; }
+    uint8_t  get_walk_mode() const { return fly_walk_mode.walk_mode; }
+    uint8_t  get_fly_mode() const { return fly_walk_mode.fly_mode; }
+    void     set_master_mode(uint8_t value) { fly_walk_mode.master_mode = value; }
+    void     set_walk_mode(uint8_t value) { fly_walk_mode.walk_mode = value; }
+    void     set_fly_mode(uint8_t value) { fly_walk_mode.fly_mode = value; }
 
-    float get_claw_angle() { return _claw_angle; }
+    float    get_claw_angle() const { return _claw_angle; }
 
     // 参数访问接口
     const AP_HexRuped_Params&         get_leg_params(uint8_t leg_index) const;
@@ -129,7 +134,8 @@ private:
     AP_HexRuped_CHANNEL_Params _channel_params;                   // 通道参数
     AP_HexRuped_CTRL_Params    _ctrl_params;                      // 控制参数
 
-    uint32_t lasttime;
+    // 步态调度采用相位累加，允许在100Hz主调度上准确产生非整数分频的平均频率。
+    uint16_t _gait_phase_accumulator {};
 
     enum {
         Fly_Mode_Flying = 0,

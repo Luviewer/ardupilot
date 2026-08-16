@@ -31,8 +31,7 @@ void AP_HexRuped_Backend::right_sleep_leg()
         servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
         servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
     }
-    // 发送数据
-    send_servo_cmd();
+    servo_output_valid = true;
 }
 
 // X形睡眠姿态 - 将所有腿收拢，呈X形站立姿态
@@ -57,8 +56,7 @@ void AP_HexRuped_Backend::x_sleep_leg()
         servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
         servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
     }
-    // 发送数据
-    send_servo_cmd();
+    servo_output_valid = true;
 }
 
 // X形抬升睡眠姿态 - 将机器人调整为X形且抬高的姿态
@@ -86,8 +84,7 @@ void AP_HexRuped_Backend::x_up_sleep_leg()
         servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
         servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
     }
-    // 发送数据
-    send_servo_cmd();
+    servo_output_valid = true;
 }
 
 // 横向抬升睡眠姿态 - 将机器人调整为横向展开且抬高的姿态
@@ -115,8 +112,7 @@ void AP_HexRuped_Backend::hengxiang_claw_leg(float angle_value)
         servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
         servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
     }
-    // 发送数据
-    send_servo_cmd();
+    servo_output_valid = true;
 }
 
 // 纵向抬升睡眠姿态 - 将机器人调整为纵向展开且抬高的姿态
@@ -144,6 +140,5 @@ void AP_HexRuped_Backend::zhongxiang_claw_leg(float angle_value)
         servo_output_cmd[leg_index].y = pwm_femur; // 股关节PWM
         servo_output_cmd[leg_index].z = pwm_tibia; // 胫关节PWM
     }
-    // 发送数据
-    send_servo_cmd();
+    servo_output_valid = true;
 }
