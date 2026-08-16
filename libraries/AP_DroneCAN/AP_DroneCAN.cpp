@@ -1613,6 +1613,186 @@ bool AP_DroneCAN::get_FlexDebug(uint8_t node_id, uint16_t msg_id, uint32_t &time
 
 #endif // AP_SCRIPTING_ENABLED
 
+#if HAL_LOGGING_ENABLED
+// 18路数组拆成两条9路日志，避免单条动态日志超过字段数量限制。
+// 通道固定为RF/RB/LB/LF/RM/LM，每条腿依次Coxa/Femur/Tibia。
+static void log_hiwonder_u8(const char *name, uint8_t source, uint32_t valid_mask,
+                            const uint8_t *values)
+{
+    AP::logger().WriteStreaming(name,
+                                "TimeUS,Src,Mask,S0,S1,S2,S3,S4,S5,S6,S7,S8",
+                                "s-#---------",
+                                "F-----------",
+                                "QBIBBBBBBBBB",
+                                AP_HAL::micros64(), source, valid_mask,
+                                values[0], values[1], values[2],
+                                values[3], values[4], values[5],
+                                values[6], values[7], values[8]);
+}
+
+static void log_hiwonder_u16(const char *name, uint8_t source, uint32_t valid_mask,
+                             const uint16_t *values)
+{
+    AP::logger().WriteStreaming(name,
+                                "TimeUS,Src,Mask,S0,S1,S2,S3,S4,S5,S6,S7,S8",
+                                "s-#---------",
+                                "F-----------",
+                                "QBIHHHHHHHHH",
+                                AP_HAL::micros64(), source, valid_mask,
+                                values[0], values[1], values[2],
+                                values[3], values[4], values[5],
+                                values[6], values[7], values[8]);
+}
+
+static void log_hiwonder_i32(const char *name, uint8_t source, uint32_t valid_mask,
+                             const int32_t *values)
+{
+    AP::logger().WriteStreaming(name,
+                                "TimeUS,Src,Mask,S0,S1,S2,S3,S4,S5,S6,S7,S8",
+                                "s-#---------",
+                                "F-----------",
+                                "QBIiiiiiiiii",
+                                AP_HAL::micros64(), source, valid_mask,
+                                values[0], values[1], values[2],
+                                values[3], values[4], values[5],
+                                values[6], values[7], values[8]);
+}
+
+// DataFlash messages: HWC1,HWC2
+// @Description: Hiwonder commanded positions; HWC1 is channels 0-8 and HWC2 is 9-17
+// @Field: TimeUS: Time since system startup
+// @Field: Src: DroneCAN driver index
+// @Field: Mask: Valid channel bitmask
+// @Field: S0: First servo value in this half
+// @Field: S1: Second servo value in this half
+// @Field: S2: Third servo value in this half
+// @Field: S3: Fourth servo value in this half
+// @Field: S4: Fifth servo value in this half
+// @Field: S5: Sixth servo value in this half
+// @Field: S6: Seventh servo value in this half
+// @Field: S7: Eighth servo value in this half
+// @Field: S8: Ninth servo value in this half
+void AP_DroneCAN::log_hiwonder_servo_command(const com_usl_ServoCmd &msg)
+{
+    uint16_t command[HIWONDER_SERVO_COUNT] {};
+    uint32_t valid_mask = 0;
+    const uint8_t count = MIN(uint8_t(msg.cmd.len), HIWONDER_SERVO_COUNT);
+    for (uint8_t i = 0; i < count; i++) {
+        command[i] = msg.cmd.data[i];
+        valid_mask |= 1UL << i;
+    }
+    log_hiwonder_u16("HWC1", _driver_index, valid_mask, &command[0]);
+    log_hiwonder_u16("HWC2", _driver_index, valid_mask, &command[9]);
+}
+
+// DataFlash messages: HWP1,HWP2
+// @Description: Hiwonder feedback positions; HWP1 is channels 0-8 and HWP2 is 9-17
+// @Field: TimeUS: Time since system startup
+// @Field: Src: Source DroneCAN node ID
+// @Field: Mask: Valid channel bitmask
+// @Field: S0: First servo value in this half
+// @Field: S1: Second servo value in this half
+// @Field: S2: Third servo value in this half
+// @Field: S3: Fourth servo value in this half
+// @Field: S4: Fifth servo value in this half
+// @Field: S5: Sixth servo value in this half
+// @Field: S6: Seventh servo value in this half
+// @Field: S7: Eighth servo value in this half
+// @Field: S8: Ninth servo value in this half
+void AP_DroneCAN::handle_hiwonder_servo_info(const CanardRxTransfer &transfer,
+        const com_usl_ServoInfo &msg)
+{
+    uint16_t position[HIWONDER_SERVO_COUNT] {};
+    uint32_t valid_mask = 0;
+    const uint8_t count = MIN(uint8_t(msg.pos.len), HIWONDER_SERVO_COUNT);
+    for (uint8_t i = 0; i < count; i++) {
+        position[i] = msg.pos.data[i];
+        // ServoInfo没有有效位；PWR以0表示离线，正常反馈已映射到1000～2000。
+        if (msg.pos.data[i] != 0) {
+            valid_mask |= 1UL << i;
+        }
+    }
+    log_hiwonder_u16("HWP1", transfer.source_node_id,
+                     valid_mask, &position[0]);
+    log_hiwonder_u16("HWP2", transfer.source_node_id,
+                     valid_mask, &position[9]);
+}
+
+// DataFlash messages: HWT1,HWT2
+// @Description: Hiwonder temperatures in degrees Celsius; HWT1 is channels 0-8 and HWT2 is 9-17
+// @Field: TimeUS: Time since system startup
+// @Field: Src: Source DroneCAN node ID
+// @Field: Mask: Valid channel bitmask
+// @Field: S0: First servo value in this half
+// @Field: S1: Second servo value in this half
+// @Field: S2: Third servo value in this half
+// @Field: S3: Fourth servo value in this half
+// @Field: S4: Fifth servo value in this half
+// @Field: S5: Sixth servo value in this half
+// @Field: S6: Seventh servo value in this half
+// @Field: S7: Eighth servo value in this half
+// @Field: S8: Ninth servo value in this half
+void AP_DroneCAN::handle_hiwonder_servo_temperature(
+    const CanardRxTransfer &transfer, const com_usl_ServoTemperature &msg)
+{
+    log_hiwonder_u8("HWT1", transfer.source_node_id,
+                    msg.valid_mask, &msg.temperature_c[0]);
+    log_hiwonder_u8("HWT2", transfer.source_node_id,
+                    msg.valid_mask, &msg.temperature_c[9]);
+}
+
+// DataFlash messages: HWV1,HWV2
+// @Description: Hiwonder input voltage in millivolts; HWV1 is channels 0-8 and HWV2 is 9-17
+// @Field: TimeUS: Time since system startup
+// @Field: Src: Source DroneCAN node ID
+// @Field: Mask: Valid channel bitmask
+// @Field: S0: First servo value in this half
+// @Field: S1: Second servo value in this half
+// @Field: S2: Third servo value in this half
+// @Field: S3: Fourth servo value in this half
+// @Field: S4: Fifth servo value in this half
+// @Field: S5: Sixth servo value in this half
+// @Field: S6: Seventh servo value in this half
+// @Field: S7: Eighth servo value in this half
+// @Field: S8: Ninth servo value in this half
+void AP_DroneCAN::handle_hiwonder_servo_voltage(
+    const CanardRxTransfer &transfer, const com_usl_ServoVoltage &msg)
+{
+    log_hiwonder_u16("HWV1", transfer.source_node_id,
+                     msg.valid_mask, &msg.voltage_mv[0]);
+    log_hiwonder_u16("HWV2", transfer.source_node_id,
+                     msg.valid_mask, &msg.voltage_mv[9]);
+}
+
+// DataFlash messages: HWD1,HWD2
+// @Description: Hiwonder accumulated distance in encoder pulses; HWD1 is channels 0-8 and HWD2 is 9-17
+// @Field: TimeUS: Time since system startup
+// @Field: Src: Source DroneCAN node ID
+// @Field: Mask: Valid channel bitmask
+// @Field: S0: First servo value in this half
+// @Field: S1: Second servo value in this half
+// @Field: S2: Third servo value in this half
+// @Field: S3: Fourth servo value in this half
+// @Field: S4: Fifth servo value in this half
+// @Field: S5: Sixth servo value in this half
+// @Field: S6: Seventh servo value in this half
+// @Field: S7: Eighth servo value in this half
+// @Field: S8: Ninth servo value in this half
+void AP_DroneCAN::handle_hiwonder_servo_distance(
+    const CanardRxTransfer &transfer, const com_usl_ServoDistance &msg)
+{
+    log_hiwonder_i32("HWD1", transfer.source_node_id,
+                     msg.valid_mask, &msg.distance_pulse[0]);
+    log_hiwonder_i32("HWD2", transfer.source_node_id,
+                     msg.valid_mask, &msg.distance_pulse[9]);
+}
+#else
+void AP_DroneCAN::log_hiwonder_servo_command(const com_usl_ServoCmd &msg)
+{
+    (void)msg;
+}
+#endif // HAL_LOGGING_ENABLED
+
 /*
   handle LogMessage debug
  */

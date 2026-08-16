@@ -173,6 +173,7 @@ public:
     Canard::Publisher<com_xacti_GnssStatus> xacti_gnss_status{canard_iface};
 
     Canard::Publisher<com_usl_ServoCmd> com_usl_servocmd{canard_iface};
+    void log_hiwonder_servo_command(const com_usl_ServoCmd &msg);
 
 #if AP_RELAY_DRONECAN_ENABLED
     // Hardpoint for relay
@@ -356,6 +357,26 @@ private:
     Canard::ObjCallback<AP_DroneCAN, uavcan_protocol_debug_LogMessage> debug_cb{this, &AP_DroneCAN::handle_debug};
     Canard::Subscriber<uavcan_protocol_debug_LogMessage> debug_listener{debug_cb, _driver_index};
 
+#if HAL_LOGGING_ENABLED
+    // 幻尔遥测仅用于DataFlash记录；关闭日志的板型不分配订阅器和回调状态。
+    Canard::ObjCallback<AP_DroneCAN, com_usl_ServoInfo> hiwonder_servo_info_cb{
+        this, &AP_DroneCAN::handle_hiwonder_servo_info};
+    Canard::Subscriber<com_usl_ServoInfo> hiwonder_servo_info_listener{
+        hiwonder_servo_info_cb, _driver_index};
+    Canard::ObjCallback<AP_DroneCAN, com_usl_ServoTemperature> hiwonder_servo_temperature_cb{
+        this, &AP_DroneCAN::handle_hiwonder_servo_temperature};
+    Canard::Subscriber<com_usl_ServoTemperature> hiwonder_servo_temperature_listener{
+        hiwonder_servo_temperature_cb, _driver_index};
+    Canard::ObjCallback<AP_DroneCAN, com_usl_ServoVoltage> hiwonder_servo_voltage_cb{
+        this, &AP_DroneCAN::handle_hiwonder_servo_voltage};
+    Canard::Subscriber<com_usl_ServoVoltage> hiwonder_servo_voltage_listener{
+        hiwonder_servo_voltage_cb, _driver_index};
+    Canard::ObjCallback<AP_DroneCAN, com_usl_ServoDistance> hiwonder_servo_distance_cb{
+        this, &AP_DroneCAN::handle_hiwonder_servo_distance};
+    Canard::Subscriber<com_usl_ServoDistance> hiwonder_servo_distance_listener{
+        hiwonder_servo_distance_cb, _driver_index};
+#endif
+
 #if AP_DRONECAN_HIMARK_SERVO_SUPPORT && AP_SERVO_TELEM_ENABLED
     Canard::ObjCallback<AP_DroneCAN, com_himark_servo_ServoInfo> himark_servo_ServoInfo_cb{this, &AP_DroneCAN::handle_himark_servoinfo};
     Canard::Subscriber<com_himark_servo_ServoInfo> himark_servo_ServoInfo_cb_listener{himark_servo_ServoInfo_cb, _driver_index};
@@ -437,9 +458,17 @@ private:
 #endif
     static bool is_esc_data_index_valid(const uint8_t index);
     void handle_debug(const CanardRxTransfer& transfer, const uavcan_protocol_debug_LogMessage& msg);
+#if HAL_LOGGING_ENABLED
+    void handle_hiwonder_servo_info(const CanardRxTransfer &transfer, const com_usl_ServoInfo &msg);
+    void handle_hiwonder_servo_temperature(const CanardRxTransfer &transfer, const com_usl_ServoTemperature &msg);
+    void handle_hiwonder_servo_voltage(const CanardRxTransfer &transfer, const com_usl_ServoVoltage &msg);
+    void handle_hiwonder_servo_distance(const CanardRxTransfer &transfer, const com_usl_ServoDistance &msg);
+#endif
     void handle_param_get_set_response(const CanardRxTransfer& transfer, const uavcan_protocol_param_GetSetResponse& rsp);
     void handle_param_save_response(const CanardRxTransfer& transfer, const uavcan_protocol_param_ExecuteOpcodeResponse& rsp);
     void handle_node_info_request(const CanardRxTransfer& transfer, const uavcan_protocol_GetNodeInfoRequest& req);
+
+    static constexpr uint8_t HIWONDER_SERVO_COUNT = 18;
 
 #if AP_SCRIPTING_ENABLED
     void handle_FlexDebug(const CanardRxTransfer& transfer, const dronecan_protocol_FlexDebug& msg);
