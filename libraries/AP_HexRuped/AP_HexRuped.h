@@ -66,9 +66,9 @@ public:
     float    get_throttle_roll() const { return _throttle_roll_pitch.x; }
     float    get_throttle_pitch() const { return _throttle_roll_pitch.y; }
 
-    uint16_t get_mode_channel() const { return hal.rcin->read(_channel_params.mode_channel - 1); }
-    uint16_t get_fly_mode_channel() const { return hal.rcin->read(_channel_params.fly_mode_channel - 1); }
-    uint16_t get_walk_mode_channel() const { return hal.rcin->read(_channel_params.walk_mode_channel - 1); }
+    uint16_t get_mode_channel() const { return read_rc_channel_pwm(_channel_params.mode_channel, 1000); }
+    uint16_t get_fly_mode_channel() const { return read_rc_channel_pwm(_channel_params.fly_mode_channel, 1000); }
+    uint16_t get_walk_mode_channel() const { return read_rc_channel_pwm(_channel_params.walk_mode_channel, 1000); }
 
     // 参数访问接口
     uint8_t  get_master_mode() const { return fly_walk_mode.master_mode; }
@@ -159,4 +159,5 @@ private:
     void create_backends();
     void destroy_backends();
     void read_radio_input();
+    static uint16_t read_rc_channel_pwm(int8_t channel, uint16_t default_pwm);
 };

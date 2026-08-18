@@ -12,6 +12,17 @@
 # include "AP_HexRuped_Wave.h" // 波浪步态后端
 #endif
 
+// 统一通过RC_Channel读取输入，使物理接收机和MAVLink RC override遵循同一条控制链路。
+uint16_t AP_HexRuped::read_rc_channel_pwm(int8_t channel, uint16_t default_pwm)
+{
+    if (channel <= 0) {
+        return default_pwm;
+    }
+
+    const uint16_t pwm = RC_Channels::get_radio_in(uint8_t(channel - 1));
+    return pwm == 0 ? default_pwm : pwm;
+}
+
 /**
  * @brief 六足机器人参数表定义
  *
@@ -421,25 +432,12 @@ void AP_HexRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 第二部分：XYZ运动轴输入处理（前进、横向、偏航）
     ////////////////////////////////////////////////////////////////////////////////////
-    // 读取运动控制通道的原始PWM值
-    // 注意：通道号-1是因为AP_HAL的rcin使用0基索引，而参数配置使用1基索引
+    // 参数使用从1开始的通道号，辅助函数负责转换为RC_Channels的从0开始索引。
     Vector3ui throttle_chan = {
-        hal.rcin->read(_channel_params.throttle_x_channel - 1), // X轴：前进(+)/后退(-)
-        hal.rcin->read(_channel_params.throttle_y_channel - 1), // Y轴：左移(+)/右移(-)
-        hal.rcin->read(_channel_params.yaw_channel - 1)         // Z轴：逆时针(+)/顺时针(-)旋转
+        read_rc_channel_pwm(_channel_params.throttle_x_channel, 1500), // X轴：前进(+)/后退(-)
+        read_rc_channel_pwm(_channel_params.throttle_y_channel, 1500), // Y轴：左移(+)/右移(-)
+        read_rc_channel_pwm(_channel_params.yaw_channel, 1500)         // Z轴：逆时针(+)/顺时针(-)旋转
     };
-
-    // 为未配置或尚未收到数据的扩展通道设置默认中位值。SITL/部分接收机
-    // 在RC9以上通道初始化前返回0，不能把它解释成满量程反向运动。
-    if (_channel_params.throttle_x_channel == -1 || throttle_chan[0] == 0) {
-        throttle_chan[0] = 1500;
-    }
-    if (_channel_params.throttle_y_channel == -1 || throttle_chan[1] == 0) {
-        throttle_chan[1] = 1500;
-    }
-    if (_channel_params.yaw_channel == -1 || throttle_chan[2] == 0) {
-        throttle_chan[2] = 1500;
-    }
 
     // 死区处理：将接近中位的PWM值（1450-1550μs）强制设为中位值
     // 目的：消除摇杆机械回中误差和电子噪声引起的微小抖动
@@ -463,17 +461,9 @@ void AP_HexRuped::read_radio_input()
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取姿态控制通道的PWM值，用于机体平衡调整
     Vector2ui rollpitch_chan = {
-        hal.rcin->read(_channel_params.roll_channel - 1), // 横滚：左倾(+)/右倾(-)
-        hal.rcin->read(_channel_params.pitch_channel - 1) // 俯仰：抬头(+)/低头(-)
+        read_rc_channel_pwm(_channel_params.roll_channel, 1500), // 横滚：左倾(+)/右倾(-)
+        read_rc_channel_pwm(_channel_params.pitch_channel, 1500) // 俯仰：抬头(+)/低头(-)
     };
-
-    // 为未配置的通道设置默认中位值
-    if (_channel_params.roll_channel == -1 || rollpitch_chan[0] == 0) {
-        rollpitch_chan[0] = 1500;
-    }
-    if (_channel_params.pitch_channel == -1 || rollpitch_chan[1] == 0) {
-        rollpitch_chan[1] = 1500;
-    }
 
     // 同样进行死区处理，避免姿态控制抖动
     for (uint8_t i = 0; i < 2; i++) {
@@ -501,10 +491,7 @@ void AP_HexRuped::read_radio_input()
     // 第四部分：主工作模式切换（行走模式 vs 飞行模式）
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取模式开关通道，用于在行走模式和飞行模式之间切换
-    uint16_t mode_value = hal.rcin->read(_channel_params.mode_channel - 1);
-    if (_channel_params.mode_channel == -1) {
-        mode_value = 1000;    // 默认为低电平（行走模式）
-    }
+    const uint16_t mode_value = read_rc_channel_pwm(_channel_params.mode_channel, 1000);
 
     // 阈值判断：PWM > 1800μs 切换到飞行模式，否则保持行走模式
     if (mode_value > 1800) {
@@ -517,10 +504,7 @@ void AP_HexRuped::read_radio_input()
     // 第五部分：步态模式选择（仅在行走模式下有效）
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取步态选择通道的PWM值，使用两档开关
-    uint16_t walk_value = hal.rcin->read(_channel_params.walk_mode_channel - 1);
-    if (_channel_params.walk_mode_channel == -1) {
-        walk_value = 1000;    // 默认最低档位
-    }
+    const uint16_t walk_value = read_rc_channel_pwm(_channel_params.walk_mode_channel, 1000);
 
     // 两档选择：低档为快速Tripod，高档为五腿支撑的Wave。
     set_walk_mode(walk_value > 1500 ? AP_HEXRUPED_GAIT_WAVE : AP_HEXRUPED_GAIT_TRIPOD);
@@ -529,10 +513,7 @@ void AP_HexRuped::read_radio_input()
     // 第六部分：飞行子模式选择（仅在飞行模式下有效）
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取飞行模式选择通道，用于选择不同的特殊姿态
-    uint16_t flying_value = hal.rcin->read(_channel_params.fly_mode_channel - 1);
-    if (_channel_params.fly_mode_channel == -1) {
-        flying_value = 1000;    // 默认飞行姿态
-    }
+    const uint16_t flying_value = read_rc_channel_pwm(_channel_params.fly_mode_channel, 1000);
 
     // 飞行子模式判断：同样采用分段PWM范围判断
     if (flying_value > 1800 && flying_value < 2100) {
@@ -547,10 +528,7 @@ void AP_HexRuped::read_radio_input()
     // 第七部分：爪子角度控制（用于爪子形态的角度调节）
     ////////////////////////////////////////////////////////////////////////////////////
     // 读取爪子控制通道，用于动态调节爪子开合角度
-    uint16_t claw_value = hal.rcin->read(_channel_params.claw_channel - 1);
-    if (_channel_params.claw_channel == -1) {
-        claw_value = 1500;    // 默认中位角度（0度）
-    }
+    const uint16_t claw_value = read_rc_channel_pwm(_channel_params.claw_channel, 1500);
 
     // 将爪子PWM值转换为角度（范围：-90度到+90度）
     // 1500μs对应0度，1000μs对应-90度，2000μs对应+90度

@@ -91,6 +91,20 @@ bool AP_HexRuped_Backend::init()
     gait_step_total_cached = -1;
     refresh_steps(); // 校验步数参数并初始化当前步态
 
+    // 上电安全姿态：没有任何RC输入或有效步态目标时，18路舵机均保持1500us。
+    // send_servo_cmd()会再次叠加通道偏移，因此这里预先扣除偏移，确保实际输出仍为1500us。
+    for (uint8_t leg_index = 0; leg_index < AP_HEXRUPED_LEG_ALL; leg_index++) {
+        const AP_HexRuped_Params& leg_param = _frontend.get_leg_params(leg_index);
+        servo_output_cmd[leg_index].x = uint16_t(constrain_float(LEG_MOTOR_PWM_MIDDLE - leg_param.COXA_OFS,
+                                                                  LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX));
+        servo_output_cmd[leg_index].y = uint16_t(constrain_float(LEG_MOTOR_PWM_MIDDLE - leg_param.FEMU_OFS,
+                                                                  LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX));
+        servo_output_cmd[leg_index].z = uint16_t(constrain_float(LEG_MOTOR_PWM_MIDDLE - leg_param.TIBI_OFS,
+                                                                  LEG_MOTOR_PWM_MIN, LEG_MOTOR_PWM_MAX));
+    }
+    // 允许100Hz调度器从启动后的第一帧开始周期发送中位命令。
+    servo_output_valid = true;
+
     return true;
 }
 
