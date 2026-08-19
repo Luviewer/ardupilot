@@ -87,13 +87,33 @@ void ModeAltHold::run()
         // get avoidance adjusted climb rate
         target_climb_rate = get_avoidance_adjusted_climbrate(target_climb_rate);
 
+        // During the second half of the TSDT4 suspended-tool landing, release
+        // horizontal position control but retain an explicit, lag-limited
+        // EKF altitude trajectory.  Resolve this before surface tracking: the
+        // hanging tool corrupts the down-facing range measurement and must not
+        // inject a terrain offset into the absolute Z target.
+        float tsdt4_position_z_cm;
+        float tsdt4_velocity_z_cms;
+        const bool tsdt4_z_control =
+            copter.tsdt4_get_alt_hold_z_target(tsdt4_position_z_cm, tsdt4_velocity_z_cms);
+
 #if AP_RANGEFINDER_ENABLED
-        // update the vertical offset based on the surface measurement
-        copter.surface_tracking.update_surface_offset();
+        if (tsdt4_z_control) {
+            // init_pos_terrain_cm preserves the current combined target while
+            // removing the stale surface-tracking offset.  Reasserting zero is
+            // harmless and prevents an RC auxiliary switch from restoring it.
+            pos_control->init_pos_terrain_cm(0.0f);
+        } else {
+            // update the vertical offset based on the surface measurement
+            copter.surface_tracking.update_surface_offset();
+        }
 #endif
 
-        // Send the commanded climb rate to the position controller
-        pos_control->set_pos_target_z_from_climb_rate_cm(target_climb_rate);
+        if (tsdt4_z_control) {
+            pos_control->input_pos_vel_accel_z(tsdt4_position_z_cm, tsdt4_velocity_z_cms, 0.0f);
+        } else {
+            pos_control->set_pos_target_z_from_climb_rate_cm(target_climb_rate);
+        }
         break;
     }
 

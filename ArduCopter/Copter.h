@@ -180,6 +180,12 @@
 
 class Copter : public AP_Vehicle {
 public:
+    // TSDT4 suspended-tool arc controller hook. Keeps Guided mode access inside Copter.
+    bool tsdt4_set_guided_target(const Vector3f& destination, const Vector3f& velocity,
+                                 const Vector3f& acceleration, float yaw_cd);
+    bool tsdt4_set_guided_position(const Vector3f& destination, float yaw_cd);
+    bool tsdt4_set_mode(Mode::Number mode, ModeReason reason);
+    bool tsdt4_get_alt_hold_z_target(float& position_z_cm, float& velocity_z_cms) const;
     friend class GCS_MAVLINK_Copter;
     friend class GCS_Copter;
     friend class AP_Rally_Copter;
