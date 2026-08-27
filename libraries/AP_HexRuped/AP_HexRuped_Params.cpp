@@ -47,19 +47,101 @@ const AP_Param::GroupInfo AP_HexRuped_CHANNEL_Params::var_info[] = {
 };
 
 const AP_Param::GroupInfo AP_HexRuped_SYS_Params::var_info[] = {
+    // @Param: COXA
+    // @DisplayName: 髋节长度
+    // @Description: 髋关节(COXA)连杆长度,用于逆运动学
+    // @Units: mm
+    // @Range: 1 300
+    // @User: Standard
     AP_GROUPINFO("COXA", 1, AP_HexRuped_SYS_Params, COXA_LEN, COXA_LEN_DEFAULT),
+
+    // @Param: FEMUR
+    // @DisplayName: 股节长度
+    // @Description: 股关节(FEMUR)连杆长度,用于逆运动学
+    // @Units: mm
+    // @Range: 1 400
+    // @User: Standard
     AP_GROUPINFO("FEMUR", 2, AP_HexRuped_SYS_Params, FEMUR_LEN, FEMUR_LEN_DEFAULT),
+
+    // @Param: TIBIA
+    // @DisplayName: 胫节长度
+    // @Description: 胫关节(TIBIA)连杆长度,用于逆运动学,也决定站立初始高度
+    // @Units: mm
+    // @Range: 1 400
+    // @User: Standard
     AP_GROUPINFO("TIBIA", 3, AP_HexRuped_SYS_Params, TIBIA_LEN, TIBIA_LEN_DEFAULT),
+
+    // @Param: FLEN
+    // @DisplayName: 机身前后长度
+    // @Description: 机体坐标系X方向长度,前后髋关节间距
+    // @Units: mm
+    // @Range: 1 600
+    // @User: Standard
     AP_GROUPINFO("FLEN", 4, AP_HexRuped_SYS_Params, FRAME_LEN, FRAME_LEN_DEFAULT),
+
+    // @Param: FWID
+    // @DisplayName: 机身左右宽度
+    // @Description: 机体坐标系Y方向宽度,左右髋关节间距
+    // @Units: mm
+    // @Range: 1 600
+    // @User: Standard
     AP_GROUPINFO("FWID", 5, AP_HexRuped_SYS_Params, FRAME_WIDTH, FRAME_WIDTH_DEFAULT),
 
+    // @Param: ALPH_A
+    // @DisplayName: USL_BV2股胫补偿边A
+    // @Description: 仅 HEX_CLASS=USL_BV2 时生效。与 ALPH_B 一起计算股/胫安装补偿角, alpha=atan(A/B)
+    // @Units: mm
+    // @Range: 1 200
+    // @User: Advanced
     AP_GROUPINFO("ALPH_A", 6, AP_HexRuped_SYS_Params, Alpha_A, 55),
+
+    // @Param: ALPH_B
+    // @DisplayName: USL_BV2股胫补偿边B
+    // @Description: 仅 HEX_CLASS=USL_BV2 时生效。与 ALPH_A 一起计算股/胫安装补偿角, alpha=atan(A/B)
+    // @Units: mm
+    // @Range: 1 200
+    // @User: Advanced
     AP_GROUPINFO("ALPH_B", 7, AP_HexRuped_SYS_Params, Alpha_B, 50),
 
+    // @Param: F_YAW
+    // @DisplayName: 右前腿安装偏航角
+    // @Description: 右前腿髋关节安装偏航角。机体坐标:0°朝右(+Y),正值朝前(+X)。左前腿由镜像得到 180-F_YAW
+    // @Units: deg
+    // @Range: -180 180
+    // @User: Standard
     AP_GROUPINFO("F_YAW", 8, AP_HexRuped_SYS_Params, FRONT_YAW, 45),
+
+    // @Param: M_YAW
+    // @DisplayName: 右中腿安装偏航角
+    // @Description: 右中腿髋关节安装偏航角。默认0°为纯侧向。左中腿由镜像得到 180-M_YAW
+    // @Units: deg
+    // @Range: -180 180
+    // @User: Standard
     AP_GROUPINFO("M_YAW", 9, AP_HexRuped_SYS_Params, MIDDLE_YAW, 0),
+
+    // @Param: R_YAW
+    // @DisplayName: 右后腿安装偏航角
+    // @Description: 右后腿髋关节安装偏航角。默认-45°朝后右侧。左后腿由镜像得到 -180-R_YAW
+    // @Units: deg
+    // @Range: -180 180
+    // @User: Standard
     AP_GROUPINFO("R_YAW", 10, AP_HexRuped_SYS_Params, REAR_YAW, -45),
+
+    // @Param: MID_X
+    // @DisplayName: 中腿髋关节前后位置
+    // @Description: 左右中腿髋关节相对机体中心的X坐标,向前为正,左右中腿共用
+    // @Units: mm
+    // @Range: -300 300
+    // @User: Standard
     AP_GROUPINFO("MID_X", 11, AP_HexRuped_SYS_Params, MIDDLE_X, 0),
+
+    // @Param: CLAW_H
+    // @DisplayName: 飞行收爪高度
+    // @Description: 朝下测距高度门。低于或等于此高度(或无测距)强制默认爪展开以便降落;高于此高度才允许默认爪/横爪和合爪通道
+    // @Units: cm
+    // @Range: 5 200
+    // @User: Standard
+    AP_GROUPINFO("CLAW_H", 12, AP_HexRuped_SYS_Params, CLAW_H, 40),
 
     AP_GROUPEND
 };

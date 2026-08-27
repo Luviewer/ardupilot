@@ -265,6 +265,7 @@ void AP_HexRuped::update()
 
         uint16_t down_cm = 0;
         const bool have_down_rf = get_downward_distance_cm(down_cm);
+        const uint16_t claw_h_cm = constrain_int16(_sys_params.CLAW_H, 5, 200);
 
         switch (fly_walk_mode.master_mode) {
         default:
@@ -273,37 +274,28 @@ void AP_HexRuped::update()
             _backend->update();
             break;
 
-        case Flying_Mode: // 飞行模式（特殊姿态模式）
-            switch (fly_walk_mode.fly_mode) {
-            default:
-            case Fly_Mode_Flying:
-                // 必须先切到飞行模式;朝下测距离地超过 40cm 才收腿
-                if (have_down_rf && down_cm > 40) {
-                    _backend->x_up_sleep_leg();
-                } else {
-                    _backend->x_sleep_leg();
-                }
-                break;
-
-            case Fly_Mode_Zhong_Claw:
-                if (_motors->get_throttle() >= 0.5 && hal.rcin->read(CH_7) > 1500) {
-                    _backend->zhongxiang_claw_leg(-40);
-                } else if (have_down_rf && down_cm < 8) {
-                    _backend->zhongxiang_claw_leg(70);
-                } else {
-                    _backend->zhongxiang_claw_leg(-40);
-                }
-                break;
-
-            case Fly_Mode_Heng_Claw:
-                if (have_down_rf && down_cm < 8) {
-                    _backend->hengxiang_claw_leg(40);
-                } else {
-                    _backend->hengxiang_claw_leg(-40);
-                }
+        case Flying_Mode: {
+            // 高度门只判断一次: <=收爪高度(默认40cm)或无测距,一律默认爪展开,忽略横爪和合爪通道。
+            // 只有测距有效且高于收爪高度,才允许默认爪/横爪,以及 HEX_CH_CLAW 开合。
+            const bool allow_claw_air = have_down_rf && (down_cm > claw_h_cm);
+            if (!allow_claw_air) {
+                _backend->x_sleep_leg();
                 break;
             }
+
+            float femur_deg = -75.0f;
+            float tibia_deg = 60.0f;
+            if (_channel_params.claw_channel != -1) {
+                get_claw_joint_angles(femur_deg, tibia_deg);
+            }
+
+            if (fly_walk_mode.fly_mode == Fly_Mode_Heng_Claw) {
+                _backend->hengxiang_claw_joints(femur_deg, tibia_deg);
+            } else {
+                _backend->default_claw_joints(femur_deg, tibia_deg);
+            }
             break;
+        }
         }
     }
 
@@ -326,6 +318,14 @@ bool AP_HexRuped::get_downward_distance_cm(uint16_t &cm) const
 
     cm = sensor->distance_cm();
     return true;
+}
+
+// HEX_CH_CLAW: 1500=默认收起(股-75°/胫60°), 2000=合爪(股+40°/胫0°), 中间线性; <=1500 保持收起
+void AP_HexRuped::get_claw_joint_angles(float &femur_deg, float &tibia_deg) const
+{
+    const float t = constrain_float(_claw_angle / 90.0f, 0.0f, 1.0f);
+    femur_deg = -75.0f + (40.0f - (-75.0f)) * t;
+    tibia_deg = 60.0f + (0.0f - 60.0f) * t;
 }
 
 /**
@@ -505,12 +505,10 @@ void AP_HexRuped::read_radio_input()
     // 读取飞行模式选择通道，用于选择不同的特殊姿态
     const uint16_t flying_value = read_rc_channel_pwm(_channel_params.fly_mode_channel, 1000);
 
-    // 飞行子模式判断：同样采用分段PWM范围判断
-    if (flying_value > 1800 && flying_value < 2100) {
+    // 六足只有两种飞行子模式:高档为横向爪,其余为默认爪(按高度收腿/展开)
+    if (flying_value > 1500 && flying_value < 2100) {
         set_fly_mode(Fly_Mode_Heng_Claw); // 横向爪子形态：腿部形成横向抓取形状
-    } else if (flying_value > 1400 && flying_value < 1600) {
-        set_fly_mode(Fly_Mode_Zhong_Claw); // 纵向爪子形态：腿部形成纵向抓取形状
-    } else if (flying_value > 900 && flying_value < 1100) {
+    } else if (flying_value > 900) {
         set_fly_mode(Fly_Mode_Flying); // 飞行姿态：根据高度自动收起或展开腿部
     }
 
@@ -520,8 +518,7 @@ void AP_HexRuped::read_radio_input()
     // 读取爪子控制通道，用于动态调节爪子开合角度
     const uint16_t claw_value = read_rc_channel_pwm(_channel_params.claw_channel, 1500);
 
-    // 将爪子PWM值转换为角度（范围：-90度到+90度）
-    // 1500μs对应0度，1000μs对应-90度，2000μs对应+90度
+    // HEX_CH_CLAW 线性: 1500=默认收起, 2000=合爪; <=1500 保持收起
     _claw_angle = ((float)claw_value - 1500.0f) / 500.0f * 90.0f;
 
 }

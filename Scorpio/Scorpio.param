@@ -47,6 +47,10 @@ HEX_CH_LIFT,20
 HEX_CH_MODE,10
 HEX_CH_WAK,11
 HEX_CH_FLY,12
+# 飞行爪开合通道。-1 关闭;1500 默认收起, 2000 合爪, 中间线性。
+HEX_CH_CLAW,-1
+# 飞行收爪高度(cm):高于此高度默认爪收起;低于此高度横向爪回退到默认展开。
+HEX_SYS_CLAW_H,40
 
 # SITL CAN1 使用 Linux SocketCAN vcan0，CAN 驱动1运行 DroneCAN。
 SIM_CAN_TYPE1,2

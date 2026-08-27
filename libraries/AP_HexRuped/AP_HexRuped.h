@@ -79,6 +79,7 @@ public:
     void     set_fly_mode(uint8_t value) { fly_walk_mode.fly_mode = value; }
 
     float    get_claw_angle() const { return _claw_angle; }
+    void     get_claw_joint_angles(float &femur_deg, float &tibia_deg) const;
 
     // 参数访问接口
     const AP_HexRuped_Params&         get_leg_params(uint8_t leg_index) const;
@@ -137,9 +138,9 @@ private:
     // 步态调度采用相位累加，允许在100Hz主调度上准确产生非整数分频的平均频率。
     uint16_t _gait_phase_accumulator {};
 
+    // 六足构型天然不具备纵向爪,飞行子模式只有默认爪(收腿)和横向爪
     enum {
         Fly_Mode_Flying = 0,
-        Fly_Mode_Zhong_Claw,
         Fly_Mode_Heng_Claw,
         Fly_Mode_Total,
     };

@@ -90,8 +90,10 @@ public:
     void right_sleep_leg();
     void x_sleep_leg();
     void x_up_sleep_leg();
+    void default_claw_leg(float close_norm);
+    void default_claw_joints(float femur_deg, float tibia_deg);
     void hengxiang_claw_leg(float angle_value);
-    void zhongxiang_claw_leg(float angle_value);
+    void hengxiang_claw_joints(float femur_deg, float tibia_deg);
 
     // 角度转换函数
 protected:

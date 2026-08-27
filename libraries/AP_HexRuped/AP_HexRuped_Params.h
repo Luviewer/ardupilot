@@ -81,6 +81,9 @@ public:
 
     // 中腿髋关节相对机体中心的X坐标，左右中腿共用。
     AP_Float MIDDLE_X;
+
+    // 飞行收爪高度(cm):高于此高度默认爪收起;低于此高度横向爪回退到默认展开。
+    AP_Int16 CLAW_H;
 };
 
 class AP_HexRuped_CTRL_Params {
