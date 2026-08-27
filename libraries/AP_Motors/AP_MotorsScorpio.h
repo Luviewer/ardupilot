@@ -59,16 +59,13 @@ protected:
     void _output_test_seq(uint8_t motor_seq, int16_t pwm) override;
 
 private:
-    // 声明三个倾转舵机的角度行程,并由安装角刷新 forward/lateral 分配因子
+    // 声明三个倾转舵机的角度行程,并刷新集体油门分配因子
     void setup_tilt_servos();
 
     // motor test 时向倾转舵机输出 PWM,反相时绕舵机 trim 镜像
     void output_test_tilt(SRV_Channel::Aux_servo_function_t function, bool reversed, int16_t pwm);
 
     // parameters
-
-    // 前倾转轴安装角:前左取前右的镜像;后旋翼在中轴线上,固定纯横向倾转
-    AP_Float        _front_axis_angle_deg;
 
     // 三个倾转舵机的最大行程(度),满偏对应此角,不再使用 Tri 的 MOT_YAW_SV_ANGLE
     AP_Float        _servo_angle_max_deg;
@@ -88,10 +85,6 @@ private:
     float           _thrust_right;
     float           _thrust_rear;
     float           _thrust_left;
-
-    // forward/lateral 投影到各倾转方向的因子,顺序:前右、后、前左
-    float           _forward_factor[3];
-    float           _lateral_factor[3];
 
     // 集体油门分配因子,由 _rear_thrust_ratio 归一化得到(最大者为 1)
     float           _throttle_factor_front;

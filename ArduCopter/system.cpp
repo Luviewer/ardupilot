@@ -439,8 +439,8 @@ void Copter::allocate_motors(void)
 
 #if FRAME_CONFIG != HELI_FRAME
 #if AP_SCRIPTING_ENABLED
-    if (((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING) ||
-        ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_SCORPIO)) {
+    // 天蝎座不再使用 6DoF 控制:横滚/俯仰由电机差速+机体倾斜实现,倾转舵机只做偏航
+    if ((AP_Motors::motor_frame_class)g2.frame_class.get() == AP_Motors::MOTOR_FRAME_6DOF_SCRIPTING) {
         attitude_control = NEW_NOTHROW AC_AttitudeControl_Multi_6DoF(*ahrs_view, aparm, *motors);
         attitude_control_var_info = AC_AttitudeControl_Multi_6DoF::var_info;
     } else {

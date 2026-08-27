@@ -12,11 +12,11 @@
 
    舵机正旋向(输出正角度时旋翼倾倒的方向,与机械安装一致):
      前右:往后偏(后偏右)   后:向左倒   前左:往前偏(前偏右)
-   这三个正方向构成右偏航力偶,偏航按 (+1, +1, +1) 分配;
-   前向/侧向按各自倾转方向分配,供 6DoF 姿态控制器使用。
+   这三个正方向构成右偏航力偶,偏航按 (+1, +1, +1) 分配。
 
-   电机推力混控沿用 AP_MotorsTri;倾转舵机按双旋翼写法,偏航/前向/侧向
-   直接当舵量线性叠加,满偏对应 MOT_SC_SV_ANG,不做 sin/asin 映射。
+   电机推力混控沿用 AP_MotorsTri,横滚/俯仰完全由电机差速实现;
+   倾转舵机只做偏航,偏航量直接当舵量,满偏对应 MOT_SC_SV_ANG,
+   不做 sin/asin 映射。平移靠机体倾斜(普通多旋翼逻辑),不用 6DoF。
  */
 
 #include <AP_HAL/AP_HAL.h>
@@ -31,16 +31,8 @@ const AP_Param::GroupInfo AP_MotorsScorpio::var_info[] = {
     AP_NESTEDGROUPINFO(AP_MotorsMulticopter, 0),
 
     // 参数编号 1~5 和 8~20 由早期天蝎座实现保留占用,不要复用
-
-    // @Param: SC_F_ANG
-    // @DisplayName: Scorpio front tilt axis angle
-    // @Description: Yaw installation angle of the front rotor tilt mechanisms, front-left mirrors front-right
-    // @Units: deg
-    // @Range: 0 90
-    // @User: Advanced
-    // 天蝎座前倾转轴安装角:前旋翼倾转机构的偏航安装角,前左取前右的镜像
-    AP_GROUPINFO("SC_F_ANG", 6, AP_MotorsScorpio, _front_axis_angle_deg, 30.0f),
-
+    // 参数编号 6 由已删除的 SC_F_ANG 保留:倾转舵机只做偏航后,
+    // 前倾转轴安装角不再参与混控
     // 参数编号 7 由已删除的 SC_R_ANG 保留:等腰三角形构型下
     // 后旋翼在中轴线上,倾转方向固定为纯横向,无需参数
 
@@ -89,8 +81,8 @@ const AP_Param::GroupInfo AP_MotorsScorpio::var_info[] = {
     AP_GROUPEND
 };
 
-// 声明三个倾转舵机的角度行程(使用天蝎座自己的 MOT_SC_SV_ANG),
-// 并按安装角刷新 forward/lateral 的投影分配因子。不设默认通道,不写死引脚。
+// 声明三个倾转舵机的角度行程(使用天蝎座自己的 MOT_SC_SV_ANG)。
+// 不设默认通道,不写死引脚。
 void AP_MotorsScorpio::setup_tilt_servos()
 {
     // SRV_Channel angle unit is centidegrees, so convert deg * 100 (30 deg -> 3000)
@@ -98,21 +90,6 @@ void AP_MotorsScorpio::setup_tilt_servos()
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRight, _servo_angle_max_deg*100);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorRear, _servo_angle_max_deg*100);
     SRV_Channels::set_angle(SRV_Channel::k_tiltMotorLeft, _servo_angle_max_deg*100);
-
-    // 各舵机正向倾转产生的水平力方向(a 为前倾转轴安装角):
-    //   前右(往后偏):(-cos a, +sin a)
-    //   后(向左倒):  ( 0,     -1    )
-    //   前左(往前偏):(+cos a, +sin a)
-    // 等腰三角形构型:前左取前右镜像,后旋翼在中轴线上、固定纯横向倾转
-    // 前向混控按方向满行程分配,不再乘 cos a;否则前后杆到不了满舵,手感发闷
-    // 后旋翼倾转轴是纯横向,对前后没有贡献
-    const float front_rad = radians(_front_axis_angle_deg);
-    _forward_factor[0] = -1.0f;
-    _lateral_factor[0] = sinf(front_rad);
-    _forward_factor[1] = 0.0f;
-    _lateral_factor[1] = -1.0f;
-    _forward_factor[2] = 1.0f;
-    _lateral_factor[2] = sinf(front_rad);
 
     // 后/前悬停推力比 → 集体油门分配因子,份额最大的一路归一化到 1,
     // 保证任何油门下单电机推力不超上限
@@ -182,23 +159,17 @@ void AP_MotorsScorpio::output_to_motors()
     switch (_spool_state) {
         case SpoolState::SHUT_DOWN:
             // sends minimum values out to the motors
-            // 向电机输出最小值
+            // 向电机输出最小值；倾转舵机保留当前混控角度，未解锁时也可检查和预置舵机
             _actuator[AP_MOTORS_MOT_1] = 0.0f;
             _actuator[AP_MOTORS_MOT_2] = 0.0f;
             _actuator[AP_MOTORS_MOT_3] = 0.0f;
-            _servo_angle[0] = 0.0f;
-            _servo_angle[1] = 0.0f;
-            _servo_angle[2] = 0.0f;
             break;
         case SpoolState::GROUND_IDLE:
             // sends output to motors when armed but not flying
-            // 已解锁但未起飞时输出地面怠速
+            // 已解锁但未起飞时输出地面怠速；倾转舵机继续响应混控输入
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_1], actuator_spin_up_to_ground_idle());
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_2], actuator_spin_up_to_ground_idle());
             set_actuator_with_slew(_actuator[AP_MOTORS_MOT_3], actuator_spin_up_to_ground_idle());
-            _servo_angle[0] = 0.0f;
-            _servo_angle[1] = 0.0f;
-            _servo_angle[2] = 0.0f;
             break;
         case SpoolState::SPOOLING_UP:
         case SpoolState::THROTTLE_UNLIMITED:
@@ -274,22 +245,17 @@ void AP_MotorsScorpio::output_armed_stabilizing()
     throttle_thrust = get_throttle() * compensation_gain;
     throttle_avg_max = _throttle_avg_max * compensation_gain;
 
-    // thrust vectoring, same idea as tailsitter: command is already +/- 1.0 servo demand
-    // 倾转按双旋翼写法:偏航/前向/侧向直接当舵量,满偏对应 MOT_SC_SV_ANG
+    // tilt servos do yaw only: command is already +/- 1.0 servo demand
+    // 倾转舵机只做偏航:偏航量直接当舵量,三个舵机同向满偏对应 MOT_SC_SV_ANG
     yaw_thrust = _yaw_in + _yaw_in_ff;
-    const float forward_thrust = get_forward();
-    const float lateral_thrust = get_lateral();
     const float servo_angle_max = radians(_servo_angle_max_deg);
 
-    _tilt_in[0] = yaw_thrust + forward_thrust*_forward_factor[0] + lateral_thrust*_lateral_factor[0];
-    _tilt_in[1] = yaw_thrust + forward_thrust*_forward_factor[1] + lateral_thrust*_lateral_factor[1];
-    _tilt_in[2] = yaw_thrust + forward_thrust*_forward_factor[2] + lateral_thrust*_lateral_factor[2];
-    for (uint8_t i = 0; i < 3; i++) {
-        if (fabsf(_tilt_in[i]) > 1.0f) {
-            limit.yaw = true;
-        }
-        _servo_angle[i] = constrain_float(_tilt_in[i], -1.0f, 1.0f) * servo_angle_max;
+    if (fabsf(yaw_thrust) > 1.0f) {
+        limit.yaw = true;
     }
+    const float yaw_angle = constrain_float(yaw_thrust, -1.0f, 1.0f) * servo_angle_max;
+    _tilt_in[0] = _tilt_in[1] = _tilt_in[2] = yaw_thrust;
+    _servo_angle[0] = _servo_angle[1] = _servo_angle[2] = yaw_angle;
 
     // 三个旋翼都会倾转,垂直推力上限取三者中最小的 cos
     const float thrust_max = MIN(cosf(_servo_angle[0]), MIN(cosf(_servo_angle[1]), cosf(_servo_angle[2])));
