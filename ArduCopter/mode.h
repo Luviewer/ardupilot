@@ -101,7 +101,7 @@ public:
         AUTOROTATE =   26,  // Autonomous autorotation
         AUTO_RTL =     27,  // Auto RTL, this is not a true mode, AUTO will report as this mode if entered to perform a DO_LAND_START Landing sequence
         TURTLE =       28,  // Flip over after crash
-        IMPEDANCE =    29,  // Loiter with admittance (force→velocity) control on forward axis
+        IMPEDANCE =    29,  // Guided position/velocity contact approach and force control
         TILT_LOITER =  30,  // Loiter with body-frame pitch control for tilt tricopter
 
         // Mode number 31 reserved for "offboard" for external/lua control.
@@ -1403,7 +1403,7 @@ private:
 };
 
 
-class ModeImpedance : public Mode {
+class ModeImpedance : public ModeGuided {
 
 public:
     ModeImpedance();
@@ -1417,20 +1417,23 @@ public:
     float get_force_ref_n() const { return _force_ref_n; }
     uint8_t get_contact_state() const { return uint8_t(_state); }
 
-    bool requires_position() const override { return true; }
-    bool has_manual_throttle() const override { return false; }
-    bool allows_arming(AP_Arming::Method method) const override { return true; };
+    bool allows_arming(AP_Arming::Method method) const override { return false; }
     bool is_autopilot() const override { return false; }
-    bool has_user_takeoff(bool must_navigate) const override { return true; }
+    bool in_guided_mode() const override { return false; }
+    bool has_user_takeoff(bool must_navigate) const override { return false; }
+    bool requires_terrain_failsafe() const override { return false; }
+
+#if AP_COPTER_ADVANCED_FAILSAFE_ENABLED
+    AP_AdvancedFailsafe_Copter::control_mode afs_mode() const override
+    {
+        return AP_AdvancedFailsafe_Copter::control_mode::AFS_STABILIZED;
+    }
+#endif
 
 protected:
 
     const char *name() const override { return "Impedance"; }
     const char *name4() const override { return "IMPD"; }
-
-    float wp_distance_m() const override;
-    float wp_bearing_deg() const override;
-    float crosstrack_error_m() const override { return pos_control->crosstrack_error_m(); }
 
 private:
 
@@ -1441,6 +1444,7 @@ private:
         FORCE_HOLD,
         REACQUIRE,
         RETREAT,
+        APPROACH_HOLD,
     };
 
     enum class FaultReason : uint8_t {
@@ -1472,20 +1476,16 @@ private:
     AP_Int8 _rangefinder_instance;
     AP_Float _saturation_timeout_s;
     AP_Int8 _force_reverse;
-    AP_Float _release_confirm_s;
-    AP_Float _force_off_threshold_n;
+    AP_Int8 _stage;
+    AP_Float _stop_distance_cm;
 
     ContactState _state = ContactState::READY;
     FaultReason _fault_reason = FaultReason::NONE;
     float _locked_yaw_rad = 0.0f;
-    Vector2f _locked_tool_axis_ne{1.0f, 0.0f};
-    Vector2f _approach_start_ne_m;
     float _tool_distance_m = 0.0f;
     bool _tool_distance_healthy = false;
     float _previous_tool_distance_m = 0.0f;
     uint32_t _last_rangefinder_ms = 0;
-    float _last_valid_tool_distance_m = 0.0f;
-    uint32_t _last_valid_tool_distance_ms = 0;
     float _force_raw_n = 0.0f;
     float _force_filtered_n = 0.0f;
     float _force_ref_n = 0.0f;
@@ -1502,19 +1502,17 @@ private:
     uint32_t _last_force_sequence = 0;
     uint32_t _last_force_sample_ms = 0;
     float _last_force_dt_s = 0.05f;
-    float _body_x_velocity_command_ms = 0.0f;
     uint32_t _state_start_ms = 0;
     uint32_t _saturation_start_ms = 0;
-    uint32_t _release_pending_start_ms = 0;
     uint32_t _telemetry_ms = 0;
     Vector2f _contact_start_ne_m;
     Vector2f _retreat_start_ne_m;
-    float _retreat_start_distance_m = 0.0f;
     bool _reacquire_used = false;
     bool _auto_start_pending = true;
     bool _tare_requested = false;
     bool _tare_reported = false;
     uint32_t _tare_start_ms = 0;
+    float _guided_body_x_ms = 0.0f;
 
     void reset_contact_control();
     void set_state(ContactState state, FaultReason reason = FaultReason::NONE);
@@ -1523,12 +1521,12 @@ private:
     void update_confidence(float dt);
     void update_force_controller(float dt, bool new_force_sample);
     void set_body_x_velocity(float speed_ms);
-    bool use_ne_velocity_control() const;
+    void apply_guided_velocity(float climb_rate_ms);
     void run_contact_state(float dt, bool new_force_sample);
-    void output_attitude_and_force(const Vector3f &thrust_vector, bool force_override);
     float contact_on_threshold_n() const;
     float retreat_distance_done_m() const;
-    bool range_contact_handoff_available(uint32_t now_ms) const;
+    bool approach_only() const;
+    float stop_distance_m() const;
 };
 #if MODE_IMPEDANCE_ATTITUDE_ENABLED
 class ModeImpedanceAttitude : public Mode {

@@ -608,6 +608,10 @@
   #error ModeGuided-NoGPS requires ModeGuided which is disabled
 #endif
 
+#if !MODE_GUIDED_ENABLED
+  #error ModeImpedance requires ModeGuided which is disabled
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 // Developer Items
 //
