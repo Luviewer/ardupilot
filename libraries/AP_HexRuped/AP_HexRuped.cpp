@@ -263,69 +263,43 @@ void AP_HexRuped::update()
     if (gait_update_due) {
         _gait_phase_accumulator -= scheduler_frequency_hz;
 
-        const AP_RangeFinder_Backend* sensor = _rangefinder->get_backend(0);
+        uint16_t down_cm = 0;
+        const bool have_down_rf = get_downward_distance_cm(down_cm);
 
-        // 根据主模式执行相应的控制逻辑
         switch (fly_walk_mode.master_mode) {
         default:
         case Walking_Mode: // 行走模式
-            // 设置当前选择的步态类型
             set_gait_type((HexRupedGaitType)fly_walk_mode.walk_mode);
-            // 调用当前步态后端的更新函数
             _backend->update();
             break;
 
         case Flying_Mode: // 飞行模式（特殊姿态模式）
             switch (fly_walk_mode.fly_mode) {
             default:
-            case Fly_Mode_Flying: {
-                // 获取测距传感器数据进行高度检测
-                if (sensor) {
-                    // 读取地面距离（厘米）
-                    uint16_t sonar_cm = sensor->distance_cm();
-                    if (sonar_cm > 40) {
-                        // 离地较高时：收起腿部成X形向上姿态
-                        _backend->x_up_sleep_leg();
-                        break;
-                    }
+            case Fly_Mode_Flying:
+                // 必须先切到飞行模式;朝下测距离地超过 40cm 才收腿
+                if (have_down_rf && down_cm > 40) {
+                    _backend->x_up_sleep_leg();
+                } else {
+                    _backend->x_sleep_leg();
                 }
-                // 离地较低或无传感器时：收起腿部成X形睡眠姿态
-                _backend->x_sleep_leg();
-            } break;
+                break;
 
             case Fly_Mode_Zhong_Claw:
-                // 纵向爪子模式：腿部形成纵向爪子形状
-                // _backend->zhongxiang_claw_leg(get_claw_angle());
                 if (_motors->get_throttle() >= 0.5 && hal.rcin->read(CH_7) > 1500) {
                     _backend->zhongxiang_claw_leg(-40);
+                } else if (have_down_rf && down_cm < 8) {
+                    _backend->zhongxiang_claw_leg(70);
                 } else {
-                    if (sensor) {
-                        // 读取地面距离（厘米）
-                        uint16_t sonar_cm = sensor->distance_cm();
-                        if (sonar_cm < 8) {
-                            // 离地较高时：收起腿部成X形向上姿态
-                            _backend->zhongxiang_claw_leg(70);
-                        } else {
-                            _backend->zhongxiang_claw_leg(-40);
-                        }
-                    }
+                    _backend->zhongxiang_claw_leg(-40);
                 }
-
                 break;
 
             case Fly_Mode_Heng_Claw:
-                // 横向爪子模式：腿部形成横向爪子形状
-                // _backend->hengxiang_claw_leg(get_claw_angle());
-
-                if (sensor) {
-                    // 读取地面距离（厘米）
-                    uint16_t sonar_cm = sensor->distance_cm();
-                    if (sonar_cm < 8) {
-                        // 离地较高时：收起腿部成X形向上姿态
-                        _backend->hengxiang_claw_leg(40);
-                    } else {
-                        _backend->hengxiang_claw_leg(-40);
-                    }
+                if (have_down_rf && down_cm < 8) {
+                    _backend->hengxiang_claw_leg(40);
+                } else {
+                    _backend->hengxiang_claw_leg(-40);
                 }
                 break;
             }
@@ -336,6 +310,22 @@ void AP_HexRuped::update()
     // userhook_FastLoop由Copter调度器以100Hz调用。无论本周期是否推进步态，
     // 都发送一次缓存目标，保证步长/步态频率变化不会改变舵机命令发送频率。
     _backend->send_servo_cmd();
+}
+
+bool AP_HexRuped::get_downward_distance_cm(uint16_t &cm) const
+{
+    if (_rangefinder == nullptr) {
+        return false;
+    }
+
+    // RNGFNDx_ORIENT = Pitch270 为朝下
+    const AP_RangeFinder_Backend *sensor = _rangefinder->find_instance(ROTATION_PITCH_270);
+    if (sensor == nullptr || !sensor->has_data()) {
+        return false;
+    }
+
+    cm = sensor->distance_cm();
+    return true;
 }
 
 /**

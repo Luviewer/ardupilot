@@ -160,4 +160,7 @@ private:
     void destroy_backends();
     void read_radio_input();
     static uint16_t read_rc_channel_pwm(int8_t channel, uint16_t default_pwm);
+
+    // 读取朝下 RangeFinder(ORIENT=PITCH_270)的距离,有效时返回 true
+    bool get_downward_distance_cm(uint16_t &cm) const;
 };
