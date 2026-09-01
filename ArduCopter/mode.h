@@ -1505,6 +1505,7 @@ private:
     uint32_t _state_start_ms = 0;
     uint32_t _saturation_start_ms = 0;
     uint32_t _telemetry_ms = 0;
+    uint32_t _rangefinder_report_ms = 0;
     Vector2f _contact_start_ne_m;
     Vector2f _retreat_start_ne_m;
     bool _reacquire_used = false;

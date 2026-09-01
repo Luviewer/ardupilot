@@ -47,6 +47,8 @@ static constexpr uint32_t IMPEDANCE_TARE_SETTLE_MS = 600;       // wait after so
                                                                 // 软件去皮后再等一会儿再采噪声
 static constexpr uint32_t IMPEDANCE_RANGE_TIMEOUT_MS = 300;     // stale forward-rangefinder timeout
                                                                 // 朝前测距超过该时间无新数据则判失效
+static constexpr uint32_t IMPEDANCE_RANGE_REPORT_MS = 1000;     // GCS forward-range report interval
+                                                                // 每秒向地面站报告一次朝前距离
 static constexpr float IMPEDANCE_RANGE_JUMP_M = 0.2f;           // reject a sudden range step
                                                                 // 相邻两拍距离跳变过大则丢掉
 static constexpr float IMPEDANCE_PILOT_ABORT_STICK = 0.6f;      // pitch-forward abort to AltHold
@@ -326,6 +328,7 @@ void ModeImpedance::reset_contact_control()
     _last_force_dt_s = 0.05f;
     _state_start_ms = AP_HAL::millis();
     _saturation_start_ms = 0;
+    _rangefinder_report_ms = _state_start_ms;
     _reacquire_used = false;
     _auto_start_pending = true;
     _tare_requested = false;
@@ -444,34 +447,44 @@ bool ModeImpedance::update_force_sample()
 
 // Read the forward rangefinder (IMPD_RFND_IDX, orientation must be ROTATION_NONE).
 // 读朝前测距（IMPD_RFND_IDX，朝向必须是机头前 ROTATION_NONE）。
-// Reject stale, wrong-orientation, or jumped readings so approach does not chase a glitch.
-// 超时、朝向不对、或相邻两拍跳太大都丢掉，避免接近被毛刺带着跑。
+// Hold the last valid distance through brief status dropouts or jumps. A persistent
+// failure still becomes unhealthy after IMPEDANCE_RANGE_TIMEOUT_MS.
+// 短时状态异常或跳变沿用上次有效距离；持续超过超时时间才判为失效。
 void ModeImpedance::update_tool_distance()
 {
     _tool_distance_healthy = false;
     _tool_distance_m = 0.0f;
 #if AP_RANGEFINDER_ENABLED
     AP_RangeFinder_Backend *backend = copter.rangefinder.get_backend(uint8_t(MAX(_rangefinder_instance.get(), 0)));
-    if (backend == nullptr || backend->orientation() != ROTATION_NONE ||
-        backend->status() != RangeFinder::Status::Good ||
-        AP_HAL::millis() - backend->last_reading_ms() > IMPEDANCE_RANGE_TIMEOUT_MS) {
+    if (backend == nullptr || backend->orientation() != ROTATION_NONE) {
         return;
     }
+
+    const uint32_t now_ms = AP_HAL::millis();
     const uint32_t reading_ms = backend->last_reading_ms();
-    _tool_distance_m = backend->distance();
-    if (reading_ms != _last_rangefinder_ms) {
+    const float distance_m = backend->distance();
+    const bool reading_fresh = now_ms - reading_ms <= IMPEDANCE_RANGE_TIMEOUT_MS;
+    const bool distance_valid = distance_m >= backend->min_distance() &&
+                                distance_m <= backend->max_distance();
+
+    if (backend->status() == RangeFinder::Status::Good && reading_fresh && distance_valid) {
         const bool distance_jump = _last_rangefinder_ms != 0 &&
-                                   fabsf(_tool_distance_m - _previous_tool_distance_m) > IMPEDANCE_RANGE_JUMP_M;
-        _last_rangefinder_ms = reading_ms;
-        if (distance_jump) {
+                                   reading_ms != _last_rangefinder_ms &&
+                                   fabsf(distance_m - _previous_tool_distance_m) > IMPEDANCE_RANGE_JUMP_M;
+        if (!distance_jump) {
+            _last_rangefinder_ms = reading_ms;
+            _previous_tool_distance_m = distance_m;
+            _tool_distance_m = distance_m;
+            _tool_distance_healthy = true;
             return;
         }
-        _previous_tool_distance_m = _tool_distance_m;
-    } else if (fabsf(_tool_distance_m - _previous_tool_distance_m) > IMPEDANCE_RANGE_JUMP_M) {
-        return;
     }
-    _tool_distance_healthy = _tool_distance_m >= backend->min_distance() &&
-                             _tool_distance_m <= backend->max_distance();
+
+    if (_last_rangefinder_ms != 0 &&
+        now_ms - _last_rangefinder_ms <= IMPEDANCE_RANGE_TIMEOUT_MS) {
+        _tool_distance_m = _previous_tool_distance_m;
+        _tool_distance_healthy = true;
+    }
 #endif
 }
 
@@ -776,16 +789,25 @@ void ModeImpedance::run()
 {
     // Pitch stick forward is the pilot abort. Do this before commanding any approach speed.
     // 俯仰杆前推是飞手中止，必须在发接近速度之前处理。
-    if (rc().has_valid_input() && channel_pitch->norm_input_dz() > IMPEDANCE_PILOT_ABORT_STICK) {
+    const bool pilot_abort = rc().has_valid_input() &&
+                             channel_pitch->norm_input_dz() > IMPEDANCE_PILOT_ABORT_STICK;
+    if (pilot_abort) {
         GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Impedance: pilot abort");
-        copter.set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
-        return;
     }
 
     const float dt = constrain_float(pos_control->get_dt_s(), 0.001f, 0.1f);
     const uint32_t now_ms = AP_HAL::millis();
     const bool new_force_sample = update_force_sample();
     update_tool_distance();
+    if (now_ms - _rangefinder_report_ms >= IMPEDANCE_RANGE_REPORT_MS) {
+        _rangefinder_report_ms = now_ms;
+        if (_tool_distance_healthy) {
+            GCS_SEND_TEXT(MAV_SEVERITY_INFO, "Impedance: range %.0fcm",
+                          double(_tool_distance_m * 100.0f));
+        } else {
+            GCS_SEND_TEXT(MAV_SEVERITY_WARNING, "Impedance: range unavailable");
+        }
+    }
 
     bool tare_complete = false;
 #if AP_CONTACT_SENSOR_ENABLED
@@ -804,7 +826,7 @@ void ModeImpedance::run()
 
     // In force hold, pitch stick trims the force reference instead of pitching the airframe.
     // 恒力阶段俯仰杆改目标力，不再直接打俯仰。
-    if (_state == ContactState::FORCE_HOLD) {
+    if (!pilot_abort && _state == ContactState::FORCE_HOLD) {
         float pitch_stick = -channel_pitch->norm_input_dz();
         if (fabsf(pitch_stick) < 0.05f) {
             pitch_stick = 0.0f;
@@ -826,7 +848,11 @@ void ModeImpedance::run()
         _locked_yaw_rad = ahrs.get_yaw();
         ModeGuided::run();
     } else {
-        run_contact_state(dt, new_force_sample);
+        if (pilot_abort) {
+            set_body_x_velocity(0.0f);
+        } else {
+            run_contact_state(dt, new_force_sample);
+        }
         apply_guided_velocity(target_climb_rate_ms);
         ModeGuided::run();
     }
@@ -857,5 +883,11 @@ void ModeImpedance::run()
 #if AP_CONTACT_SENSOR_ENABLED
         gcs().send_named_float("ForceType", float(uint8_t(copter.contact_sensor.type())));
 #endif
+    }
+
+    // Finish this cycle's position-controller update before changing mode.
+    // 先跑完本周期位置控制器，再切模式，避免下一周期误报 flow_of_control。
+    if (pilot_abort) {
+        set_mode(Mode::Number::ALT_HOLD, ModeReason::RC_COMMAND);
     }
 }
