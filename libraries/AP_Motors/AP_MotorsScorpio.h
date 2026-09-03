@@ -79,6 +79,11 @@ private:
     AP_Int8         _rr_tilt_reverse;
     AP_Int8         _fl_tilt_reverse;
 
+    // 三个倾转舵机的零位偏移(度),加在反相之后
+    AP_Float        _fr_tilt_offset_deg;
+    AP_Float        _rr_tilt_offset_deg;
+    AP_Float        _fl_tilt_offset_deg;
+
     // 三个倾转舵机的归一化输入(±1)与输出角(弧度),顺序:前右、后、前左
     float           _tilt_in[3];
     float           _servo_angle[3];

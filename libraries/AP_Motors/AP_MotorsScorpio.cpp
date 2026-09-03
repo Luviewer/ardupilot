@@ -78,6 +78,33 @@ const AP_Param::GroupInfo AP_MotorsScorpio::var_info[] = {
     // 天蝎座倾转舵机最大角度:混控满偏时旋翼的最大倾转角,±此角对应 SERVOx_MIN/MAX
     AP_GROUPINFO("SC_SV_ANG", 25, AP_MotorsScorpio, _servo_angle_max_deg, 30.0f),
 
+    // @Param: SC_FR_OFF
+    // @DisplayName: Front-right tilt servo offset
+    // @Description: Mechanical zero offset of the front-right tilt servo, added after reverse. Positive tilts the rotor in the servo positive direction
+    // @Units: deg
+    // @Range: -30 30
+    // @User: Standard
+    // 前右倾转舵机零位偏移(度):加在反相之后,用来补偿安装零位偏差
+    AP_GROUPINFO("SC_FR_OFF", 26, AP_MotorsScorpio, _fr_tilt_offset_deg, 0),
+
+    // @Param: SC_RR_OFF
+    // @DisplayName: Rear tilt servo offset
+    // @Description: Mechanical zero offset of the rear tilt servo, added after reverse. Positive tilts the rotor in the servo positive direction
+    // @Units: deg
+    // @Range: -30 30
+    // @User: Standard
+    // 后倾转舵机零位偏移(度):加在反相之后,用来补偿安装零位偏差
+    AP_GROUPINFO("SC_RR_OFF", 27, AP_MotorsScorpio, _rr_tilt_offset_deg, 0),
+
+    // @Param: SC_FL_OFF
+    // @DisplayName: Front-left tilt servo offset
+    // @Description: Mechanical zero offset of the front-left tilt servo, added after reverse. Positive tilts the rotor in the servo positive direction
+    // @Units: deg
+    // @Range: -30 30
+    // @User: Standard
+    // 前左倾转舵机零位偏移(度):加在反相之后,用来补偿安装零位偏差
+    AP_GROUPINFO("SC_FL_OFF", 28, AP_MotorsScorpio, _fl_tilt_offset_deg, 0),
+
     AP_GROUPEND
 };
 
@@ -185,10 +212,16 @@ void AP_MotorsScorpio::output_to_motors()
     rc_write(AP_MOTORS_MOT_1, output_to_pwm(_actuator[AP_MOTORS_MOT_1]));
     rc_write(AP_MOTORS_MOT_2, output_to_pwm(_actuator[AP_MOTORS_MOT_2]));
     rc_write(AP_MOTORS_MOT_3, output_to_pwm(_actuator[AP_MOTORS_MOT_3]));
-    // 反相参数:1 时输出角度取反
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight, degrees(_servo_angle[0])*100 * (_fr_tilt_reverse ? -1.0f : 1.0f));
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear, degrees(_servo_angle[1])*100 * (_rr_tilt_reverse ? -1.0f : 1.0f));
-    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft, degrees(_servo_angle[2])*100 * (_fl_tilt_reverse ? -1.0f : 1.0f));
+    // 反相后再加零位偏移,与 tritilt-fixed 的 SVO_*_OFF 相同:scaled 单位是百分之一度
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRight,
+                                    degrees(_servo_angle[0])*100 * (_fr_tilt_reverse ? -1.0f : 1.0f)
+                                    + _fr_tilt_offset_deg.get()*100.0f);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorRear,
+                                    degrees(_servo_angle[1])*100 * (_rr_tilt_reverse ? -1.0f : 1.0f)
+                                    + _rr_tilt_offset_deg.get()*100.0f);
+    SRV_Channels::set_output_scaled(SRV_Channel::k_tiltMotorLeft,
+                                    degrees(_servo_angle[2])*100 * (_fl_tilt_reverse ? -1.0f : 1.0f)
+                                    + _fl_tilt_offset_deg.get()*100.0f);
 }
 
 // get_motor_mask - returns a bitmask of which outputs are being used for motors or servos (1 means being used)
