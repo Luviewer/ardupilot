@@ -379,8 +379,16 @@ bool ModeImpedance::update_force_sample()
         sample_dt = constrain_float((sample.timestamp_ms - previous_sample_ms) * 0.001f, 0.001f, 0.2f);
     }
     _last_force_dt_s = sample_dt;
-    const float alpha = constrain_float(sample_dt * IMPEDANCE_FORCE_LPF_HZ * M_2PI, 0.0f, 1.0f);
+    // Preserve the physical filter pole at low or irregular sensor rates.
+    // Euler alpha approaches unity at 20 Hz, bypassing the intended filter.
+    const float alpha = 1.0f - expf(-sample_dt * IMPEDANCE_FORCE_LPF_HZ * M_2PI);
     _force_filtered_n += (corrected_force_n - _force_filtered_n) * alpha;
+#if HAL_LOGGING_ENABLED
+    // Record actual consumed samples; the flight-loop log repeats held values.
+    copter.logger.Write("IMFS", "TimeUS,Seq,SampleMS,Dt,Raw,Filt", "QIIfff",
+                        AP_HAL::micros64(), sample.sequence, sample.timestamp_ms,
+                        double(sample_dt), double(_force_raw_n), double(_force_filtered_n));
+#endif
     return true;
 #else
     return false;
@@ -471,7 +479,10 @@ void ModeImpedance::update_confidence(float dt)
             requested = 0.5f * (1.0f + cosf(phase * M_PI));
         }
 
-        if (_state == ContactState::FORCE_HOLD) {
+        // A loaded probe constrains the normal position physically. Estimator
+        // drift must not suppress its force loop while contact is confirmed.
+        // Retain the displacement guard when force evidence becomes uncertain.
+        if (_state == ContactState::FORCE_HOLD && !_contact_detector.contact()) {
             const Vector2f position_ne_m = pos_control->get_pos_estimate_NED_m().xy().tofloat();
             const Vector2f forward_ne = _locked_tool_axis_ne;
             const float tool_error_m = fabsf((position_ne_m - _contact_start_ne_m) * forward_ne);
@@ -693,6 +704,28 @@ void ModeImpedance::run_contact_state(float dt, bool new_force_sample)
     update_force_controller(dt, new_force_sample);
 }
 
+void ModeImpedance::relax_force_axis_position_control()
+{
+    // Match the axis removed by output_attitude_and_force. Keep tangential
+    // holding active without winding up the unused normal position loop.
+    const Vector2f normal_ne{cosf(_locked_yaw_rad), sinf(_locked_yaw_rad)};
+    Vector2p position_desired = pos_control->get_pos_desired_NED_m().xy();
+    const Vector2p position_estimate = pos_control->get_pos_estimate_NED_m().xy() -
+                                      pos_control->get_pos_offset_NED_m().xy();
+    position_desired += (normal_ne * ((position_estimate - position_desired).tofloat() * normal_ne)).topostype();
+    pos_control->set_pos_desired_NE_m(position_desired);
+
+    Vector2f velocity_desired = pos_control->get_vel_desired_NED_ms().xy();
+    const Vector2f velocity_estimate = pos_control->get_vel_estimate_NED_ms().xy() -
+                                      pos_control->get_vel_offset_NED_ms().xy();
+    velocity_desired += normal_ne * ((velocity_estimate - velocity_desired) * normal_ne);
+    pos_control->set_vel_desired_NE_ms(velocity_desired);
+
+    auto &velocity_pid = pos_control->NE_get_vel_pid();
+    const Vector2f integral = velocity_pid.get_i();
+    velocity_pid.set_integrator(integral - normal_ne * (integral * normal_ne));
+}
+
 void ModeImpedance::output_attitude_and_force(const Vector3f &thrust_vector, bool force_override)
 {
     auto *att6 = AC_AttitudeControl_Multi_6DoF::get_singleton();
@@ -800,6 +833,9 @@ void ModeImpedance::run()
             pos_control->NE_stop_pos_stabilisation();
             pos_control->NE_update_controller();
         } else {
+            if (_state == ContactState::FORCE_HOLD) {
+                relax_force_axis_position_control();
+            }
             loiter_nav->clear_vel_offset_NE_ms();
             loiter_nav->update();
         }

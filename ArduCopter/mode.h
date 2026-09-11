@@ -1522,6 +1522,7 @@ private:
     void update_tool_distance();
     void update_confidence(float dt);
     void update_force_controller(float dt, bool new_force_sample);
+    void relax_force_axis_position_control();
     void set_body_x_velocity(float speed_ms);
     bool use_ne_velocity_control() const;
     void run_contact_state(float dt, bool new_force_sample);
